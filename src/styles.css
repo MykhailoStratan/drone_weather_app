@@ -1,0 +1,377 @@
+:root {
+  font-family: "Segoe UI", "Inter", sans-serif;
+  color: #f5f7fb;
+  background:
+    radial-gradient(circle at top left, rgba(255, 196, 111, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(86, 168, 255, 0.22), transparent 34%),
+    linear-gradient(180deg, #07111f 0%, #10233b 45%, #0f1728 100%);
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --panel: rgba(10, 21, 38, 0.78);
+  --panel-strong: rgba(8, 18, 33, 0.92);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text-soft: rgba(226, 235, 248, 0.7);
+  --accent: #ffd26c;
+  --accent-strong: #ffb347;
+  --sky: #8ecbff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(1280px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+}
+
+.hero-card,
+.timeline-panel,
+.hourly-panel,
+.loading-card,
+.primary-panel,
+.stat-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.hero-card {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.hero-copy {
+  padding: 0.75rem;
+}
+
+.eyebrow,
+.section-label,
+.metric-card span,
+.day-chip span,
+.hour-card dt {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.hero-copy h1 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: clamp(2.5rem, 4vw, 4.4rem);
+  line-height: 0.96;
+  max-width: 11ch;
+}
+
+.hero-text,
+.muted,
+.hour-card span {
+  color: var(--text-soft);
+}
+
+.search-panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border-radius: 24px;
+  padding: 1.25rem;
+}
+
+.search-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.search-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: rgba(4, 12, 22, 0.72);
+  color: #fff;
+  padding: 1rem 1.1rem;
+}
+
+.secondary-button,
+.day-chip,
+.result-item {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  border-radius: 18px;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.secondary-button {
+  padding: 0.95rem 1.1rem;
+}
+
+.secondary-button:hover,
+.day-chip:hover,
+.result-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 210, 108, 0.55);
+  background: rgba(255, 210, 108, 0.12);
+}
+
+.results-panel {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.result-item {
+  padding: 0.85rem 1rem;
+  text-align: left;
+}
+
+.result-item span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--text-soft);
+}
+
+.status-message {
+  margin-top: 0.8rem;
+  color: #ffd8b0;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.primary-panel,
+.stat-panel,
+.timeline-panel,
+.hourly-panel,
+.loading-card {
+  padding: 1.25rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.panel-header.compact h3,
+.primary-panel h2,
+.stat-panel h3 {
+  margin: 0.25rem 0 0;
+}
+
+.temperature-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5rem;
+  padding: 0.8rem 1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #172130;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.headline-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+
+.metric-card {
+  padding: 0.95rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.05rem;
+}
+
+.day-range {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0 0.5rem;
+}
+
+.range-bar {
+  height: 10px;
+  flex: 1;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sky), var(--accent));
+}
+
+.day-strip {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(140px, 1fr));
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.day-chip {
+  padding: 0.9rem;
+  text-align: left;
+}
+
+.day-chip strong,
+.day-chip small {
+  display: block;
+}
+
+.day-chip.active {
+  border-color: rgba(255, 210, 108, 0.9);
+  background: linear-gradient(180deg, rgba(255, 210, 108, 0.24), rgba(255, 210, 108, 0.08));
+}
+
+.hourly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 0.8rem;
+}
+
+.hour-card {
+  border-radius: 22px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hour-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.hour-temp {
+  margin: 0 0 0.8rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.hour-card dl {
+  margin: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.hour-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.hour-card dd {
+  margin: 0;
+}
+
+.timeline-panel,
+.hourly-panel {
+  margin-bottom: 1rem;
+}
+
+.loading-card {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  min-height: 260px;
+}
+
+.spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1080px) {
+  .hero-card,
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .headline-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    width: min(100vw - 1rem, 1280px);
+    padding-top: 0.5rem;
+  }
+
+  .hero-copy h1 {
+    font-size: 2.4rem;
+  }
+
+  .search-row {
+    flex-direction: column;
+  }
+
+  .headline-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .primary-panel,
+  .stat-panel,
+  .timeline-panel,
+  .hourly-panel,
+  .hero-card,
+  .loading-card {
+    border-radius: 22px;
+  }
+}
