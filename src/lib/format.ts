@@ -56,13 +56,3 @@ export function weatherLabel(code: number) {
 
   return map[code] ?? "Mixed conditions";
 }
-
-export function estimateVisibleSatellites(cloudCover: number, visibilityMeters: number, isDay: number) {
-  if (isDay) {
-    return 0;
-  }
-
-  const clarity = Math.max(0, 1 - cloudCover / 100);
-  const visibilityFactor = Math.min(1, visibilityMeters / 24000);
-  return Math.round(clarity * visibilityFactor * 12);
-}

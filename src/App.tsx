@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { estimateVisibleSatellites, formatDayLabel, formatHourLabel, formatTime, weatherLabel, windDirectionLabel } from "./lib/format";
+import { formatDayLabel, formatHourLabel, formatTime, weatherLabel, windDirectionLabel } from "./lib/format";
 import { fetchWeather, searchLocations } from "./lib/weather";
 import type { LocationOption, WeatherPayload, WeatherSnapshot } from "./types";
 
@@ -112,14 +112,6 @@ function App() {
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
   const temperatureTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.temperature);
   const precipitationTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.precipitationProbability);
-  const satelliteEstimate = currentSnapshot
-    ? estimateVisibleSatellites(
-        currentSnapshot.cloudCover,
-        currentSnapshot.visibility,
-        currentSnapshot.isDay,
-      )
-    : 0;
-
   return (
     <main className="app-shell">
       {loading || !weather || !currentDay || !currentSnapshot ? (
@@ -247,7 +239,6 @@ function App() {
                 <p className="muted">
                   {Math.round(currentDay.precipitationSum)} mm precipitation spread across {Math.round(currentDay.precipitationHours)} hours.
                 </p>
-                <p className="muted">Estimated visible satellites tonight: {satelliteEstimate}</p>
               </div>
             </article>
 
