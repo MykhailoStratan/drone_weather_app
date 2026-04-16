@@ -134,6 +134,61 @@ button {
   overflow-y: auto;
 }
 
+.saved-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.saved-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+}
+
+.saved-header h3 {
+  margin: 0.2rem 0 0;
+}
+
+.ghost-button,
+.saved-remove-button {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+}
+
+.saved-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.saved-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.saved-location-button {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  border-radius: 18px;
+  text-align: left;
+  padding: 0.8rem 0.9rem;
+}
+
+.saved-location-button span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--text-soft);
+}
+
 .search-label {
   display: block;
   margin-bottom: 0.75rem;
@@ -566,7 +621,9 @@ button {
   .wind-visual,
   .hero-topline,
   .hour-summary-row,
-  .range-header {
+  .range-header,
+  .saved-header,
+  .saved-item {
     flex-direction: column;
     align-items: flex-start;
   }

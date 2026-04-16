@@ -13,10 +13,15 @@ const starterLocation: LocationOption = {
   timezone: "America/Vancouver",
 };
 
+const SAVED_LOCATIONS_KEY = "skycanvas.savedLocations";
+const LAST_LOCATION_KEY = "skycanvas.lastLocation";
+
 function App() {
   const [query, setQuery] = useState("Vancouver");
   const [results, setResults] = useState<LocationOption[]>([]);
   const [weather, setWeather] = useState<WeatherPayload | null>(null);
+  const [activeLocation, setActiveLocation] = useState<LocationOption | null>(null);
+  const [savedLocations, setSavedLocations] = useState<LocationOption[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -24,7 +29,10 @@ function App() {
   const debounce = useRef<number | null>(null);
 
   useEffect(() => {
-    void loadWeather(starterLocation);
+    const storedLocations = readStoredLocations();
+    const preferredLocation = readStoredLocation(LAST_LOCATION_KEY) ?? starterLocation;
+    setSavedLocations(storedLocations);
+    void loadWeather(preferredLocation);
   }, []);
 
   useEffect(() => {
@@ -58,6 +66,8 @@ function App() {
       setSelectedDate(payload.daily[7]?.date ?? payload.daily[0]?.date ?? "");
       setResults([]);
       setQuery(location.name);
+      setActiveLocation(location);
+      storeLocation(LAST_LOCATION_KEY, location);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load weather.");
     } finally {
@@ -105,6 +115,24 @@ function App() {
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
+  }
+
+  function saveActiveLocation() {
+    if (!activeLocation || activeLocation.id === 0) {
+      setMessage("Search for a city or region before saving a location.");
+      return;
+    }
+
+    const nextLocations = upsertLocation(savedLocations, activeLocation);
+    setSavedLocations(nextLocations);
+    storeLocations(nextLocations);
+    setMessage(`${activeLocation.name} saved.`);
+  }
+
+  function removeSavedLocation(locationId: number) {
+    const nextLocations = savedLocations.filter((location) => location.id !== locationId);
+    setSavedLocations(nextLocations);
+    storeLocations(nextLocations);
   }
 
   const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
@@ -165,6 +193,45 @@ function App() {
                 )}
 
                 {message && <p className="status-message">{message}</p>}
+              </div>
+
+              <div className="saved-panel">
+                <div className="saved-header">
+                  <div>
+                    <p className="section-label">Saved places</p>
+                    <h3>Quick access</h3>
+                  </div>
+                  <button type="button" className="ghost-button" onClick={saveActiveLocation}>
+                    Save current
+                  </button>
+                </div>
+
+                {savedLocations.length === 0 ? (
+                  <p className="muted">No saved places yet. Save a city to pin it here.</p>
+                ) : (
+                  <div className="saved-list">
+                    {savedLocations.map((location) => (
+                      <div key={location.id} className="saved-item">
+                        <button
+                          type="button"
+                          className="saved-location-button"
+                          onClick={() => void loadWeather(location)}
+                        >
+                          <strong>{location.name}</strong>
+                          <span>{[location.admin1, location.country].filter(Boolean).join(", ")}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="saved-remove-button"
+                          onClick={() => removeSavedLocation(location.id)}
+                          aria-label={`Remove ${location.name}`}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </aside>
 
@@ -400,3 +467,34 @@ function resolveCurrentSnapshot(hourlyForDay: WeatherSnapshot[] | undefined, cur
 }
 
 export default App;
+
+function readStoredLocations() {
+  try {
+    const raw = window.localStorage.getItem(SAVED_LOCATIONS_KEY);
+    return raw ? (JSON.parse(raw) as LocationOption[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function readStoredLocation(key: string) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as LocationOption) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeLocations(locations: LocationOption[]) {
+  window.localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify(locations));
+}
+
+function storeLocation(key: string, location: LocationOption) {
+  window.localStorage.setItem(key, JSON.stringify(location));
+}
+
+function upsertLocation(locations: LocationOption[], nextLocation: LocationOption) {
+  const existing = locations.filter((location) => location.id !== nextLocation.id);
+  return [nextLocation, ...existing].slice(0, 6);
+}
