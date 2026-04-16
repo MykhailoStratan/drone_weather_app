@@ -1,5 +1,5 @@
 import type { Config } from "@netlify/functions";
-import type { LocationOption } from "../../src/types";
+import type { LocationOption } from "../../packages/weather-domain/src/types";
 import { fetchWeatherFromProvider } from "./_shared/weather";
 
 export default async (req: Request) => {

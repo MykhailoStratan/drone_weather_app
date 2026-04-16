@@ -1,4 +1,9 @@
-import type { DailyWeather, LocationOption, WeatherPayload, WeatherSnapshot } from "../../../src/types";
+import type {
+  DailyWeather,
+  LocationOption,
+  WeatherPayload,
+  WeatherSnapshot,
+} from "../../../packages/weather-domain/src/types";
 
 const GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
