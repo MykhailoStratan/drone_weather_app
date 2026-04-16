@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { formatDayLabel, formatHourLabel, formatTime, weatherLabel, windDirectionLabel } from "./lib/format";
+import {
+  formatDayLabel,
+  formatHourLabel,
+  formatTime,
+  temperatureDisplay,
+  visibilityDisplay,
+  weatherLabel,
+  windDirectionLabel,
+  windSpeedDisplay,
+} from "./lib/format";
 import { fetchWeather, searchLocations } from "./lib/weather";
 import type { LocationOption, WeatherPayload, WeatherSnapshot } from "./types";
 
@@ -15,6 +24,21 @@ const starterLocation: LocationOption = {
 
 const SAVED_LOCATIONS_KEY = "skycanvas.savedLocations";
 const LAST_LOCATION_KEY = "skycanvas.lastLocation";
+const PREFERENCES_KEY = "skycanvas.preferences";
+
+type Preferences = {
+  temperatureUnit: "c" | "f";
+  windUnit: "kmh" | "mph";
+  visibilityUnit: "km" | "mi";
+  hourCycle: "12h" | "24h";
+};
+
+const defaultPreferences: Preferences = {
+  temperatureUnit: "c",
+  windUnit: "kmh",
+  visibilityUnit: "km",
+  hourCycle: "12h",
+};
 
 function App() {
   const [query, setQuery] = useState("Vancouver");
@@ -22,6 +46,7 @@ function App() {
   const [weather, setWeather] = useState<WeatherPayload | null>(null);
   const [activeLocation, setActiveLocation] = useState<LocationOption | null>(null);
   const [savedLocations, setSavedLocations] = useState<LocationOption[]>([]);
+  const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -32,6 +57,7 @@ function App() {
     const storedLocations = readStoredLocations();
     const preferredLocation = readStoredLocation(LAST_LOCATION_KEY) ?? starterLocation;
     setSavedLocations(storedLocations);
+    setPreferences(readStoredPreferences());
     void loadWeather(preferredLocation);
   }, []);
 
@@ -135,12 +161,26 @@ function App() {
     storeLocations(nextLocations);
   }
 
+  function updatePreferences(nextPreferences: Preferences) {
+    setPreferences(nextPreferences);
+    window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(nextPreferences));
+  }
+
   const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
   const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate));
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
-  const temperatureTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.temperature);
+  const temperatureTrack = createMetricTrack(
+    hourlyForDay ?? [],
+    (entry) => temperatureDisplay(entry.temperature, preferences.temperatureUnit),
+  );
   const precipitationTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.precipitationProbability);
-  const windTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.windSpeed);
+  const windTrack = createMetricTrack(
+    hourlyForDay ?? [],
+    (entry) => windSpeedDisplay(entry.windSpeed, preferences.windUnit),
+  );
+  const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
+  const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
+  const visibilityUnitLabel = preferences.visibilityUnit === "mi" ? "mi" : "km";
   return (
     <main className="app-shell">
       {loading || !weather || !currentDay || !currentSnapshot ? (
@@ -234,6 +274,87 @@ function App() {
                   </div>
                 )}
               </div>
+
+              <div className="saved-panel">
+                <div className="saved-header">
+                  <div>
+                    <p className="section-label">Preferences</p>
+                    <h3>Display units</h3>
+                  </div>
+                </div>
+
+                <div className="preference-group">
+                  <span className="preference-label">Temperature</span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={preferences.temperatureUnit === "c" ? "segment active" : "segment"}
+                      onClick={() => updatePreferences({ ...preferences, temperatureUnit: "c" })}
+                    >
+                      C
+                    </button>
+                    <button
+                      type="button"
+                      className={preferences.temperatureUnit === "f" ? "segment active" : "segment"}
+                      onClick={() => updatePreferences({ ...preferences, temperatureUnit: "f" })}
+                    >
+                      F
+                    </button>
+                  </div>
+                </div>
+
+                <div className="preference-group">
+                  <span className="preference-label">Wind and visibility</span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={preferences.windUnit === "kmh" ? "segment active" : "segment"}
+                      onClick={() =>
+                        updatePreferences({
+                          ...preferences,
+                          windUnit: "kmh",
+                          visibilityUnit: "km",
+                        })
+                      }
+                    >
+                      Metric
+                    </button>
+                    <button
+                      type="button"
+                      className={preferences.windUnit === "mph" ? "segment active" : "segment"}
+                      onClick={() =>
+                        updatePreferences({
+                          ...preferences,
+                          windUnit: "mph",
+                          visibilityUnit: "mi",
+                        })
+                      }
+                    >
+                      Imperial
+                    </button>
+                  </div>
+                </div>
+
+                <div className="preference-group">
+                  <span className="preference-label">Time</span>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      className={preferences.hourCycle === "12h" ? "segment active" : "segment"}
+                      onClick={() => updatePreferences({ ...preferences, hourCycle: "12h" })}
+                    >
+                      12h
+                    </button>
+                    <button
+                      type="button"
+                      className={preferences.hourCycle === "24h" ? "segment active" : "segment"}
+                      onClick={() => updatePreferences({ ...preferences, hourCycle: "24h" })}
+                    >
+                      24h
+                    </button>
+                  </div>
+                </div>
+              </div>
             </aside>
 
             <section className="overview-grid premium-grid primary-priority">
@@ -248,10 +369,14 @@ function App() {
 
               <div className="hero-stats">
                 <div className="temperature-block">
-                  <span className="temperature-value">{Math.round(currentSnapshot.temperature)}</span>
-                  <span className="temperature-unit">C</span>
+                  <span className="temperature-value">
+                    {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
+                  </span>
+                  <span className="temperature-unit">{temperatureUnitLabel}</span>
                   <p className="temperature-range">
-                    {Math.round(currentDay.temperatureMin)} / {Math.round(currentDay.temperatureMax)} C
+                    {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)} /{" "}
+                    {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)}{" "}
+                    {temperatureUnitLabel}
                   </p>
                 </div>
 
@@ -272,7 +397,8 @@ function App() {
                         {windDirectionLabel(currentSnapshot.windDirection)} {Math.round(currentSnapshot.windDirection)} deg
                       </strong>
                       <p className="muted">
-                        {Math.round(currentSnapshot.windSpeed)} km/h wind with gusts up to {Math.round(currentSnapshot.windGusts)} km/h
+                        {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} wind with gusts up to{" "}
+                        {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
                       </p>
                     </div>
                   </div>
@@ -280,12 +406,16 @@ function App() {
               </div>
 
               <div className="hero-mini-grid">
-                <Metric icon="☀" label="Sunrise" value={formatTime(currentDay.sunrise)} />
-                <Metric icon="☾" label="Sunset" value={formatTime(currentDay.sunset)} />
+                <Metric icon="SR" label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
+                <Metric icon="SS" label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
                 <Metric icon="☔" label="Precip." value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
                 <Metric icon="☁" label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
-                <Metric icon="◌" label="Visibility" value={`${(currentSnapshot.visibility / 1000).toFixed(1)} km`} />
-                <Metric icon="◍" label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
+                <Metric
+                  icon="VS"
+                  label="Visibility"
+                  value={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
+                />
+                <Metric icon="PR" label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
               </div>
             </article>
 
@@ -296,7 +426,7 @@ function App() {
                 <div className="range-summary">
                   <div className="range-header">
                     <span>Temperature arc</span>
-                    <strong>{temperatureTrack.min} to {temperatureTrack.max} C</strong>
+                    <strong>{temperatureTrack.min} to {temperatureTrack.max} {temperatureUnitLabel}</strong>
                   </div>
                   <div className="sparkline sparkline-temperature" aria-hidden="true">
                     {temperatureTrack.points.map((point) => (
@@ -349,7 +479,8 @@ function App() {
                     <strong>{formatDayLabel(day.date)}</strong>
                     <em>{weatherLabel(day.weatherCode)}</em>
                     <small>
-                      {Math.round(day.temperatureMin)} deg / {Math.round(day.temperatureMax)} deg
+                      {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel} /{" "}
+                      {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
                     </small>
                   </button>
                 );
@@ -368,7 +499,7 @@ function App() {
             <div className="hourly-chart-grid">
               <ChartCard
                 title="Temperature"
-                units="C"
+                units={temperatureUnitLabel}
                 tone="temperature"
                 points={temperatureTrack.points}
                 min={temperatureTrack.min}
@@ -376,7 +507,7 @@ function App() {
               />
               <ChartCard
                 title="Wind"
-                units="km/h"
+                units={windUnitLabel}
                 tone="wind"
                 points={windTrack.points}
                 min={windTrack.min}
@@ -396,11 +527,13 @@ function App() {
               {(hourlyForDay ?? []).map((entry) => (
                 <article key={entry.time} className="hour-card">
                   <div className="hour-card-top">
-                    <strong>{formatHourLabel(entry.time)}</strong>
+                    <strong>{formatHourLabel(entry.time, preferences.hourCycle)}</strong>
                     <span>{weatherLabel(entry.weatherCode)}</span>
                   </div>
                   <div className="hour-summary-row">
-                    <p className="hour-temp">{Math.round(entry.temperature)} C</p>
+                    <p className="hour-temp">
+                      {temperatureDisplay(entry.temperature, preferences.temperatureUnit)} {temperatureUnitLabel}
+                    </p>
                     <div className="mini-wind">
                       <span
                         className="mini-wind-arrow"
@@ -415,11 +548,11 @@ function App() {
                   <dl>
                     <div>
                       <dt>Wind</dt>
-                      <dd>{Math.round(entry.windSpeed)} km/h</dd>
+                      <dd>{windSpeedDisplay(entry.windSpeed, preferences.windUnit)} {windUnitLabel}</dd>
                     </div>
                     <div>
                       <dt>Gusts</dt>
-                      <dd>{Math.round(entry.windGusts)} km/h</dd>
+                      <dd>{windSpeedDisplay(entry.windGusts, preferences.windUnit)} {windUnitLabel}</dd>
                     </div>
                     <div>
                       <dt>Dir</dt>
@@ -435,7 +568,9 @@ function App() {
                     </div>
                     <div>
                       <dt>Visibility</dt>
-                      <dd>{(entry.visibility / 1000).toFixed(1)} km</dd>
+                      <dd>
+                        {visibilityDisplay(entry.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
+                      </dd>
                     </div>
                   </dl>
                 </article>
@@ -545,6 +680,17 @@ function readStoredLocation(key: string) {
     return raw ? (JSON.parse(raw) as LocationOption) : null;
   } catch {
     return null;
+  }
+}
+
+function readStoredPreferences(): Preferences {
+  try {
+    const raw = window.localStorage.getItem(PREFERENCES_KEY);
+    return raw
+      ? { ...defaultPreferences, ...(JSON.parse(raw) as Partial<Preferences>) }
+      : defaultPreferences;
+  } catch {
+    return defaultPreferences;
   }
 }
 

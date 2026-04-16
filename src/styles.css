@@ -167,6 +167,37 @@ button {
   gap: 0.65rem;
 }
 
+.preference-group {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.preference-label {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.segment {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  border-radius: 14px;
+  padding: 0.7rem 0.8rem;
+}
+
+.segment.active {
+  border-color: rgba(255, 213, 108, 0.8);
+  background: rgba(255, 213, 108, 0.16);
+  color: #fff3cc;
+}
+
 .saved-item {
   display: grid;
   grid-template-columns: 1fr auto;

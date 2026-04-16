@@ -6,18 +6,32 @@ export function formatDayLabel(date: string) {
   }).format(new Date(`${date}T00:00:00`));
 }
 
-export function formatHourLabel(value: string) {
+export function formatHourLabel(value: string, hourCycle: "12h" | "24h" = "12h") {
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
+    hour12: hourCycle === "12h",
   }).format(new Date(value));
 }
 
-export function formatTime(value: string) {
+export function formatTime(value: string, hourCycle: "12h" | "24h" = "12h") {
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
+    hour12: hourCycle === "12h",
   }).format(new Date(value));
+}
+
+export function temperatureDisplay(valueCelsius: number, unit: "c" | "f") {
+  return unit === "f" ? Math.round((valueCelsius * 9) / 5 + 32) : Math.round(valueCelsius);
+}
+
+export function windSpeedDisplay(valueKmh: number, unit: "kmh" | "mph") {
+  return unit === "mph" ? Math.round(valueKmh * 0.621371) : Math.round(valueKmh);
+}
+
+export function visibilityDisplay(valueKm: number, unit: "km" | "mi") {
+  return unit === "mi" ? (valueKm * 0.621371).toFixed(1) : valueKm.toFixed(1);
 }
 
 export function windDirectionLabel(degrees: number) {
