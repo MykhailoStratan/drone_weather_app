@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  AlertTimelineChart,
+  CloudVisibilityChart,
+  DaylightBandChart,
+  PrecipitationOverlayChart,
+  PressureTrendChart,
+  TemperatureCurveChart,
+  WeeklyRangeChart,
+  WindDirectionChart,
+  buildHourlySeries,
+  buildWeeklyRangeSeries,
+} from "./components/WeatherCharts";
+import {
   formatDayLabel,
   formatHourLabel,
   formatTime,
@@ -50,7 +62,7 @@ function App() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
-  const [message, setMessage] = useState<string>("");
+  const [message, setMessage] = useState("");
   const debounce = useRef<number | null>(null);
 
   useEffect(() => {
@@ -167,26 +179,29 @@ function App() {
   }
 
   const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
-  const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate));
+  const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [];
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
-  const temperatureTrack = createMetricTrack(
-    hourlyForDay ?? [],
-    (entry) => temperatureDisplay(entry.temperature, preferences.temperatureUnit),
-    preferences.hourCycle,
-  );
-  const precipitationTrack = createMetricTrack(
-    hourlyForDay ?? [],
-    (entry) => entry.precipitationProbability,
-    preferences.hourCycle,
-  );
-  const windTrack = createMetricTrack(
-    hourlyForDay ?? [],
-    (entry) => windSpeedDisplay(entry.windSpeed, preferences.windUnit),
-    preferences.hourCycle,
-  );
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
   const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
   const visibilityUnitLabel = preferences.visibilityUnit === "mi" ? "mi" : "km";
+  const visibilityFactor = preferences.visibilityUnit === "mi" ? 0.000621371 : 0.001;
+  const hourlySeries = buildHourlySeries(
+    hourlyForDay.map((entry) => ({
+      ...entry,
+      temperature: temperatureDisplay(entry.temperature, preferences.temperatureUnit),
+      windSpeed: windSpeedDisplay(entry.windSpeed, preferences.windUnit),
+    })),
+    preferences.hourCycle,
+    visibilityFactor,
+  );
+  const weeklyRange = buildWeeklyRangeSeries(
+    (weather?.daily ?? []).slice(7, 14).map((day) => ({
+      ...day,
+      temperatureMin: temperatureDisplay(day.temperatureMin, preferences.temperatureUnit),
+      temperatureMax: temperatureDisplay(day.temperatureMax, preferences.temperatureUnit),
+    })),
+  );
+
   return (
     <main className="app-shell">
       {loading || !weather || !currentDay || !currentSnapshot ? (
@@ -364,126 +379,124 @@ function App() {
             </aside>
 
             <section className="overview-grid premium-grid primary-priority">
-            <article className="primary-panel hero-conditions">
-              <div className="hero-topline">
-                <div>
-                  <p className="section-label">{weather.locationLabel}</p>
-                  <h2>{weatherLabel(currentSnapshot.weatherCode)}</h2>
-                </div>
-                <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
-              </div>
-
-              <div className="hero-stats">
-                <div className="temperature-block">
-                  <span className="temperature-value">
-                    {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
-                  </span>
-                  <span className="temperature-unit">{temperatureUnitLabel}</span>
-                  <p className="temperature-range">
-                    {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)} /{" "}
-                    {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)}{" "}
-                    {temperatureUnitLabel}
-                  </p>
-                </div>
-
-                <div className="wind-spotlight">
-                  <p className="section-label">Wind direction</p>
-                  <div className="wind-visual">
-                    <div className="wind-arrow-ring">
-                      <span
-                        className="wind-arrow"
-                        style={{ transform: `rotate(${currentSnapshot.windDirection}deg)` }}
-                        aria-hidden="true"
-                      >
-                        ↑
-                      </span>
-                    </div>
-                    <div>
-                      <strong>
-                        {windDirectionLabel(currentSnapshot.windDirection)} {Math.round(currentSnapshot.windDirection)} deg
-                      </strong>
-                      <p className="muted">
-                        {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} wind with gusts up to{" "}
-                        {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
-                      </p>
-                    </div>
+              <article className="primary-panel hero-conditions">
+                <div className="hero-topline">
+                  <div>
+                    <p className="section-label">{weather.locationLabel}</p>
+                    <h2>{weatherLabel(currentSnapshot.weatherCode)}</h2>
                   </div>
+                  <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
                 </div>
-              </div>
 
-              <div className="hero-mini-grid">
-                <Metric icon="SR" label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
-                <Metric icon="SS" label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
-                <Metric icon="☔" label="Precip." value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
-                <Metric icon="☁" label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
-                <Metric
-                  icon="VS"
-                  label="Visibility"
-                  value={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
-                />
-                <Metric icon="PR" label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
-              </div>
-            </article>
-
-            <article className="stat-panel insight-panel">
-              <p className="section-label">Daily read</p>
-              <h3>{formatDayLabel(currentDay.date)}</h3>
-              <div className="insight-stack">
-                <div className="range-summary">
-                  <div className="range-header">
-                    <span>Temperature arc</span>
-                    <strong>{temperatureTrack.min} to {temperatureTrack.max} {temperatureUnitLabel}</strong>
-                  </div>
-                  <div className="sparkline sparkline-temperature" aria-hidden="true">
-                    {temperatureTrack.points.map((point) => (
-                      <span key={point.key} style={{ height: `${point.height}%` }} />
-                    ))}
-                  </div>
-                </div>
-                <p className="muted">
-                  {Math.round(currentDay.precipitationSum)} mm precipitation spread across {Math.round(currentDay.precipitationHours)} hours.
-                </p>
-              </div>
-            </article>
-
-            <article className="stat-panel insight-panel">
-              <p className="section-label">Precipitation rhythm</p>
-              <h3>Chance through the day</h3>
-              <div className="rain-chart" aria-hidden="true">
-                {precipitationTrack.points.map((point) => (
-                  <span key={point.key} style={{ height: `${point.height}%` }} />
-                ))}
-              </div>
-              <p className="muted">
-                Timeline includes recent weather history and the next week of forecast data in {weather.timezone}.
-              </p>
-            </article>
-          </section>
-          </section>
-
-          {weather.alerts.length > 0 && (
-            <section className="timeline-panel alerts-panel">
-              <div className="panel-header compact">
-                <div>
-                  <p className="section-label">Active alerts</p>
-                  <h3>Weather warnings for this area</h3>
-                </div>
-              </div>
-
-              <div className="alerts-grid">
-                {weather.alerts.map((alert) => (
-                  <article key={alert.id} className="alert-card">
-                    <p className="alert-chip">
-                      {alert.severity} / {alert.urgency}
+                <div className="hero-stats">
+                  <div className="temperature-block">
+                    <span className="temperature-value">
+                      {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
+                    </span>
+                    <span className="temperature-unit">{temperatureUnitLabel}</span>
+                    <p className="temperature-range">
+                      {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)} /{" "}
+                      {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
                     </p>
-                    <h4>{alert.event}</h4>
-                    <p>{alert.headline}</p>
-                    <small>{alert.area}</small>
-                  </article>
-                ))}
-              </div>
+                  </div>
+
+                  <div className="wind-spotlight">
+                    <p className="section-label">Wind direction</p>
+                    <div className="wind-visual">
+                      <div className="wind-arrow-ring">
+                        <span
+                          className="wind-arrow"
+                          style={{ transform: `rotate(${currentSnapshot.windDirection}deg)` }}
+                          aria-hidden="true"
+                        >
+                          ^
+                        </span>
+                      </div>
+                      <div>
+                        <strong>
+                          {windDirectionLabel(currentSnapshot.windDirection)} {Math.round(currentSnapshot.windDirection)} deg
+                        </strong>
+                        <p className="muted">
+                          {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} wind with gusts up to{" "}
+                          {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hero-mini-grid">
+                  <Metric icon="SR" label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
+                  <Metric icon="SS" label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
+                  <Metric icon="PP" label="Rain chance" value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
+                  <Metric icon="CC" label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
+                  <Metric
+                    icon="VS"
+                    label="Visibility"
+                    value={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
+                  />
+                  <Metric icon="PR" label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
+                </div>
+              </article>
+
+              <article className="stat-panel insight-panel">
+                <p className="section-label">Daily read</p>
+                <h3>{formatDayLabel(currentDay.date)}</h3>
+                <div className="insight-stack">
+                  <div className="range-summary">
+                    <div className="range-header">
+                      <span>Hourly swing</span>
+                      <strong>
+                        {Math.round(Math.min(...hourlySeries.temperature.map((point) => point.value), 0))} to{" "}
+                        {Math.round(Math.max(...hourlySeries.temperature.map((point) => point.value), 0))} {temperatureUnitLabel}
+                      </strong>
+                    </div>
+                    <p className="muted">
+                      {Math.round(currentDay.precipitationSum)} mm precipitation across {Math.round(currentDay.precipitationHours)} hours.
+                    </p>
+                  </div>
+                  <div className="range-summary">
+                    <div className="range-header">
+                      <span>Wind ceiling</span>
+                      <strong>
+                        {windSpeedDisplay(currentDay.windSpeedMax, preferences.windUnit)} {windUnitLabel}
+                      </strong>
+                    </div>
+                    <p className="muted">
+                      Gusts can reach {windSpeedDisplay(currentDay.windGustsMax, preferences.windUnit)} {windUnitLabel}.
+                    </p>
+                  </div>
+                </div>
+              </article>
+
+              <article className="stat-panel insight-panel">
+                <p className="section-label">Sky scan</p>
+                <h3>Visibility and cover</h3>
+                <div className="insight-stack">
+                  <div className="range-summary">
+                    <div className="range-header">
+                      <span>Visibility now</span>
+                      <strong>
+                        {visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
+                      </strong>
+                    </div>
+                    <p className="muted">
+                      Current cloud cover is {Math.round(currentSnapshot.cloudCover)}% with {weather.timezone} local timing.
+                    </p>
+                  </div>
+                  <div className="range-summary">
+                    <div className="range-header">
+                      <span>Alerts</span>
+                      <strong>{weather.alerts.length}</strong>
+                    </div>
+                    <p className="muted">
+                      Severe alert timing will appear below whenever the feed provides exact windows.
+                    </p>
+                  </div>
+                </div>
+              </article>
             </section>
-          )}
+          </section>
 
           <section className="timeline-panel">
             <div className="panel-header compact">
@@ -518,7 +531,7 @@ function App() {
             </div>
           </section>
 
-          <section className="hourly-panel">
+          <section className="hourly-panel visx-panel">
             <div className="panel-header compact">
               <div>
                 <p className="section-label">Hourly detail</p>
@@ -526,35 +539,73 @@ function App() {
               </div>
             </div>
 
-            <div className="hourly-chart-grid">
-              <ChartCard
-                title="Temperature"
-                units={temperatureUnitLabel}
-                tone="temperature"
-                points={temperatureTrack.points}
-                min={temperatureTrack.min}
-                max={temperatureTrack.max}
+            <div className="hourly-chart-grid visx-grid">
+              <TemperatureCurveChart points={hourlySeries.temperature} units={temperatureUnitLabel} />
+              <PrecipitationOverlayChart points={hourlySeries.precipitation} />
+              <WindDirectionChart points={hourlySeries.wind} units={windUnitLabel} />
+            </div>
+
+            <div className="secondary-chart-grid">
+              <PressureTrendChart points={hourlySeries.pressure} />
+              <CloudVisibilityChart points={hourlySeries.cloudVisibility} visibilityUnits={visibilityUnitLabel} />
+              <DaylightBandChart
+                sunrise={currentDay.sunrise}
+                sunset={currentDay.sunset}
+                hourCycle={preferences.hourCycle}
               />
-              <ChartCard
-                title="Wind"
-                units={windUnitLabel}
-                tone="wind"
-                points={windTrack.points}
-                min={windTrack.min}
-                max={windTrack.max}
-              />
-              <ChartCard
-                title="Precipitation"
-                units="%"
-                tone="precipitation"
-                points={precipitationTrack.points}
-                min={precipitationTrack.min}
-                max={precipitationTrack.max}
-              />
+            </div>
+          </section>
+
+          <section className="timeline-panel">
+            <div className="panel-header compact">
+              <div>
+                <p className="section-label">Weekly outlook</p>
+                <h3>Next 7 days</h3>
+              </div>
+            </div>
+
+            <div className="weekly-chart-wrap">
+              <WeeklyRangeChart points={weeklyRange} units={temperatureUnitLabel} />
+            </div>
+          </section>
+
+          {weather.alerts.length > 0 && (
+            <section className="timeline-panel alerts-panel">
+              <div className="panel-header compact">
+                <div>
+                  <p className="section-label">Active alerts</p>
+                  <h3>Weather warnings for this area</h3>
+                </div>
+              </div>
+
+              <div className="alerts-layout">
+                <AlertTimelineChart alerts={weather.alerts} hourCycle={preferences.hourCycle} />
+                <div className="alerts-grid">
+                  {weather.alerts.map((alert) => (
+                    <article key={alert.id} className="alert-card">
+                      <p className="alert-chip">
+                        {alert.severity} / {alert.urgency}
+                      </p>
+                      <h4>{alert.event}</h4>
+                      <p>{alert.headline}</p>
+                      <small>{alert.area}</small>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section className="hourly-panel">
+            <div className="panel-header compact">
+              <div>
+                <p className="section-label">Hourly cards</p>
+                <h3>Detailed readout</h3>
+              </div>
             </div>
 
             <div className="hourly-grid upgraded-hourly-grid">
-              {(hourlyForDay ?? []).map((entry) => (
+              {hourlyForDay.map((entry) => (
                 <article key={entry.time} className="hour-card">
                   <div className="hour-card-top">
                     <strong>{formatHourLabel(entry.time, preferences.hourCycle)}</strong>
@@ -570,7 +621,7 @@ function App() {
                         style={{ transform: `rotate(${entry.windDirection}deg)` }}
                         aria-hidden="true"
                       >
-                        ↑
+                        ^
                       </span>
                       <strong>{windDirectionLabel(entry.windDirection)}</strong>
                     </div>
@@ -590,7 +641,9 @@ function App() {
                     </div>
                     <div>
                       <dt>Rain</dt>
-                      <dd>{Math.round(entry.precipitationProbability)}%</dd>
+                      <dd>
+                        {entry.precipitationAmount.toFixed(1)} mm / {Math.round(entry.precipitationProbability)}%
+                      </dd>
                     </div>
                     <div>
                       <dt>Clouds</dt>
@@ -616,90 +669,17 @@ function App() {
 function Metric({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <div className="metric-card">
-      <span className="metric-icon" aria-hidden="true">{icon}</span>
+      <span className="metric-icon" aria-hidden="true">
+        {icon}
+      </span>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
   );
 }
 
-function ChartCard({
-  title,
-  units,
-  tone,
-  points,
-  min,
-  max,
-}: {
-  title: string;
-  units: string;
-  tone: "temperature" | "wind" | "precipitation";
-  points: Array<{ key: string; height: number; label: string }>;
-  min: number;
-  max: number;
-}) {
-  const ticks = points.filter((_, index) => {
-    if (points.length <= 4) {
-      return true;
-    }
-
-    const spacing = Math.max(1, Math.floor(points.length / 4));
-    return index === 0 || index === points.length - 1 || index % spacing === 0;
-  });
-
-  return (
-    <article className="chart-card">
-      <div className="chart-card-header">
-        <div>
-          <p className="section-label">{title}</p>
-          <strong>
-            {min} to {max} {units}
-          </strong>
-        </div>
-      </div>
-      <div className={`chart-shell ${tone}`} aria-hidden="true">
-        <div className="chart-bars">
-          {points.map((point) => (
-            <span key={point.key} style={{ height: `${point.height}%` }} />
-          ))}
-        </div>
-      </div>
-      <div className="chart-ticks">
-        {ticks.map((point) => (
-          <span key={`${point.key}-tick`}>{point.label}</span>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-function createMetricTrack(
-  entries: WeatherSnapshot[],
-  select: (entry: WeatherSnapshot) => number,
-  hourCycle: "12h" | "24h",
-) {
-  if (!entries.length) {
-    return { min: 0, max: 0, points: [] as Array<{ key: string; height: number; label: string }> };
-  }
-
-  const values = entries.map(select);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-
-  return {
-    min: Math.round(min),
-    max: Math.round(max),
-    points: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      height: 24 + ((select(entry) - min) / range) * 76,
-      label: formatHourLabel(entry.time, hourCycle),
-    })),
-  };
-}
-
-function resolveCurrentSnapshot(hourlyForDay: WeatherSnapshot[] | undefined, current: WeatherPayload["current"] | undefined) {
-  if (!hourlyForDay?.length) {
+function resolveCurrentSnapshot(hourlyForDay: WeatherSnapshot[], current: WeatherPayload["current"] | undefined) {
+  if (!hourlyForDay.length) {
     return current;
   }
 

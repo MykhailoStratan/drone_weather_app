@@ -14,6 +14,7 @@ export type WeatherSnapshot = {
   windSpeed: number;
   windGusts: number;
   windDirection: number;
+  precipitationAmount: number;
   precipitationProbability: number;
   cloudCover: number;
   visibility: number;
@@ -43,6 +44,8 @@ export type WeatherAlert = {
   severity: string;
   urgency: string;
   area: string;
+  startsAt?: string;
+  endsAt?: string;
 };
 
 export type WeatherPayload = {

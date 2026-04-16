@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 
@@ -14,6 +14,7 @@ const weatherPayload = {
     windSpeed: 6,
     windGusts: 8,
     windDirection: 114,
+    precipitationAmount: 0.4,
     precipitationProbability: 12,
     cloudCover: 31,
     visibility: 10000,
@@ -27,6 +28,7 @@ const weatherPayload = {
     windSpeed: 5 + index / 3,
     windGusts: 7 + index / 3,
     windDirection: 90,
+    precipitationAmount: index > 14 && index < 20 ? 0.8 : 0,
     precipitationProbability: index * 2,
     cloudCover: 20 + index,
     visibility: 10000,
@@ -74,16 +76,12 @@ describe("App preferences", () => {
   });
 
   it("updates displayed temperature units when preferences change", async () => {
-    render(<App />);
+    const view = render(<App />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
-    });
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "F" }));
+    view.getByRole("button", { name: "F" }).click();
 
-    await waitFor(() => {
-      expect(screen.getByText("39")).toBeTruthy();
-    });
+    expect(await view.findByText("39")).toBeTruthy();
   });
 });

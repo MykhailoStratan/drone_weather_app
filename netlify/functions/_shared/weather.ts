@@ -31,6 +31,7 @@ type ForecastResponse = {
     wind_speed_10m: number;
     wind_gusts_10m: number;
     wind_direction_10m: number;
+    precipitation: number;
     precipitation_probability: number;
     cloud_cover: number;
     visibility: number;
@@ -44,6 +45,7 @@ type ForecastResponse = {
     wind_speed_10m: number[];
     wind_gusts_10m: number[];
     wind_direction_10m: number[];
+    precipitation: number[];
     precipitation_probability: number[];
     cloud_cover: number[];
     visibility: number[];
@@ -75,6 +77,10 @@ type NwsAlertsResponse = {
       severity?: string;
       urgency?: string;
       areaDesc?: string;
+      onset?: string;
+      effective?: string;
+      ends?: string;
+      expires?: string;
     };
   }>;
 };
@@ -86,6 +92,7 @@ function toSnapshot(source: ForecastResponse["current"]): WeatherSnapshot {
     windSpeed: source.wind_speed_10m,
     windGusts: source.wind_gusts_10m,
     windDirection: source.wind_direction_10m,
+    precipitationAmount: source.precipitation,
     precipitationProbability: source.precipitation_probability,
     cloudCover: source.cloud_cover,
     visibility: source.visibility,
@@ -102,6 +109,7 @@ function zipHourly(hourly: ForecastResponse["hourly"]): WeatherSnapshot[] {
     windSpeed: hourly.wind_speed_10m[index],
     windGusts: hourly.wind_gusts_10m[index],
     windDirection: hourly.wind_direction_10m[index],
+    precipitationAmount: hourly.precipitation[index],
     precipitationProbability: hourly.precipitation_probability[index],
     cloudCover: hourly.cloud_cover[index],
     visibility: hourly.visibility[index],
@@ -154,6 +162,8 @@ async function fetchUnitedStatesAlerts(location: LocationOption): Promise<Weathe
     severity: feature.properties.severity ?? "Unknown",
     urgency: feature.properties.urgency ?? "Unknown",
     area: feature.properties.areaDesc ?? "Affected area unavailable",
+    startsAt: feature.properties.onset ?? feature.properties.effective,
+    endsAt: feature.properties.ends ?? feature.properties.expires,
   }));
 }
 
@@ -195,6 +205,7 @@ export async function fetchWeatherFromProvider(location: LocationOption): Promis
       "wind_speed_10m",
       "wind_gusts_10m",
       "wind_direction_10m",
+      "precipitation",
       "precipitation_probability",
       "cloud_cover",
       "visibility",
@@ -210,6 +221,7 @@ export async function fetchWeatherFromProvider(location: LocationOption): Promis
       "wind_speed_10m",
       "wind_gusts_10m",
       "wind_direction_10m",
+      "precipitation",
       "precipitation_probability",
       "cloud_cover",
       "visibility",

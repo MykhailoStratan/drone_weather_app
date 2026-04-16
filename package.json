@@ -11,15 +11,21 @@
   },
   "dependencies": {
     "@netlify/functions": "^3.1.8",
+    "@visx/curve": "^3.12.0",
+    "@visx/gradient": "^3.12.0",
+    "@visx/group": "^3.12.0",
+    "@visx/scale": "^3.12.0",
+    "@visx/shape": "^3.12.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
     "jsdom": "^26.1.0",
-    "@testing-library/react": "^16.3.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.2.4"
