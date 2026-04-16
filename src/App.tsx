@@ -122,52 +122,6 @@ function App() {
 
   return (
     <main className="app-shell">
-      <section className="hero-card">
-        <div className="hero-copy">
-          <p className="eyebrow">SkyCanvas Weather</p>
-          <h1>Weather state, history, and next-step planning in one screen.</h1>
-          <p className="hero-text">
-            A clean web foundation for today, with shared app logic that can later move into iOS and Android clients.
-          </p>
-        </div>
-
-        <div className="search-panel">
-          <label className="search-label" htmlFor="location-search">
-            Search a city or region
-          </label>
-          <div className="search-row">
-            <input
-              id="location-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try Vancouver, Seattle, Tokyo..."
-            />
-            <button type="button" className="secondary-button" onClick={requestCurrentLocation}>
-              Use my location
-            </button>
-          </div>
-
-          {(results.length > 0 || searching) && (
-            <div className="results-panel">
-              {searching && <p className="muted">Searching...</p>}
-              {results.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className="result-item"
-                  onClick={() => void loadWeather(option)}
-                >
-                  <strong>{option.name}</strong>
-                  <span>{[option.admin1, option.country].filter(Boolean).join(", ")}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {message && <p className="status-message">{message}</p>}
-        </div>
-      </section>
-
       {loading || !weather || !currentDay || !currentSnapshot ? (
         <section className="loading-card">
           <div className="spinner" />
@@ -175,7 +129,54 @@ function App() {
         </section>
       ) : (
         <>
-          <section className="overview-grid premium-grid">
+          <section className="top-layout">
+            <aside className="sidebar-card">
+              <div className="sidebar-copy">
+                <p className="eyebrow">SkyCanvas Weather</p>
+                <h1>Current weather first.</h1>
+                <p className="hero-text">
+                  Search a place or use your device location to update the live conditions view.
+                </p>
+              </div>
+
+              <div className="search-panel sidebar-search">
+                <label className="search-label" htmlFor="location-search">
+                  Search a city or region
+                </label>
+                <div className="search-row sidebar-search-row">
+                  <input
+                    id="location-search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Try Vancouver, Seattle, Tokyo..."
+                  />
+                  <button type="button" className="secondary-button" onClick={requestCurrentLocation}>
+                    Use my location
+                  </button>
+                </div>
+
+                {(results.length > 0 || searching) && (
+                  <div className="results-panel compact-results">
+                    {searching && <p className="muted">Searching...</p>}
+                    {results.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className="result-item"
+                        onClick={() => void loadWeather(option)}
+                      >
+                        <strong>{option.name}</strong>
+                        <span>{[option.admin1, option.country].filter(Boolean).join(", ")}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {message && <p className="status-message">{message}</p>}
+              </div>
+            </aside>
+
+            <section className="overview-grid premium-grid primary-priority">
             <article className="primary-panel hero-conditions">
               <div className="hero-topline">
                 <div>
@@ -262,6 +263,7 @@ function App() {
                 Timeline includes recent weather history and the next week of forecast data in {weather.timezone}.
               </p>
             </article>
+          </section>
           </section>
 
           <section className="timeline-panel">

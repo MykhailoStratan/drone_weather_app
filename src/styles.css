@@ -51,7 +51,7 @@ button {
   padding: 2rem 0 3rem;
 }
 
-.hero-card,
+.sidebar-card,
 .timeline-panel,
 .hourly-panel,
 .loading-card,
@@ -64,16 +64,27 @@ button {
   backdrop-filter: blur(18px);
 }
 
-.hero-card {
+.top-layout {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 1.5rem;
-  padding: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
-.hero-copy {
-  padding: 0.9rem;
+.sidebar-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 30px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+  padding: 1.15rem;
+  align-self: start;
+  position: sticky;
+  top: 1.25rem;
+}
+
+.sidebar-copy {
+  padding: 0.35rem 0.35rem 0.9rem;
 }
 
 .eyebrow,
@@ -87,11 +98,11 @@ button {
   color: var(--text-soft);
 }
 
-.hero-copy h1 {
-  margin: 0.35rem 0 0.85rem;
-  font-size: clamp(2.7rem, 4vw, 4.8rem);
-  line-height: 0.92;
-  max-width: 11ch;
+.sidebar-copy h1 {
+  margin: 0.35rem 0 0.7rem;
+  font-size: clamp(1.9rem, 3vw, 2.7rem);
+  line-height: 0.95;
+  max-width: 8ch;
 }
 
 .hero-text,
@@ -108,6 +119,19 @@ button {
     linear-gradient(135deg, rgba(255, 213, 108, 0.08), transparent 45%);
   border-radius: 26px;
   padding: 1.25rem;
+}
+
+.sidebar-search {
+  padding: 1rem;
+}
+
+.sidebar-search-row {
+  flex-direction: column;
+}
+
+.compact-results {
+  max-height: 360px;
+  overflow-y: auto;
 }
 
 .search-label {
@@ -179,6 +203,9 @@ button {
   display: grid;
   grid-template-columns: 1.7fr 1fr 1fr;
   gap: 1rem;
+}
+
+.primary-priority {
   margin-bottom: 1rem;
 }
 
@@ -503,10 +530,14 @@ button {
 }
 
 @media (max-width: 1080px) {
-  .hero-card,
+  .top-layout,
   .premium-grid,
   .hero-stats {
     grid-template-columns: 1fr;
+  }
+
+  .sidebar-card {
+    position: static;
   }
 
   .hero-mini-grid {
@@ -520,8 +551,8 @@ button {
     padding-top: 0.5rem;
   }
 
-  .hero-copy h1 {
-    font-size: 2.45rem;
+  .sidebar-copy h1 {
+    font-size: 2.2rem;
   }
 
   .search-row {
@@ -544,7 +575,7 @@ button {
   .stat-panel,
   .timeline-panel,
   .hourly-panel,
-  .hero-card,
+  .sidebar-card,
   .loading-card {
     border-radius: 22px;
   }
