@@ -154,13 +154,16 @@ export function PrecipitationOverlayChart({
   });
   const maxAmount = Math.max(...points.map((point) => point.value), 0);
   const maxProbability = Math.max(...points.map((point) => point.probability), 0);
+  const subtitle =
+    maxAmount < 0.1
+      ? `Dry conditions, ${Math.round(maxProbability)}% chance`
+      : `${maxAmount.toFixed(1)} mm peak, ${Math.round(maxProbability)}% chance`;
 
   return (
     <ChartShell
       eyebrow="Hourly rain"
       title="Precipitation + probability"
-      subtitle={`${maxAmount.toFixed(1)} mm peak, ${Math.round(maxProbability)}% chance`}
-      footer={<Legend items={[{ label: "Amount", tone: "mint" }, { label: "Probability", tone: "sky" }]} />}
+      subtitle={subtitle}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Precipitation and probability chart">
         <LinearGradient id="precip-bars" from="rgba(141, 241, 211, 0.92)" to="rgba(90, 151, 255, 0.35)" />
@@ -216,13 +219,14 @@ export function WindDirectionChart({
   return (
     <ChartShell eyebrow="Wind field" title="Speed + direction" subtitle={`${min} to ${max} ${units}`}>
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Wind speed and direction chart">
-        {points.map((point) => {
+        {points.map((point, index) => {
           const barX = x(point.key) ?? 0;
           const barWidth = x.bandwidth();
           const barY = y(point.value);
           const centerX = barX + barWidth / 2;
           const markerY = Math.max(marginTop + 10, barY - 10);
           const vector = directionVector(point.direction, 10);
+          const showMarker = index % 3 === 0 || index === points.length - 1;
           return (
             <Group key={point.key}>
               <Bar
@@ -233,18 +237,22 @@ export function WindDirectionChart({
                 rx={8}
                 fill="rgba(137, 211, 255, 0.8)"
               />
-              <circle cx={centerX} cy={markerY} r={3} fill="#d8f2ff" />
-              <Line
-                from={{ x: centerX, y: markerY }}
-                to={{ x: centerX + vector.x, y: markerY + vector.y }}
-                stroke="#d8f2ff"
-                strokeWidth={2}
-                strokeLinecap="round"
-              />
-              <polygon
-                points={arrowHeadPoints(centerX + vector.x, markerY + vector.y, point.direction)}
-                fill="#d8f2ff"
-              />
+              {showMarker && (
+                <>
+                  <circle cx={centerX} cy={markerY} r={3} fill="#d8f2ff" />
+                  <Line
+                    from={{ x: centerX, y: markerY }}
+                    to={{ x: centerX + vector.x, y: markerY + vector.y }}
+                    stroke="#d8f2ff"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                  />
+                  <polygon
+                    points={arrowHeadPoints(centerX + vector.x, markerY + vector.y, point.direction)}
+                    fill="#d8f2ff"
+                  />
+                </>
+              )}
             </Group>
           );
         })}
@@ -261,10 +269,15 @@ export function WeeklyRangeChart({
   points: RangeDatum[];
   units: string;
 }) {
-  const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
+  const width = 980;
+  const height = 176;
+  const marginTop = 14;
+  const marginRight = 28;
+  const marginBottom = 26;
+  const marginLeft = 28;
   const x = scalePoint({
     domain: points.map((point) => point.key),
-    range: [marginLeft + 12, width - marginRight - 12],
+    range: [marginLeft + 18, width - marginRight - 18],
   });
   const y = scaleLinear({
     domain: createValueDomain(points.flatMap((point) => [point.min, point.max])),
@@ -410,7 +423,6 @@ export function CloudVisibilityChart({
       eyebrow="Sky clarity"
       title="Cloud cover + visibility"
       subtitle={`${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`}
-      footer={<Legend items={[{ label: "Cloud cover", tone: "gold" }, { label: "Visibility", tone: "sky" }]} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Cloud cover and visibility chart">
         <AreaClosed<DualDatum>
