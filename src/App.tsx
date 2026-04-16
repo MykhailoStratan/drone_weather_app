@@ -59,6 +59,7 @@ function App() {
   const [activeLocation, setActiveLocation] = useState<LocationOption | null>(null);
   const [savedLocations, setSavedLocations] = useState<LocationOption[]>([]);
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -178,6 +179,13 @@ function App() {
     window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(nextPreferences));
   }
 
+  function handleSavedLocationChange(locationId: number) {
+    const nextLocation = savedLocations.find((location) => location.id === locationId);
+    if (nextLocation) {
+      void loadWeather(nextLocation);
+    }
+  }
+
   const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
   const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [];
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
@@ -232,9 +240,14 @@ function App() {
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Try Vancouver, Seattle, Tokyo..."
                   />
-                  <button type="button" className="secondary-button" onClick={requestCurrentLocation}>
-                    Use my location
-                  </button>
+                  <div className="search-actions">
+                    <button type="button" className="secondary-button compact-button" onClick={requestCurrentLocation}>
+                      Locate
+                    </button>
+                    <button type="button" className="ghost-button compact-button" onClick={saveActiveLocation}>
+                      Save
+                    </button>
+                  </div>
                 </div>
 
                 {(results.length > 0 || searching) && (
@@ -263,35 +276,40 @@ function App() {
                     <p className="section-label">Saved places</p>
                     <h3>Quick access</h3>
                   </div>
-                  <button type="button" className="ghost-button" onClick={saveActiveLocation}>
-                    Save current
-                  </button>
                 </div>
 
                 {savedLocations.length === 0 ? (
                   <p className="muted">No saved places yet. Save a city to pin it here.</p>
                 ) : (
-                  <div className="saved-list">
-                    {savedLocations.map((location) => (
-                      <div key={location.id} className="saved-item">
-                        <button
-                          type="button"
-                          className="saved-location-button"
-                          onClick={() => void loadWeather(location)}
-                        >
-                          <strong>{location.name}</strong>
-                          <span>{[location.admin1, location.country].filter(Boolean).join(", ")}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="saved-remove-button"
-                          onClick={() => removeSavedLocation(location.id)}
-                          aria-label={`Remove ${location.name}`}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
+                  <div className="saved-dropdown-row">
+                    <select
+                      className="saved-select"
+                      value=""
+                      onChange={(event) => {
+                        const value = Number(event.target.value);
+                        if (value) {
+                          handleSavedLocationChange(value);
+                          event.target.value = "";
+                        }
+                      }}
+                    >
+                      <option value="">Choose a saved place</option>
+                      {savedLocations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {[location.name, location.admin1, location.country].filter(Boolean).join(", ")}
+                        </option>
+                      ))}
+                    </select>
+                    {activeLocation && activeLocation.id !== 0 && savedLocations.some((location) => location.id === activeLocation.id) && (
+                      <button
+                        type="button"
+                        className="saved-remove-button"
+                        onClick={() => removeSavedLocation(activeLocation.id)}
+                        aria-label={`Remove ${activeLocation.name}`}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -302,79 +320,91 @@ function App() {
                     <p className="section-label">Preferences</p>
                     <h3>Display units</h3>
                   </div>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => setPreferencesOpen((open) => !open)}
+                    aria-expanded={preferencesOpen}
+                  >
+                    {preferencesOpen ? "Hide" : "Show"}
+                  </button>
                 </div>
 
-                <div className="preference-group">
-                  <span className="preference-label">Temperature</span>
-                  <div className="segmented-control">
-                    <button
-                      type="button"
-                      className={preferences.temperatureUnit === "c" ? "segment active" : "segment"}
-                      onClick={() => updatePreferences({ ...preferences, temperatureUnit: "c" })}
-                    >
-                      C
-                    </button>
-                    <button
-                      type="button"
-                      className={preferences.temperatureUnit === "f" ? "segment active" : "segment"}
-                      onClick={() => updatePreferences({ ...preferences, temperatureUnit: "f" })}
-                    >
-                      F
-                    </button>
-                  </div>
-                </div>
+                {preferencesOpen && (
+                  <>
+                    <div className="preference-group">
+                      <span className="preference-label">Temperature</span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={preferences.temperatureUnit === "c" ? "segment active" : "segment"}
+                          onClick={() => updatePreferences({ ...preferences, temperatureUnit: "c" })}
+                        >
+                          C
+                        </button>
+                        <button
+                          type="button"
+                          className={preferences.temperatureUnit === "f" ? "segment active" : "segment"}
+                          onClick={() => updatePreferences({ ...preferences, temperatureUnit: "f" })}
+                        >
+                          F
+                        </button>
+                      </div>
+                    </div>
 
-                <div className="preference-group">
-                  <span className="preference-label">Wind and visibility</span>
-                  <div className="segmented-control">
-                    <button
-                      type="button"
-                      className={preferences.windUnit === "kmh" ? "segment active" : "segment"}
-                      onClick={() =>
-                        updatePreferences({
-                          ...preferences,
-                          windUnit: "kmh",
-                          visibilityUnit: "km",
-                        })
-                      }
-                    >
-                      Metric
-                    </button>
-                    <button
-                      type="button"
-                      className={preferences.windUnit === "mph" ? "segment active" : "segment"}
-                      onClick={() =>
-                        updatePreferences({
-                          ...preferences,
-                          windUnit: "mph",
-                          visibilityUnit: "mi",
-                        })
-                      }
-                    >
-                      Imperial
-                    </button>
-                  </div>
-                </div>
+                    <div className="preference-group">
+                      <span className="preference-label">Wind and visibility</span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={preferences.windUnit === "kmh" ? "segment active" : "segment"}
+                          onClick={() =>
+                            updatePreferences({
+                              ...preferences,
+                              windUnit: "kmh",
+                              visibilityUnit: "km",
+                            })
+                          }
+                        >
+                          Metric
+                        </button>
+                        <button
+                          type="button"
+                          className={preferences.windUnit === "mph" ? "segment active" : "segment"}
+                          onClick={() =>
+                            updatePreferences({
+                              ...preferences,
+                              windUnit: "mph",
+                              visibilityUnit: "mi",
+                            })
+                          }
+                        >
+                          Imperial
+                        </button>
+                      </div>
+                    </div>
 
-                <div className="preference-group">
-                  <span className="preference-label">Time</span>
-                  <div className="segmented-control">
-                    <button
-                      type="button"
-                      className={preferences.hourCycle === "12h" ? "segment active" : "segment"}
-                      onClick={() => updatePreferences({ ...preferences, hourCycle: "12h" })}
-                    >
-                      12h
-                    </button>
-                    <button
-                      type="button"
-                      className={preferences.hourCycle === "24h" ? "segment active" : "segment"}
-                      onClick={() => updatePreferences({ ...preferences, hourCycle: "24h" })}
-                    >
-                      24h
-                    </button>
-                  </div>
-                </div>
+                    <div className="preference-group">
+                      <span className="preference-label">Time</span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={preferences.hourCycle === "12h" ? "segment active" : "segment"}
+                          onClick={() => updatePreferences({ ...preferences, hourCycle: "12h" })}
+                        >
+                          12h
+                        </button>
+                        <button
+                          type="button"
+                          className={preferences.hourCycle === "24h" ? "segment active" : "segment"}
+                          onClick={() => updatePreferences({ ...preferences, hourCycle: "24h" })}
+                        >
+                          24h
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </aside>
 

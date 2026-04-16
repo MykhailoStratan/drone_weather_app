@@ -129,6 +129,12 @@ button {
   flex-direction: column;
 }
 
+.search-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
 .compact-results {
   max-height: 360px;
   overflow-y: auto;
@@ -162,11 +168,6 @@ button {
   padding: 0.5rem 0.8rem;
 }
 
-.saved-list {
-  display: grid;
-  gap: 0.65rem;
-}
-
 .preference-group {
   display: grid;
   gap: 0.55rem;
@@ -198,26 +199,25 @@ button {
   color: #fff3cc;
 }
 
-.saved-item {
+.saved-dropdown-row {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
   align-items: center;
 }
 
-.saved-location-button {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+.saved-select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(4, 12, 22, 0.72);
   color: #fff;
-  border-radius: 18px;
-  text-align: left;
-  padding: 0.8rem 0.9rem;
+  padding: 0.85rem 0.95rem;
 }
 
-.saved-location-button span {
-  display: block;
-  margin-top: 0.2rem;
-  color: var(--text-soft);
+.compact-button {
+  padding: 0.8rem 0.9rem;
+  font-size: 0.9rem;
 }
 
 .search-label {
@@ -283,6 +283,10 @@ button {
 .status-message {
   margin-top: 0.8rem;
   color: #ffd8b0;
+}
+
+.saved-panel .muted {
+  margin: 0;
 }
 
 .premium-grid {
