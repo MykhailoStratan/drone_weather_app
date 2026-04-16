@@ -172,11 +172,17 @@ function App() {
   const temperatureTrack = createMetricTrack(
     hourlyForDay ?? [],
     (entry) => temperatureDisplay(entry.temperature, preferences.temperatureUnit),
+    preferences.hourCycle,
   );
-  const precipitationTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.precipitationProbability);
+  const precipitationTrack = createMetricTrack(
+    hourlyForDay ?? [],
+    (entry) => entry.precipitationProbability,
+    preferences.hourCycle,
+  );
   const windTrack = createMetricTrack(
     hourlyForDay ?? [],
     (entry) => windSpeedDisplay(entry.windSpeed, preferences.windUnit),
+    preferences.hourCycle,
   );
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
   const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
@@ -504,6 +510,7 @@ function App() {
                 points={temperatureTrack.points}
                 min={temperatureTrack.min}
                 max={temperatureTrack.max}
+                hourCycle={preferences.hourCycle}
               />
               <ChartCard
                 title="Wind"
@@ -512,6 +519,7 @@ function App() {
                 points={windTrack.points}
                 min={windTrack.min}
                 max={windTrack.max}
+                hourCycle={preferences.hourCycle}
               />
               <ChartCard
                 title="Precipitation"
@@ -520,6 +528,7 @@ function App() {
                 points={precipitationTrack.points}
                 min={precipitationTrack.min}
                 max={precipitationTrack.max}
+                hourCycle={preferences.hourCycle}
               />
             </div>
 
@@ -600,14 +609,33 @@ function ChartCard({
   points,
   min,
   max,
+  hourCycle,
 }: {
   title: string;
   units: string;
   tone: "temperature" | "wind" | "precipitation";
-  points: Array<{ key: string; height: number }>;
+  points: Array<{ key: string; height: number; label: string }>;
   min: number;
   max: number;
+  hourCycle: "12h" | "24h";
 }) {
+  const polyline = points
+    .map((point, index) => {
+      const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
+      const y = 100 - point.height;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  const ticks = points.filter((_, index) => {
+    if (points.length <= 4) {
+      return true;
+    }
+
+    const spacing = Math.max(1, Math.floor(points.length / 4));
+    return index === 0 || index === points.length - 1 || index % spacing === 0;
+  });
+
   return (
     <article className="chart-card">
       <div className="chart-card-header">
@@ -618,9 +646,19 @@ function ChartCard({
           </strong>
         </div>
       </div>
-      <div className={`chart-bars ${tone}`} aria-hidden="true">
-        {points.map((point) => (
-          <span key={point.key} style={{ height: `${point.height}%` }} />
+      <div className={`chart-shell ${tone}`} aria-hidden="true">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="chart-svg">
+          <polyline className="chart-line" points={polyline} />
+          {points.map((point, index) => {
+            const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
+            const y = 100 - point.height;
+            return <circle key={point.key} className="chart-dot" cx={x} cy={y} r="1.8" />;
+          })}
+        </svg>
+      </div>
+      <div className="chart-ticks">
+        {ticks.map((point) => (
+          <span key={`${point.key}-tick`}>{point.label}</span>
         ))}
       </div>
     </article>
@@ -630,9 +668,10 @@ function ChartCard({
 function createMetricTrack(
   entries: WeatherSnapshot[],
   select: (entry: WeatherSnapshot) => number,
+  hourCycle: "12h" | "24h",
 ) {
   if (!entries.length) {
-    return { min: 0, max: 0, points: [] as Array<{ key: string; height: number }> };
+    return { min: 0, max: 0, points: [] as Array<{ key: string; height: number; label: string }> };
   }
 
   const values = entries.map(select);
@@ -646,6 +685,7 @@ function createMetricTrack(
     points: entries.map((entry, index) => ({
       key: `${entry.time}-${index}`,
       height: 24 + ((select(entry) - min) / range) * 76,
+      label: formatHourLabel(entry.time, hourCycle),
     })),
   };
 }
