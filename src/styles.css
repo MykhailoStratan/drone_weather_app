@@ -1,10 +1,11 @@
 :root {
-  font-family: "Segoe UI", "Inter", sans-serif;
-  color: #f5f7fb;
+  font-family: "Segoe UI", "Avenir Next", sans-serif;
+  color: #f7f7f2;
   background:
-    radial-gradient(circle at top left, rgba(255, 196, 111, 0.24), transparent 28%),
-    radial-gradient(circle at top right, rgba(86, 168, 255, 0.22), transparent 34%),
-    linear-gradient(180deg, #07111f 0%, #10233b 45%, #0f1728 100%);
+    radial-gradient(circle at 10% 10%, rgba(248, 193, 82, 0.24), transparent 24%),
+    radial-gradient(circle at 85% 12%, rgba(87, 190, 255, 0.2), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(109, 134, 255, 0.14), transparent 35%),
+    linear-gradient(180deg, #07121d 0%, #0e1f2c 42%, #122538 100%);
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
@@ -12,13 +13,13 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --panel: rgba(10, 21, 38, 0.78);
-  --panel-strong: rgba(8, 18, 33, 0.92);
-  --panel-border: rgba(255, 255, 255, 0.08);
-  --text-soft: rgba(226, 235, 248, 0.7);
-  --accent: #ffd26c;
-  --accent-strong: #ffb347;
-  --sky: #8ecbff;
+  --panel: rgba(8, 18, 31, 0.76);
+  --panel-border: rgba(255, 255, 255, 0.09);
+  --text-soft: rgba(228, 235, 242, 0.72);
+  --accent: #ffd56c;
+  --accent-strong: #ff9b54;
+  --sky: #89d3ff;
+  --mint: #8df1d3;
 }
 
 * {
@@ -58,21 +59,21 @@ button {
 .stat-panel {
   background: var(--panel);
   border: 1px solid var(--panel-border);
-  border-radius: 28px;
-  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.24);
+  border-radius: 30px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
 }
 
 .hero-card {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1.1fr 1fr;
   gap: 1.5rem;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
 .hero-copy {
-  padding: 0.75rem;
+  padding: 0.9rem;
 }
 
 .eyebrow,
@@ -81,28 +82,31 @@ button {
 .day-chip span,
 .hour-card dt {
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  font-size: 0.73rem;
   color: var(--text-soft);
 }
 
 .hero-copy h1 {
-  margin: 0.25rem 0 0.75rem;
-  font-size: clamp(2.5rem, 4vw, 4.4rem);
-  line-height: 0.96;
+  margin: 0.35rem 0 0.85rem;
+  font-size: clamp(2.7rem, 4vw, 4.8rem);
+  line-height: 0.92;
   max-width: 11ch;
 }
 
 .hero-text,
 .muted,
-.hour-card span {
+.hour-card span,
+.temperature-range {
   color: var(--text-soft);
 }
 
 .search-panel {
   position: relative;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+    linear-gradient(135deg, rgba(255, 213, 108, 0.08), transparent 45%);
+  border-radius: 26px;
   padding: 1.25rem;
 }
 
@@ -120,7 +124,7 @@ button {
 .search-row input {
   flex: 1;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
   background: rgba(4, 12, 22, 0.72);
   color: #fff;
@@ -145,8 +149,8 @@ button {
 .day-chip:hover,
 .result-item:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 210, 108, 0.55);
-  background: rgba(255, 210, 108, 0.12);
+  border-color: rgba(255, 213, 108, 0.55);
+  background: rgba(255, 213, 108, 0.12);
 }
 
 .results-panel {
@@ -171,9 +175,9 @@ button {
   color: #ffd8b0;
 }
 
-.overview-grid {
+.premium-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 1.7fr 1fr 1fr;
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -199,30 +203,117 @@ button {
   margin: 0.25rem 0 0;
 }
 
-.temperature-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 5rem;
-  padding: 0.8rem 1rem;
+.hero-conditions {
+  background:
+    linear-gradient(145deg, rgba(255, 213, 108, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+}
+
+.hero-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.summary-badge {
+  padding: 0.55rem 0.85rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #172130;
-  font-size: 1.35rem;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff4c3;
+  font-size: 0.88rem;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 1rem;
+  margin: 1.4rem 0;
+}
+
+.temperature-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.temperature-value {
+  font-size: clamp(3.6rem, 7vw, 5.8rem);
+  line-height: 0.9;
   font-weight: 700;
 }
 
-.headline-metrics {
+.temperature-unit {
+  margin-top: 0.8rem;
+  font-size: 1.35rem;
+  color: #ffe1a3;
+}
+
+.temperature-range {
+  margin: auto 0 0 0.25rem;
+  font-size: 0.95rem;
+}
+
+.wind-spotlight {
+  padding: 1rem;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.wind-visual {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.wind-arrow-ring {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  place-items: center;
+  width: 96px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(137, 211, 255, 0.08), rgba(255, 213, 108, 0.08));
+  box-shadow: inset 0 0 0 10px rgba(255, 255, 255, 0.02);
+}
+
+.wind-arrow {
+  display: inline-block;
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--accent);
+  transition: transform 180ms ease;
+}
+
+.hero-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.8rem;
-  margin-top: 1.25rem;
 }
 
 .metric-card {
-  padding: 0.95rem;
-  border-radius: 20px;
+  padding: 1rem;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  margin-bottom: 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffe39c;
+  font-size: 0.95rem;
 }
 
 .metric-card strong {
@@ -231,53 +322,104 @@ button {
   font-size: 1.05rem;
 }
 
-.day-range {
+.insight-panel {
   display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin: 1rem 0 0.5rem;
+  flex-direction: column;
+  gap: 0.8rem;
+  justify-content: flex-start;
 }
 
-.range-bar {
-  height: 10px;
+.insight-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.range-summary {
+  padding: 1rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.range-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+
+.sparkline,
+.rain-chart {
+  display: flex;
+  align-items: end;
+  gap: 0.28rem;
+  height: 88px;
+}
+
+.sparkline span,
+.rain-chart span {
   flex: 1;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--sky), var(--accent));
+  border-radius: 999px 999px 6px 6px;
+}
+
+.sparkline-temperature span {
+  background: linear-gradient(180deg, rgba(255, 213, 108, 0.95), rgba(255, 126, 72, 0.45));
+}
+
+.rain-chart {
+  padding: 0.9rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rain-chart span {
+  background: linear-gradient(180deg, rgba(141, 241, 211, 0.95), rgba(107, 167, 255, 0.4));
 }
 
 .day-strip {
   display: grid;
-  grid-template-columns: repeat(14, minmax(140px, 1fr));
+  grid-template-columns: repeat(14, minmax(148px, 1fr));
   gap: 0.75rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
 }
 
 .day-chip {
-  padding: 0.9rem;
+  padding: 1rem;
   text-align: left;
 }
 
 .day-chip strong,
-.day-chip small {
+.day-chip small,
+.day-chip em {
   display: block;
 }
 
-.day-chip.active {
-  border-color: rgba(255, 210, 108, 0.9);
-  background: linear-gradient(180deg, rgba(255, 210, 108, 0.24), rgba(255, 210, 108, 0.08));
+.day-chip em {
+  margin: 0.45rem 0;
+  font-style: normal;
+  color: #fff2c8;
+  min-height: 2.6em;
 }
 
-.hourly-grid {
+.day-chip.active {
+  border-color: rgba(255, 213, 108, 0.9);
+  background: linear-gradient(180deg, rgba(255, 213, 108, 0.24), rgba(255, 213, 108, 0.08));
+}
+
+.upgraded-hourly-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem;
 }
 
 .hour-card {
-  border-radius: 22px;
+  border-radius: 24px;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.04);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -288,10 +430,33 @@ button {
   margin-bottom: 0.8rem;
 }
 
+.hour-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
 .hour-temp {
-  margin: 0 0 0.8rem;
-  font-size: 1.8rem;
+  margin: 0;
+  font-size: 2rem;
   font-weight: 700;
+}
+
+.mini-wind {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mini-wind-arrow {
+  display: inline-block;
+  font-size: 1.1rem;
+  color: var(--sky);
 }
 
 .hour-card dl {
@@ -339,11 +504,12 @@ button {
 
 @media (max-width: 1080px) {
   .hero-card,
-  .overview-grid {
+  .premium-grid,
+  .hero-stats {
     grid-template-columns: 1fr;
   }
 
-  .headline-metrics {
+  .hero-mini-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -355,15 +521,23 @@ button {
   }
 
   .hero-copy h1 {
-    font-size: 2.4rem;
+    font-size: 2.45rem;
   }
 
   .search-row {
     flex-direction: column;
   }
 
-  .headline-metrics {
+  .hero-mini-grid {
     grid-template-columns: 1fr;
+  }
+
+  .wind-visual,
+  .hero-topline,
+  .hour-summary-row,
+  .range-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .primary-panel,

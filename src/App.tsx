@@ -110,6 +110,8 @@ function App() {
   const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
   const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate));
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
+  const temperatureTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.temperature);
+  const precipitationTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.precipitationProbability);
   const satelliteEstimate = currentSnapshot
     ? estimateVisibleSatellites(
         currentSnapshot.cloudCover,
@@ -173,49 +175,89 @@ function App() {
         </section>
       ) : (
         <>
-          <section className="overview-grid">
-            <article className="primary-panel">
-              <div className="panel-header">
+          <section className="overview-grid premium-grid">
+            <article className="primary-panel hero-conditions">
+              <div className="hero-topline">
                 <div>
                   <p className="section-label">{weather.locationLabel}</p>
                   <h2>{weatherLabel(currentSnapshot.weatherCode)}</h2>
                 </div>
-                <span className="temperature-pill">{Math.round(currentSnapshot.temperature)} C</span>
+                <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
               </div>
 
-              <div className="headline-metrics">
-                <Metric label="Sunrise" value={formatTime(currentDay.sunrise)} />
-                <Metric label="Sunset" value={formatTime(currentDay.sunset)} />
-                <Metric label="Wind" value={`${Math.round(currentSnapshot.windSpeed)} km/h`} />
-                <Metric label="Gusts" value={`${Math.round(currentSnapshot.windGusts)} km/h`} />
-                <Metric
-                  label="Direction"
-                  value={`${windDirectionLabel(currentSnapshot.windDirection)} ${Math.round(currentSnapshot.windDirection)} deg`}
-                />
-                <Metric label="Precip." value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
-                <Metric label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
-                <Metric label="Visibility" value={`${(currentSnapshot.visibility / 1000).toFixed(1)} km`} />
-                <Metric label="Air pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
-                <Metric label="Est. visible sats" value={String(satelliteEstimate)} />
+              <div className="hero-stats">
+                <div className="temperature-block">
+                  <span className="temperature-value">{Math.round(currentSnapshot.temperature)}</span>
+                  <span className="temperature-unit">C</span>
+                  <p className="temperature-range">
+                    {Math.round(currentDay.temperatureMin)} / {Math.round(currentDay.temperatureMax)} C
+                  </p>
+                </div>
+
+                <div className="wind-spotlight">
+                  <p className="section-label">Wind direction</p>
+                  <div className="wind-visual">
+                    <div className="wind-arrow-ring">
+                      <span
+                        className="wind-arrow"
+                        style={{ transform: `rotate(${currentSnapshot.windDirection}deg)` }}
+                        aria-hidden="true"
+                      >
+                        ↑
+                      </span>
+                    </div>
+                    <div>
+                      <strong>
+                        {windDirectionLabel(currentSnapshot.windDirection)} {Math.round(currentSnapshot.windDirection)} deg
+                      </strong>
+                      <p className="muted">
+                        {Math.round(currentSnapshot.windSpeed)} km/h wind with gusts up to {Math.round(currentSnapshot.windGusts)} km/h
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hero-mini-grid">
+                <Metric icon="☀" label="Sunrise" value={formatTime(currentDay.sunrise)} />
+                <Metric icon="☾" label="Sunset" value={formatTime(currentDay.sunset)} />
+                <Metric icon="☔" label="Precip." value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
+                <Metric icon="☁" label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
+                <Metric icon="◌" label="Visibility" value={`${(currentSnapshot.visibility / 1000).toFixed(1)} km`} />
+                <Metric icon="◍" label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
               </div>
             </article>
 
-            <article className="stat-panel">
-              <p className="section-label">This day</p>
+            <article className="stat-panel insight-panel">
+              <p className="section-label">Daily read</p>
               <h3>{formatDayLabel(currentDay.date)}</h3>
-              <div className="day-range">
-                <span>{Math.round(currentDay.temperatureMin)} deg</span>
-                <div className="range-bar" />
-                <span>{Math.round(currentDay.temperatureMax)} deg</span>
+              <div className="insight-stack">
+                <div className="range-summary">
+                  <div className="range-header">
+                    <span>Temperature arc</span>
+                    <strong>{temperatureTrack.min} to {temperatureTrack.max} C</strong>
+                  </div>
+                  <div className="sparkline sparkline-temperature" aria-hidden="true">
+                    {temperatureTrack.points.map((point) => (
+                      <span key={point.key} style={{ height: `${point.height}%` }} />
+                    ))}
+                  </div>
+                </div>
+                <p className="muted">
+                  {Math.round(currentDay.precipitationSum)} mm precipitation spread across {Math.round(currentDay.precipitationHours)} hours.
+                </p>
+                <p className="muted">Estimated visible satellites tonight: {satelliteEstimate}</p>
               </div>
-              <p className="muted">
-                {Math.round(currentDay.precipitationSum)} mm precipitation over {Math.round(currentDay.precipitationHours)} hours.
-              </p>
             </article>
 
-            <article className="stat-panel">
-              <p className="section-label">Coverage</p>
-              <h3>7 days back + 7 days ahead</h3>
+            <article className="stat-panel insight-panel">
+              <p className="section-label">Precipitation rhythm</p>
+              <h3>Chance through the day</h3>
+              <div className="rain-chart" aria-hidden="true">
+                {precipitationTrack.points.map((point) => (
+                  <span key={point.key} style={{ height: `${point.height}%` }} />
+                ))}
+              </div>
               <p className="muted">
                 Timeline includes recent weather history and the next week of forecast data in {weather.timezone}.
               </p>
@@ -244,6 +286,7 @@ function App() {
                   >
                     <span>{phase}</span>
                     <strong>{formatDayLabel(day.date)}</strong>
+                    <em>{weatherLabel(day.weatherCode)}</em>
                     <small>
                       {Math.round(day.temperatureMin)} deg / {Math.round(day.temperatureMax)} deg
                     </small>
@@ -261,14 +304,26 @@ function App() {
               </div>
             </div>
 
-            <div className="hourly-grid">
+            <div className="hourly-grid upgraded-hourly-grid">
               {(hourlyForDay ?? []).map((entry) => (
                 <article key={entry.time} className="hour-card">
                   <div className="hour-card-top">
                     <strong>{formatHourLabel(entry.time)}</strong>
                     <span>{weatherLabel(entry.weatherCode)}</span>
                   </div>
-                  <p className="hour-temp">{Math.round(entry.temperature)} C</p>
+                  <div className="hour-summary-row">
+                    <p className="hour-temp">{Math.round(entry.temperature)} C</p>
+                    <div className="mini-wind">
+                      <span
+                        className="mini-wind-arrow"
+                        style={{ transform: `rotate(${entry.windDirection}deg)` }}
+                        aria-hidden="true"
+                      >
+                        ↑
+                      </span>
+                      <strong>{windDirectionLabel(entry.windDirection)}</strong>
+                    </div>
+                  </div>
                   <dl>
                     <div>
                       <dt>Wind</dt>
@@ -280,7 +335,7 @@ function App() {
                     </div>
                     <div>
                       <dt>Dir</dt>
-                      <dd>{windDirectionLabel(entry.windDirection)}</dd>
+                      <dd>{Math.round(entry.windDirection)} deg</dd>
                     </div>
                     <div>
                       <dt>Rain</dt>
@@ -305,13 +360,37 @@ function App() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <div className="metric-card">
+      <span className="metric-icon" aria-hidden="true">{icon}</span>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
   );
+}
+
+function createMetricTrack(
+  entries: WeatherSnapshot[],
+  select: (entry: WeatherSnapshot) => number,
+) {
+  if (!entries.length) {
+    return { min: 0, max: 0, points: [] as Array<{ key: string; height: number }> };
+  }
+
+  const values = entries.map(select);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  return {
+    min: Math.round(min),
+    max: Math.round(max),
+    points: entries.map((entry, index) => ({
+      key: `${entry.time}-${index}`,
+      height: 24 + ((select(entry) - min) / range) * 76,
+    })),
+  };
 }
 
 function resolveCurrentSnapshot(hourlyForDay: WeatherSnapshot[] | undefined, current: WeatherPayload["current"] | undefined) {
