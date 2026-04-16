@@ -461,6 +461,30 @@ function App() {
           </section>
           </section>
 
+          {weather.alerts.length > 0 && (
+            <section className="timeline-panel alerts-panel">
+              <div className="panel-header compact">
+                <div>
+                  <p className="section-label">Active alerts</p>
+                  <h3>Weather warnings for this area</h3>
+                </div>
+              </div>
+
+              <div className="alerts-grid">
+                {weather.alerts.map((alert) => (
+                  <article key={alert.id} className="alert-card">
+                    <p className="alert-chip">
+                      {alert.severity} / {alert.urgency}
+                    </p>
+                    <h4>{alert.event}</h4>
+                    <p>{alert.headline}</p>
+                    <small>{alert.area}</small>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="timeline-panel">
             <div className="panel-header compact">
               <div>

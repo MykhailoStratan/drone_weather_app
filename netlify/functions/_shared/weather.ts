@@ -1,6 +1,7 @@
 import type {
   DailyWeather,
   LocationOption,
+  WeatherAlert,
   WeatherPayload,
   WeatherSnapshot,
 } from "../../../packages/weather-domain/src/types";
@@ -65,6 +66,19 @@ type ForecastResponse = {
   };
 };
 
+type NwsAlertsResponse = {
+  features?: Array<{
+    id: string;
+    properties: {
+      event?: string;
+      headline?: string;
+      severity?: string;
+      urgency?: string;
+      areaDesc?: string;
+    };
+  }>;
+};
+
 function toSnapshot(source: ForecastResponse["current"]): WeatherSnapshot {
   return {
     time: source.time,
@@ -110,6 +124,36 @@ function zipDaily(daily: ForecastResponse["daily"]): DailyWeather[] {
     precipitationHours: daily.precipitation_hours[index],
     precipitationSum: daily.precipitation_sum[index],
     weatherCode: daily.weather_code[index],
+  }));
+}
+
+async function fetchUnitedStatesAlerts(location: LocationOption): Promise<WeatherAlert[]> {
+  if (location.country !== "United States") {
+    return [];
+  }
+
+  const response = await fetch(
+    `https://api.weather.gov/alerts/active?point=${location.latitude},${location.longitude}`,
+    {
+      headers: {
+        Accept: "application/geo+json",
+        "User-Agent": "SkyCanvasWeather/1.0",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = (await response.json()) as NwsAlertsResponse;
+  return (data.features ?? []).map((feature) => ({
+    id: feature.id,
+    event: feature.properties.event ?? "Weather alert",
+    headline: feature.properties.headline ?? "Active alert",
+    severity: feature.properties.severity ?? "Unknown",
+    urgency: feature.properties.urgency ?? "Unknown",
+    area: feature.properties.areaDesc ?? "Affected area unavailable",
   }));
 }
 
@@ -197,6 +241,8 @@ export async function fetchWeatherFromProvider(location: LocationOption): Promis
 
   const data = (await response.json()) as ForecastResponse;
 
+  const alerts = await fetchUnitedStatesAlerts(location);
+
   return {
     locationLabel: [location.name, location.admin1, location.country].filter(Boolean).join(", "),
     timezone: data.timezone,
@@ -205,5 +251,6 @@ export async function fetchWeatherFromProvider(location: LocationOption): Promis
     current: toSnapshot(data.current),
     hourly: zipHourly(data.hourly),
     daily: zipDaily(data.daily),
+    alerts,
   };
 }

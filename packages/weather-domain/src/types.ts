@@ -36,6 +36,15 @@ export type DailyWeather = {
   weatherCode: number;
 };
 
+export type WeatherAlert = {
+  id: string;
+  event: string;
+  headline: string;
+  severity: string;
+  urgency: string;
+  area: string;
+};
+
 export type WeatherPayload = {
   locationLabel: string;
   timezone: string;
@@ -44,4 +53,5 @@ export type WeatherPayload = {
   current: WeatherSnapshot;
   hourly: WeatherSnapshot[];
   daily: DailyWeather[];
+  alerts: WeatherAlert[];
 };

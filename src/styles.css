@@ -667,6 +667,38 @@ button {
   margin-bottom: 1rem;
 }
 
+.alerts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.85rem;
+}
+
+.alert-card {
+  padding: 1rem;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 177, 111, 0.28);
+  background: linear-gradient(180deg, rgba(255, 177, 111, 0.1), rgba(255, 255, 255, 0.03));
+}
+
+.alert-card h4 {
+  margin: 0 0 0.5rem;
+}
+
+.alert-card p,
+.alert-card small {
+  color: var(--text-soft);
+}
+
+.alert-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 177, 111, 0.18);
+  color: #ffe6bf;
+  margin-bottom: 0.7rem;
+}
+
 .loading-card {
   display: grid;
   place-items: center;
