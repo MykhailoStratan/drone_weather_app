@@ -556,40 +556,28 @@ button {
   padding: 0.65rem;
 }
 
-.chart-svg {
-  width: 100%;
+.chart-bars {
+  display: flex;
+  align-items: end;
+  gap: 0.28rem;
   height: 100%;
-  overflow: visible;
 }
 
-.chart-line {
-  fill: none;
-  stroke-width: 2.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.chart-bars span {
+  flex: 1;
+  border-radius: 999px 999px 8px 8px;
 }
 
-.chart-dot {
-  stroke: rgba(7, 17, 30, 0.95);
-  stroke-width: 1.5;
+.chart-shell.temperature .chart-bars span {
+  background: linear-gradient(180deg, rgba(255, 213, 108, 0.95), rgba(255, 126, 72, 0.45));
 }
 
-.chart-shell.temperature .chart-line,
-.chart-shell.temperature .chart-dot {
-  stroke: rgba(255, 213, 108, 0.95);
-  fill: rgba(255, 213, 108, 0.95);
+.chart-shell.wind .chart-bars span {
+  background: linear-gradient(180deg, rgba(137, 211, 255, 0.95), rgba(87, 120, 255, 0.42));
 }
 
-.chart-shell.wind .chart-line,
-.chart-shell.wind .chart-dot {
-  stroke: rgba(137, 211, 255, 0.95);
-  fill: rgba(137, 211, 255, 0.95);
-}
-
-.chart-shell.precipitation .chart-line,
-.chart-shell.precipitation .chart-dot {
-  stroke: rgba(141, 241, 211, 0.95);
-  fill: rgba(141, 241, 211, 0.95);
+.chart-shell.precipitation .chart-bars span {
+  background: linear-gradient(180deg, rgba(141, 241, 211, 0.95), rgba(107, 167, 255, 0.4));
 }
 
 .chart-ticks {

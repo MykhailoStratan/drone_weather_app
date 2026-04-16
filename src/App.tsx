@@ -534,7 +534,6 @@ function App() {
                 points={temperatureTrack.points}
                 min={temperatureTrack.min}
                 max={temperatureTrack.max}
-                hourCycle={preferences.hourCycle}
               />
               <ChartCard
                 title="Wind"
@@ -543,7 +542,6 @@ function App() {
                 points={windTrack.points}
                 min={windTrack.min}
                 max={windTrack.max}
-                hourCycle={preferences.hourCycle}
               />
               <ChartCard
                 title="Precipitation"
@@ -552,7 +550,6 @@ function App() {
                 points={precipitationTrack.points}
                 min={precipitationTrack.min}
                 max={precipitationTrack.max}
-                hourCycle={preferences.hourCycle}
               />
             </div>
 
@@ -633,7 +630,6 @@ function ChartCard({
   points,
   min,
   max,
-  hourCycle,
 }: {
   title: string;
   units: string;
@@ -641,16 +637,7 @@ function ChartCard({
   points: Array<{ key: string; height: number; label: string }>;
   min: number;
   max: number;
-  hourCycle: "12h" | "24h";
 }) {
-  const polyline = points
-    .map((point, index) => {
-      const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
-      const y = 100 - point.height;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
   const ticks = points.filter((_, index) => {
     if (points.length <= 4) {
       return true;
@@ -671,14 +658,11 @@ function ChartCard({
         </div>
       </div>
       <div className={`chart-shell ${tone}`} aria-hidden="true">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="chart-svg">
-          <polyline className="chart-line" points={polyline} />
-          {points.map((point, index) => {
-            const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
-            const y = 100 - point.height;
-            return <circle key={point.key} className="chart-dot" cx={x} cy={y} r="1.8" />;
-          })}
-        </svg>
+        <div className="chart-bars">
+          {points.map((point) => (
+            <span key={point.key} style={{ height: `${point.height}%` }} />
+          ))}
+        </div>
       </div>
       <div className="chart-ticks">
         {ticks.map((point) => (
