@@ -252,18 +252,28 @@ function App() {
 
                 {(results.length > 0 || searching) && (
                   <div className="results-panel compact-results">
-                    {searching && <p className="muted">Searching...</p>}
-                    {results.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className="result-item"
-                        onClick={() => void loadWeather(option)}
+                    {searching ? (
+                      <p className="muted">Searching...</p>
+                    ) : (
+                      <select
+                        className="search-results-select"
+                        defaultValue=""
+                        onChange={(event) => {
+                          const option = results.find((entry) => entry.id === Number(event.target.value));
+                          if (option) {
+                            void loadWeather(option);
+                            event.target.value = "";
+                          }
+                        }}
                       >
-                        <strong>{option.name}</strong>
-                        <span>{[option.admin1, option.country].filter(Boolean).join(", ")}</span>
-                      </button>
-                    ))}
+                        <option value="">Choose a matching location</option>
+                        {results.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {[option.name, option.admin1, option.country].filter(Boolean).join(", ")}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 )}
 

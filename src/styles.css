@@ -136,8 +136,16 @@ button {
 }
 
 .compact-results {
-  max-height: 360px;
-  overflow-y: auto;
+  margin-top: 0.75rem;
+}
+
+.search-results-select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(4, 12, 22, 0.72);
+  color: #fff;
+  padding: 0.8rem 0.95rem;
 }
 
 .saved-panel {
