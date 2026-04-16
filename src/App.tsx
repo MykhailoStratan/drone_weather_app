@@ -140,6 +140,7 @@ function App() {
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
   const temperatureTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.temperature);
   const precipitationTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.precipitationProbability);
+  const windTrack = createMetricTrack(hourlyForDay ?? [], (entry) => entry.windSpeed);
   return (
     <main className="app-shell">
       {loading || !weather || !currentDay || !currentSnapshot ? (
@@ -364,6 +365,33 @@ function App() {
               </div>
             </div>
 
+            <div className="hourly-chart-grid">
+              <ChartCard
+                title="Temperature"
+                units="C"
+                tone="temperature"
+                points={temperatureTrack.points}
+                min={temperatureTrack.min}
+                max={temperatureTrack.max}
+              />
+              <ChartCard
+                title="Wind"
+                units="km/h"
+                tone="wind"
+                points={windTrack.points}
+                min={windTrack.min}
+                max={windTrack.max}
+              />
+              <ChartCard
+                title="Precipitation"
+                units="%"
+                tone="precipitation"
+                points={precipitationTrack.points}
+                min={precipitationTrack.min}
+                max={precipitationTrack.max}
+              />
+            </div>
+
             <div className="hourly-grid upgraded-hourly-grid">
               {(hourlyForDay ?? []).map((entry) => (
                 <article key={entry.time} className="hour-card">
@@ -427,6 +455,40 @@ function Metric({ icon, label, value }: { icon: string; label: string; value: st
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function ChartCard({
+  title,
+  units,
+  tone,
+  points,
+  min,
+  max,
+}: {
+  title: string;
+  units: string;
+  tone: "temperature" | "wind" | "precipitation";
+  points: Array<{ key: string; height: number }>;
+  min: number;
+  max: number;
+}) {
+  return (
+    <article className="chart-card">
+      <div className="chart-card-header">
+        <div>
+          <p className="section-label">{title}</p>
+          <strong>
+            {min} to {max} {units}
+          </strong>
+        </div>
+      </div>
+      <div className={`chart-bars ${tone}`} aria-hidden="true">
+        {points.map((point) => (
+          <span key={point.key} style={{ height: `${point.height}%` }} />
+        ))}
+      </div>
+    </article>
   );
 }
 
