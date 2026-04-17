@@ -1,4 +1,7 @@
 import type {
+  GnssEnvironmentPreset,
+  GnssEstimateRequest,
+  GnssEstimateResponse,
   LocationOption,
   WeatherAlertsResponse,
   WeatherOverviewResponse,
@@ -84,3 +87,21 @@ export async function fetchWeatherAlerts(location: LocationOption): Promise<Weat
 
   return (await response.json()) as WeatherAlertsResponse;
 }
+
+export async function fetchGnssEstimate(request: GnssEstimateRequest): Promise<GnssEstimateResponse> {
+  const response = await fetch(`${API_BASE}/gnss/estimate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error("GNSS estimate is unavailable right now.");
+  }
+
+  return (await response.json()) as GnssEstimateResponse;
+}
+
+export type { GnssEnvironmentPreset };

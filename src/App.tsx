@@ -11,6 +11,7 @@ import {
   buildHourlySeries,
   buildWeeklyRangeSeries,
 } from "./components/WeatherCharts";
+import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
 import {
   formatDayLabel,
   formatHourLabel,
@@ -21,8 +22,8 @@ import {
   windDirectionLabel,
   windSpeedDisplay,
 } from "./lib/format";
-import { fetchWeatherAlerts, fetchWeatherOverview, fetchWeatherTimeline, searchLocations } from "./lib/weather";
-import type { LocationOption, WeatherOverviewResponse, WeatherPayload, WeatherSnapshot } from "./types";
+import { fetchGnssEstimate, fetchWeatherAlerts, fetchWeatherOverview, fetchWeatherTimeline, searchLocations } from "./lib/weather";
+import type { GnssEnvironmentPreset, GnssEstimateResponse, LocationOption, WeatherOverviewResponse, WeatherPayload, WeatherSnapshot } from "./types";
 
 const starterLocation: LocationOption = {
   id: 1,
@@ -58,7 +59,6 @@ type DataStatus = {
 };
 
 type DetailView = "hourly" | "weekly" | "alerts";
-type EnvironmentPreset = "open" | "suburban" | "urban" | "trees";
 
 const defaultPreferences: Preferences = {
   temperatureUnit: "c",
@@ -83,7 +83,9 @@ function App() {
   const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const [detailView, setDetailView] = useState<DetailView>("hourly");
   const [hourlyCardsOpen, setHourlyCardsOpen] = useState(false);
-  const [environmentPreset, setEnvironmentPreset] = useState<EnvironmentPreset>("open");
+  const [environmentPreset, setEnvironmentPreset] = useState<GnssEnvironmentPreset>("open");
+  const [gnssEstimate, setGnssEstimate] = useState<GnssEstimateResponse | null>(null);
+  const [gnssLoading, setGnssLoading] = useState(false);
   const debounce = useRef<number | null>(null);
   const requestId = useRef(0);
 
@@ -155,6 +157,7 @@ function App() {
       setResults([]);
       setQuery(location.name);
       setActiveLocation(location);
+      setGnssEstimate(null);
       storeOverview(location, overview);
       setDataStatus({ savedAt: new Date().toISOString(), source: "live" });
       storeLocation(LAST_LOCATION_KEY, location);
@@ -286,7 +289,6 @@ function App() {
   const showSearchFeedback = query.trim().length >= 2;
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
   const weatherIcon = weatherGlyph(currentSnapshot?.weatherCode ?? 0, currentSnapshot?.isDay === 1);
-  const flightReadiness = buildFlightReadiness(currentSnapshot, currentDay, environmentPreset);
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
   const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
   const visibilityUnitLabel = preferences.visibilityUnit === "mi" ? "mi" : "km";
@@ -307,6 +309,53 @@ function App() {
       temperatureMax: temperatureDisplay(day.temperatureMax, preferences.temperatureUnit),
     })),
   );
+
+  useEffect(() => {
+    if (!activeLocation || !currentSnapshot || !currentDay) {
+      return;
+    }
+
+    let cancelled = false;
+    setGnssLoading(true);
+
+    void fetchGnssEstimate({
+      location: {
+        latitude: activeLocation.latitude,
+        longitude: activeLocation.longitude,
+        timezone: activeLocation.timezone,
+        name: activeLocation.name,
+        admin1: activeLocation.admin1,
+        country: activeLocation.country,
+      },
+      environment: environmentPreset,
+      weather: {
+        cloudCover: currentSnapshot.cloudCover,
+        visibilityMeters: currentSnapshot.visibility,
+        precipitationProbability: currentDay.precipitationProbabilityMax,
+        precipitationSum: currentDay.precipitationSum,
+        windGusts: currentDay.windGustsMax,
+      },
+    })
+      .then((response) => {
+        if (!cancelled) {
+          setGnssEstimate(response);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGnssEstimate(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setGnssLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLocation, currentDay, currentSnapshot, environmentPreset]);
 
   return (
     <main className="app-shell">
@@ -545,64 +594,18 @@ function App() {
                   <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
                 </div>
 
-                <div className="readiness-panel">
-                  <div className="readiness-header">
-                    <div>
-                      <p className="section-label">Flight readiness</p>
-                      <h3>{flightReadiness.overallLabel}</h3>
-                    </div>
-                    <div className={`readiness-score ${flightReadiness.tone}`}>
-                      <strong>{flightReadiness.overallScore}</strong>
-                      <span>/100</span>
-                    </div>
-                  </div>
-
-                  <div className="environment-row">
-                    <label className="preference-label" htmlFor="environment-preset">
-                      Flight environment
-                    </label>
-                    <select
-                      id="environment-preset"
-                      className="environment-select"
-                      value={environmentPreset}
-                      onChange={(event) => setEnvironmentPreset(event.target.value as EnvironmentPreset)}
-                    >
-                      <option value="open">Open field</option>
-                      <option value="suburban">Suburban</option>
-                      <option value="urban">Urban canyon</option>
-                      <option value="trees">Trees / hills</option>
-                    </select>
-                  </div>
-
-                  <div className="readiness-chip-grid">
-                    <ReadinessChip
-                      label="GNSS"
-                      value={`${flightReadiness.gnssScore}`}
-                      status={flightReadiness.gnssLabel}
-                      tone={flightReadiness.gnssTone}
-                    />
-                    <ReadinessChip
-                      label="Wind"
-                      value={flightReadiness.windLabel}
-                      status={`${windSpeedDisplay(currentDay.windGustsMax, preferences.windUnit)} ${windUnitLabel} gusts`}
-                      tone={flightReadiness.windTone}
-                    />
-                    <ReadinessChip
-                      label="Visibility"
-                      value={flightReadiness.visibilityLabel}
-                      status={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
-                      tone={flightReadiness.visibilityTone}
-                    />
-                    <ReadinessChip
-                      label="Rain"
-                      value={flightReadiness.rainLabel}
-                      status={`${Math.round(currentDay.precipitationProbabilityMax)}% chance`}
-                      tone={flightReadiness.rainTone}
-                    />
-                  </div>
-
-                  <p className="readiness-summary">{flightReadiness.summary}</p>
-                </div>
+                <FlightReadinessPanel
+                  currentDay={currentDay}
+                  currentSnapshot={currentSnapshot}
+                  environmentPreset={environmentPreset}
+                  onEnvironmentChange={setEnvironmentPreset}
+                  gnssEstimate={gnssEstimate}
+                  loading={gnssLoading}
+                  windUnit={preferences.windUnit}
+                  windUnitLabel={windUnitLabel}
+                  visibilityUnit={preferences.visibilityUnit}
+                  visibilityUnitLabel={visibilityUnitLabel}
+                />
 
                 <div className="hero-stats">
                   <div className="temperature-block">
@@ -976,26 +979,6 @@ function Metric({ icon, label, value }: { icon: string; label: string; value: st
   );
 }
 
-function ReadinessChip({
-  label,
-  value,
-  status,
-  tone,
-}: {
-  label: string;
-  value: string;
-  status: string;
-  tone: "good" | "caution" | "risk";
-}) {
-  return (
-    <div className={`readiness-chip ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{status}</small>
-    </div>
-  );
-}
-
 function resolveCurrentSnapshot(hourlyForDay: WeatherSnapshot[], current: WeatherPayload["current"] | undefined) {
   if (!hourlyForDay.length) {
     return current;
@@ -1104,112 +1087,6 @@ function weatherGlyph(weatherCode: number, isDay: boolean) {
     return "⚡";
   }
   return "☁";
-}
-
-function buildFlightReadiness(
-  currentSnapshot: WeatherSnapshot | WeatherPayload["current"] | undefined,
-  currentDay: WeatherPayload["daily"][number] | undefined,
-  environmentPreset: EnvironmentPreset,
-) {
-  const cloudCover = currentSnapshot?.cloudCover ?? 0;
-  const visibilityKm = (currentSnapshot?.visibility ?? 10000) / 1000;
-  const rainChance = currentDay?.precipitationProbabilityMax ?? currentSnapshot?.precipitationProbability ?? 0;
-  const gusts = currentDay?.windGustsMax ?? currentSnapshot?.windGusts ?? 0;
-  const precipitationSum = currentDay?.precipitationSum ?? currentSnapshot?.precipitationAmount ?? 0;
-
-  let gnssScore = 100;
-  gnssScore -= Math.min(18, cloudCover * 0.12);
-  gnssScore -= visibilityKm < 10 ? (10 - visibilityKm) * 2.2 : 0;
-  gnssScore -= Math.min(12, rainChance * 0.08);
-  gnssScore -= Math.min(10, precipitationSum * 2);
-
-  const environmentPenalty = {
-    open: 0,
-    suburban: 10,
-    urban: 24,
-    trees: 18,
-  } satisfies Record<EnvironmentPreset, number>;
-
-  gnssScore = Math.max(22, Math.round(gnssScore - environmentPenalty[environmentPreset]));
-
-  const windRisk = gusts >= 40 ? 32 : gusts >= 28 ? 20 : gusts >= 18 ? 10 : 0;
-  const rainRisk = rainChance >= 70 || precipitationSum >= 3 ? 26 : rainChance >= 40 ? 14 : rainChance >= 20 ? 7 : 0;
-  const visibilityRisk = visibilityKm < 3 ? 28 : visibilityKm < 6 ? 15 : visibilityKm < 10 ? 8 : 0;
-
-  const overallScore = Math.max(10, Math.round(gnssScore - windRisk - rainRisk - visibilityRisk));
-
-  return {
-    gnssScore,
-    overallScore,
-    overallLabel: scoreLabel(overallScore),
-    gnssLabel: scoreLabel(gnssScore),
-    windLabel: gusts >= 40 ? "High" : gusts >= 28 ? "Caution" : gusts >= 18 ? "Moderate" : "Low",
-    visibilityLabel: visibilityKm < 3 ? "Weak" : visibilityKm < 6 ? "Caution" : "Strong",
-    rainLabel: rainChance >= 70 ? "High" : rainChance >= 40 ? "Caution" : "Low",
-    tone: scoreTone(overallScore),
-    gnssTone: scoreTone(gnssScore),
-    windTone: riskTone(gusts >= 28 ? "risk" : gusts >= 18 ? "caution" : "good"),
-    visibilityTone: riskTone(visibilityKm < 6 ? (visibilityKm < 3 ? "risk" : "caution") : "good"),
-    rainTone: riskTone(rainChance >= 40 ? (rainChance >= 70 ? "risk" : "caution") : "good"),
-    summary: buildReadinessSummary(overallScore, gnssScore, environmentPreset, visibilityKm, gusts, rainChance),
-  };
-}
-
-function scoreLabel(score: number) {
-  if (score >= 85) {
-    return "Excellent";
-  }
-  if (score >= 70) {
-    return "Good";
-  }
-  if (score >= 50) {
-    return "Use caution";
-  }
-  return "Not recommended";
-}
-
-function scoreTone(score: number) {
-  if (score >= 70) {
-    return "good" as const;
-  }
-  if (score >= 50) {
-    return "caution" as const;
-  }
-  return "risk" as const;
-}
-
-function buildReadinessSummary(
-  overallScore: number,
-  gnssScore: number,
-  environmentPreset: EnvironmentPreset,
-  visibilityKm: number,
-  gusts: number,
-  rainChance: number,
-) {
-  const environmentLabel = {
-    open: "open-sky conditions",
-    suburban: "suburban surroundings",
-    urban: "urban obstruction",
-    trees: "trees or hills nearby",
-  } satisfies Record<EnvironmentPreset, string>;
-
-  if (overallScore < 50) {
-    return `Flight conditions are weak overall. ${environmentLabel[environmentPreset]} plus wind, rain, or low visibility may reduce takeoff confidence.`;
-  }
-  if (gnssScore < 70) {
-    return `GNSS lock may take longer than usual. ${environmentLabel[environmentPreset]} is the biggest limiter for satellite visibility.`;
-  }
-  if (gusts >= 28) {
-    return `GNSS conditions look workable, but gusty wind may still make the flight unstable even with a solid lock.`;
-  }
-  if (visibilityKm < 6 || rainChance >= 40) {
-    return `Satellite conditions look fair, but reduced visibility or rain risk suggests keeping the mission short and cautious.`;
-  }
-  return `Likely strong GNSS lock with ${environmentLabel[environmentPreset]} and weather conditions that support a confident pre-flight setup.`;
-}
-
-function riskTone(condition: "good" | "caution" | "risk") {
-  return condition;
 }
 
 function formatSavedAtLabel(savedAt: string) {

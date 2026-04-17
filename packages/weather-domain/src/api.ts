@@ -28,3 +28,26 @@ export type WeatherAlertsResponse = WeatherLocationMeta & {
 };
 
 export type WeatherSearchResponse = LocationOption[];
+
+export type GnssEnvironmentPreset = "open" | "suburban" | "urban" | "trees";
+
+export type GnssEstimateRequest = {
+  location: WeatherQuery;
+  environment: GnssEnvironmentPreset;
+  weather: {
+    cloudCover: number;
+    visibilityMeters: number;
+    precipitationProbability: number;
+    precipitationSum: number;
+    windGusts: number;
+  };
+};
+
+export type GnssEstimateResponse = WeatherLocationMeta & {
+  fetchedAt: string;
+  estimatedVisibleSatellites: number;
+  estimatedUsableSatellites: number;
+  gnssScore: number;
+  summary: string;
+  spaceWeatherPenalty: number;
+};

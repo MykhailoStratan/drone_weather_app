@@ -69,4 +69,7 @@ export const CACHE_TTLS = {
   alerts: 2 * 60 * 1000,
   locations: 60 * 60 * 1000,
   legacyWeather: 5 * 60 * 1000,
+  gnssEstimate: 10 * 60 * 1000,
+  gnssConstellation: 60 * 60 * 1000,
+  gnssSpaceWeather: 15 * 60 * 1000,
 } as const;

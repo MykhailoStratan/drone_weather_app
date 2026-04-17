@@ -1,5 +1,6 @@
 import type {
   DailyWeather,
+  GnssEstimateResponse,
   LocationOption,
   WeatherAlertsResponse,
   WeatherOverviewResponse,
@@ -24,6 +25,31 @@ export function parseWeatherQuery(url: URL): WeatherQuery {
     name: url.searchParams.get("name") ?? undefined,
     admin1: url.searchParams.get("admin1") ?? undefined,
     country: url.searchParams.get("country") ?? undefined,
+  };
+}
+
+export function createGnssEstimateResponse(args: {
+  location: WeatherQuery;
+  timezone: string;
+  latitude: number;
+  longitude: number;
+  estimatedVisibleSatellites: number;
+  estimatedUsableSatellites: number;
+  gnssScore: number;
+  summary: string;
+  spaceWeatherPenalty: number;
+}): GnssEstimateResponse {
+  return {
+    locationLabel: buildLocationLabel(args.location),
+    timezone: args.timezone,
+    latitude: args.latitude,
+    longitude: args.longitude,
+    fetchedAt: new Date().toISOString(),
+    estimatedVisibleSatellites: args.estimatedVisibleSatellites,
+    estimatedUsableSatellites: args.estimatedUsableSatellites,
+    gnssScore: args.gnssScore,
+    summary: args.summary,
+    spaceWeatherPenalty: args.spaceWeatherPenalty,
   };
 }
 

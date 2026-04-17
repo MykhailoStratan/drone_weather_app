@@ -76,6 +76,16 @@ const alertsPayload = {
   alerts: [],
 };
 
+const gnssPayload = {
+  ...weatherPayload,
+  fetchedAt: "2026-04-15T12:00:00.000Z",
+  estimatedVisibleSatellites: 21,
+  estimatedUsableSatellites: 15,
+  gnssScore: 84,
+  summary: "Strong GNSS visibility for this location.",
+  spaceWeatherPenalty: 1,
+};
+
 describe("App preferences", () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -92,6 +102,10 @@ describe("App preferences", () => {
 
         if (url.includes("/weather/alerts")) {
           return new Response(JSON.stringify(alertsPayload), { status: 200 });
+        }
+
+        if (url.includes("/gnss/estimate")) {
+          return new Response(JSON.stringify(gnssPayload), { status: 200 });
         }
 
         if (url.includes("/locations")) {
