@@ -1,4 +1,10 @@
-import type { LocationOption, WeatherPayload } from "../types";
+import type {
+  LocationOption,
+  WeatherAlertsResponse,
+  WeatherOverviewResponse,
+  WeatherPayload,
+  WeatherTimelineResponse,
+} from "../types";
 
 export async function searchLocations(query: string): Promise<LocationOption[]> {
   if (query.trim().length < 2) {
@@ -26,4 +32,53 @@ export async function fetchWeather(location: LocationOption): Promise<WeatherPay
   }
 
   return (await response.json()) as WeatherPayload;
+}
+
+function buildWeatherQuery(location: LocationOption) {
+  const params = new URLSearchParams({
+    lat: String(location.latitude),
+    lon: String(location.longitude),
+  });
+
+  if (location.timezone) {
+    params.set("timezone", location.timezone);
+  }
+  if (location.name) {
+    params.set("name", location.name);
+  }
+  if (location.admin1) {
+    params.set("admin1", location.admin1);
+  }
+  if (location.country) {
+    params.set("country", location.country);
+  }
+
+  return params.toString();
+}
+
+export async function fetchWeatherOverview(location: LocationOption): Promise<WeatherOverviewResponse> {
+  const response = await fetch(`/api/weather/overview?${buildWeatherQuery(location)}`);
+  if (!response.ok) {
+    throw new Error("Weather overview is unavailable right now.");
+  }
+
+  return (await response.json()) as WeatherOverviewResponse;
+}
+
+export async function fetchWeatherTimeline(location: LocationOption): Promise<WeatherTimelineResponse> {
+  const response = await fetch(`/api/weather/timeline?${buildWeatherQuery(location)}`);
+  if (!response.ok) {
+    throw new Error("Weather timeline is unavailable right now.");
+  }
+
+  return (await response.json()) as WeatherTimelineResponse;
+}
+
+export async function fetchWeatherAlerts(location: LocationOption): Promise<WeatherAlertsResponse> {
+  const response = await fetch(`/api/weather/alerts?${buildWeatherQuery(location)}`);
+  if (!response.ok) {
+    throw new Error("Weather alerts are unavailable right now.");
+  }
+
+  return (await response.json()) as WeatherAlertsResponse;
 }

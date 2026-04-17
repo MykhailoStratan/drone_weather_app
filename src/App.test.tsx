@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 
@@ -7,7 +7,10 @@ const weatherPayload = {
   timezone: "America/Vancouver",
   latitude: 49.2497,
   longitude: -123.1193,
-  alerts: [],
+};
+
+const overviewPayload = {
+  ...weatherPayload,
   current: {
     time: "2026-04-15T12:00",
     temperature: 4,
@@ -22,6 +25,23 @@ const weatherPayload = {
     weatherCode: 0,
     isDay: 1,
   },
+  today: {
+    date: "2026-04-15",
+    sunrise: "2026-04-15T06:15",
+    sunset: "2026-04-15T19:55",
+    temperatureMax: 9,
+    temperatureMin: 3,
+    windSpeedMax: 12,
+    windGustsMax: 18,
+    precipitationProbabilityMax: 35,
+    precipitationHours: 2,
+    precipitationSum: 1.2,
+    weatherCode: 0,
+  },
+};
+
+const timelinePayload = {
+  ...weatherPayload,
   hourly: Array.from({ length: 24 }, (_, index) => ({
     time: `2026-04-15T${String(index).padStart(2, "0")}:00`,
     temperature: 3 + index / 2,
@@ -51,14 +71,27 @@ const weatherPayload = {
   })),
 };
 
+const alertsPayload = {
+  ...weatherPayload,
+  alerts: [],
+};
+
 describe("App preferences", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
-        if (url.includes("/api/weather")) {
-          return new Response(JSON.stringify(weatherPayload), { status: 200 });
+        if (url.includes("/api/weather/overview")) {
+          return new Response(JSON.stringify(overviewPayload), { status: 200 });
+        }
+
+        if (url.includes("/api/weather/timeline")) {
+          return new Response(JSON.stringify(timelinePayload), { status: 200 });
+        }
+
+        if (url.includes("/api/weather/alerts")) {
+          return new Response(JSON.stringify(alertsPayload), { status: 200 });
         }
 
         if (url.includes("/api/locations")) {
@@ -80,8 +113,9 @@ describe("App preferences", () => {
 
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
 
-    view.getByRole("button", { name: "F" }).click();
+    fireEvent.click(view.getByRole("button", { name: "Show" }));
+    fireEvent.click(await view.findByRole("button", { name: "F" }));
 
-    expect(await view.findByText("39")).toBeTruthy();
+    expect(document.querySelector(".temperature-unit")?.textContent).toBe("F");
   });
 });

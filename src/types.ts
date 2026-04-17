@@ -1,1 +1,1 @@
-export * from "../packages/weather-domain/src/types";
+export * from "../packages/weather-domain/src";

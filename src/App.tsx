@@ -21,7 +21,7 @@ import {
   windDirectionLabel,
   windSpeedDisplay,
 } from "./lib/format";
-import { fetchWeather, searchLocations } from "./lib/weather";
+import { fetchWeatherAlerts, fetchWeatherOverview, fetchWeatherTimeline, searchLocations } from "./lib/weather";
 import type { LocationOption, WeatherPayload, WeatherSnapshot } from "./types";
 
 const starterLocation: LocationOption = {
@@ -62,9 +62,11 @@ function App() {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState("");
   const debounce = useRef<number | null>(null);
+  const requestId = useRef(0);
 
   useEffect(() => {
     const storedLocations = readStoredLocations();
@@ -96,21 +98,81 @@ function App() {
   }, [query]);
 
   async function loadWeather(location: LocationOption) {
+    const nextRequestId = requestId.current + 1;
+    requestId.current = nextRequestId;
     setLoading(true);
+    setDetailsLoading(true);
     setMessage("");
 
     try {
-      const payload = await fetchWeather(location);
-      setWeather(payload);
-      setSelectedDate(payload.daily[7]?.date ?? payload.daily[0]?.date ?? "");
+      const overview = await fetchWeatherOverview(location);
+      if (requestId.current !== nextRequestId) {
+        return;
+      }
+
+      const initialPayload: WeatherPayload = {
+        locationLabel: overview.locationLabel,
+        timezone: overview.timezone,
+        latitude: overview.latitude,
+        longitude: overview.longitude,
+        current: overview.current,
+        hourly: [],
+        daily: [overview.today],
+        alerts: [],
+      };
+
+      setWeather(initialPayload);
+      setSelectedDate(overview.today.date);
       setResults([]);
       setQuery(location.name);
       setActiveLocation(location);
       storeLocation(LAST_LOCATION_KEY, location);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to load weather.");
-    } finally {
       setLoading(false);
+
+      void Promise.allSettled([fetchWeatherTimeline(location), fetchWeatherAlerts(location)]).then((results) => {
+        if (requestId.current !== nextRequestId) {
+          return;
+        }
+
+        const [timelineResult, alertsResult] = results;
+
+        setWeather((currentWeather) => {
+          if (!currentWeather) {
+            return currentWeather;
+          }
+
+          return {
+            ...currentWeather,
+            hourly: timelineResult.status === "fulfilled" ? timelineResult.value.hourly : currentWeather.hourly,
+            daily: timelineResult.status === "fulfilled" ? timelineResult.value.daily : currentWeather.daily,
+            alerts: alertsResult.status === "fulfilled" ? alertsResult.value.alerts : currentWeather.alerts,
+          };
+        });
+
+        if (timelineResult.status === "rejected") {
+          setMessage(
+            timelineResult.reason instanceof Error
+              ? timelineResult.reason.message
+              : "Some forecast details are unavailable right now.",
+          );
+        }
+
+        if (alertsResult.status === "rejected" && timelineResult.status !== "rejected") {
+          setMessage(
+            alertsResult.reason instanceof Error
+              ? alertsResult.reason.message
+              : "Weather alerts are unavailable right now.",
+          );
+        }
+
+        setDetailsLoading(false);
+      });
+    } catch (error) {
+      if (requestId.current === nextRequestId) {
+        setMessage(error instanceof Error ? error.message : "Unable to load weather.");
+        setLoading(false);
+        setDetailsLoading(false);
+      }
     }
   }
 
@@ -188,6 +250,7 @@ function App() {
 
   const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
   const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [];
+  const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
   const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
@@ -212,7 +275,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      {loading || !weather || !currentDay || !currentSnapshot ? (
+      {!weather || !currentDay || !currentSnapshot ? (
         <section className="loading-card">
           <div className="spinner" />
           <p>Pulling the latest forecast and recent history...</p>
@@ -538,78 +601,94 @@ function App() {
             </section>
           </section>
 
-          <section className="timeline-panel">
-            <div className="panel-header compact">
-              <div>
-                <p className="section-label">Daily timeline</p>
-                <h3>Choose a day</h3>
-              </div>
-            </div>
+          {hasTimeline ? (
+            <>
+              <section className="timeline-panel">
+                <div className="panel-header compact">
+                  <div>
+                    <p className="section-label">Daily timeline</p>
+                    <h3>Choose a day</h3>
+                  </div>
+                </div>
 
-            <div className="day-strip">
-              {weather.daily.map((day, index) => {
-                const offset = index - 7;
-                const phase = offset < 0 ? "History" : offset === 0 ? "Today" : "Forecast";
+                <div className="day-strip">
+                  {weather.daily.map((day, index) => {
+                    const offset = index - 7;
+                    const phase = offset < 0 ? "History" : offset === 0 ? "Today" : "Forecast";
 
-                return (
-                  <button
-                    key={day.date}
-                    type="button"
-                    className={day.date === selectedDate ? "day-chip active" : "day-chip"}
-                    onClick={() => setSelectedDate(day.date)}
-                  >
-                    <span>{phase}</span>
-                    <strong>{formatDayLabel(day.date)}</strong>
-                    <em>{weatherLabel(day.weatherCode)}</em>
-                    <small>
-                      {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel} /{" "}
-                      {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
-                    </small>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+                    return (
+                      <button
+                        key={day.date}
+                        type="button"
+                        className={day.date === selectedDate ? "day-chip active" : "day-chip"}
+                        onClick={() => setSelectedDate(day.date)}
+                      >
+                        <span>{phase}</span>
+                        <strong>{formatDayLabel(day.date)}</strong>
+                        <em>{weatherLabel(day.weatherCode)}</em>
+                        <small>
+                          {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel} /{" "}
+                          {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
+                        </small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
 
-          <section className="hourly-panel visx-panel">
-            <div className="panel-header compact">
-              <div>
-                <p className="section-label">Hourly detail</p>
-                <h3>{formatDayLabel(selectedDate)}</h3>
-              </div>
-            </div>
+              <section className="hourly-panel visx-panel">
+                <div className="panel-header compact">
+                  <div>
+                    <p className="section-label">Hourly detail</p>
+                    <h3>{formatDayLabel(selectedDate)}</h3>
+                  </div>
+                </div>
 
-            <div className="hourly-chart-grid visx-grid">
-              <TemperatureCurveChart points={hourlySeries.temperature} units={temperatureUnitLabel} />
-              <PrecipitationOverlayChart points={hourlySeries.precipitation} />
-              <WindDirectionChart points={hourlySeries.wind} units={windUnitLabel} />
-            </div>
+                <div className="hourly-chart-grid visx-grid">
+                  <TemperatureCurveChart points={hourlySeries.temperature} units={temperatureUnitLabel} />
+                  <PrecipitationOverlayChart points={hourlySeries.precipitation} />
+                  <WindDirectionChart points={hourlySeries.wind} units={windUnitLabel} />
+                </div>
 
-            <div className="secondary-chart-grid">
-              <PressureTrendChart points={hourlySeries.pressure} />
-              <CloudVisibilityChart points={hourlySeries.cloudVisibility} visibilityUnits={visibilityUnitLabel} />
-              <DaylightBandChart
-                sunrise={currentDay.sunrise}
-                sunset={currentDay.sunset}
-                hourCycle={preferences.hourCycle}
-              />
-            </div>
-          </section>
+                <div className="secondary-chart-grid">
+                  <PressureTrendChart points={hourlySeries.pressure} />
+                  <CloudVisibilityChart points={hourlySeries.cloudVisibility} visibilityUnits={visibilityUnitLabel} />
+                  <DaylightBandChart
+                    sunrise={currentDay.sunrise}
+                    sunset={currentDay.sunset}
+                    hourCycle={preferences.hourCycle}
+                  />
+                </div>
+              </section>
 
-          <section className="timeline-panel">
-            <div className="panel-header compact">
-              <div>
-                <p className="section-label">Weekly outlook</p>
-                <h3>Next 7 days</h3>
-              </div>
-            </div>
+              <section className="timeline-panel">
+                <div className="panel-header compact">
+                  <div>
+                    <p className="section-label">Weekly outlook</p>
+                    <h3>Next 7 days</h3>
+                  </div>
+                </div>
 
-            <div className="weekly-chart-wrap">
-              <WeeklyRangeChart points={weeklyRange} units={temperatureUnitLabel} />
-            </div>
-          </section>
+                <div className="weekly-chart-wrap">
+                  <WeeklyRangeChart points={weeklyRange} units={temperatureUnitLabel} />
+                </div>
+              </section>
+            </>
+          ) : (
+            detailsLoading && (
+              <section className="timeline-panel">
+                <div className="panel-header compact">
+                  <div>
+                    <p className="section-label">Forecast loading</p>
+                    <h3>Charts and timeline are on the way</h3>
+                  </div>
+                </div>
+                <p className="muted">Current conditions are ready. Loading hourly charts, the 14-day timeline, and alerts in the background.</p>
+              </section>
+            )
+          )}
 
-          {weather.alerts.length > 0 && (
+          {!detailsLoading && weather.alerts.length > 0 && (
             <section className="timeline-panel alerts-panel">
               <div className="panel-header compact">
                 <div>
@@ -636,6 +715,7 @@ function App() {
             </section>
           )}
 
+          {hasTimeline && (
           <section className="hourly-panel">
             <div className="panel-header compact">
               <div>
@@ -700,6 +780,7 @@ function App() {
               ))}
             </div>
           </section>
+          )}
         </>
       )}
     </main>
