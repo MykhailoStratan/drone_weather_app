@@ -9,6 +9,24 @@ import type {
   WeatherSnapshot,
 } from "../../../packages/weather-domain/src";
 
+export function parseWeatherQuery(url: URL): WeatherQuery {
+  const latitude = Number(url.searchParams.get("lat"));
+  const longitude = Number(url.searchParams.get("lon"));
+
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+    throw new Error("Latitude and longitude are required.");
+  }
+
+  return {
+    latitude,
+    longitude,
+    timezone: url.searchParams.get("timezone") ?? undefined,
+    name: url.searchParams.get("name") ?? undefined,
+    admin1: url.searchParams.get("admin1") ?? undefined,
+    country: url.searchParams.get("country") ?? undefined,
+  };
+}
+
 export function toWeatherQuery(location: WeatherQuery): Required<Pick<LocationOption, "latitude" | "longitude">> &
   Partial<Pick<LocationOption, "name" | "admin1" | "country" | "timezone">> {
   return {
