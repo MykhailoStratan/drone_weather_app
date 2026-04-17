@@ -594,19 +594,6 @@ function App() {
                   <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
                 </div>
 
-                <FlightReadinessPanel
-                  currentDay={currentDay}
-                  currentSnapshot={currentSnapshot}
-                  environmentPreset={environmentPreset}
-                  onEnvironmentChange={setEnvironmentPreset}
-                  gnssEstimate={gnssEstimate}
-                  loading={gnssLoading}
-                  windUnit={preferences.windUnit}
-                  windUnitLabel={windUnitLabel}
-                  visibilityUnit={preferences.visibilityUnit}
-                  visibilityUnitLabel={visibilityUnitLabel}
-                />
-
                 <div className="hero-stats">
                   <div className="temperature-block">
                     <div className="temperature-main">
@@ -666,71 +653,95 @@ function App() {
                 </div>
               </article>
 
-              <article className="stat-panel insight-panel">
-                <p className="section-label">Today summary</p>
-                <h3>{formatDayLabel(currentDay.date)}</h3>
-                <div className="insight-stack">
-                  <div className="range-summary">
-                    <div className="range-header">
-                      <span>Hourly swing</span>
-                      <strong>
-                        {Math.round(Math.min(...hourlySeries.temperature.map((point) => point.value), 0))} to{" "}
-                        {Math.round(Math.max(...hourlySeries.temperature.map((point) => point.value), 0))} {temperatureUnitLabel}
-                      </strong>
-                    </div>
-                    <p className="muted">
-                      {Math.round(currentDay.precipitationSum)} mm precipitation across {Math.round(currentDay.precipitationHours)} hours.
-                    </p>
-                  </div>
-                  <div className="range-summary">
-                    <div className="range-header">
-                      <span>Wind ceiling</span>
-                      <strong>
-                        {windSpeedDisplay(currentDay.windSpeedMax, preferences.windUnit)} {windUnitLabel}
-                      </strong>
-                    </div>
-                    <p className="muted">
-                      Gusts can reach {windSpeedDisplay(currentDay.windGustsMax, preferences.windUnit)} {windUnitLabel}.
-                    </p>
-                  </div>
-                  <div className="range-summary">
-                    <div className="range-header">
-                      <span>Visibility + cover</span>
-                      <strong>
-                        {visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
-                      </strong>
-                    </div>
-                    <div className="progress-meter" aria-hidden="true">
-                      <span style={{ width: `${Math.min(100, Math.max(8, currentSnapshot.cloudCover))}%` }} />
-                    </div>
-                    <p className="muted">Current cloud cover is {Math.round(currentSnapshot.cloudCover)}%.</p>
-                  </div>
+              <article className="stat-panel support-panel">
+                <div className="support-panel-section">
+                  <p className="section-label">Flight readiness</p>
+                  <FlightReadinessPanel
+                    currentDay={currentDay}
+                    currentSnapshot={currentSnapshot}
+                    environmentPreset={environmentPreset}
+                    onEnvironmentChange={setEnvironmentPreset}
+                    gnssEstimate={gnssEstimate}
+                    loading={gnssLoading}
+                    windUnit={preferences.windUnit}
+                    windUnitLabel={windUnitLabel}
+                    visibilityUnit={preferences.visibilityUnit}
+                    visibilityUnitLabel={visibilityUnitLabel}
+                  />
                 </div>
-              </article>
 
-              <article className="stat-panel insight-panel compact-status-panel">
-                <p className="section-label">Status</p>
-                <h3>At a glance</h3>
-                <div className="status-stack">
-                  <div className="status-card">
-                    <span>Alerts</span>
-                    <strong>{weather.alerts.length}</strong>
-                    <p className="muted">
-                      {weather.alerts.length > 0 ? "Warnings are listed below." : "No severe alerts right now."}
-                    </p>
-                  </div>
-                  <div className="status-card">
-                    <span>Local time</span>
-                    <strong>{formatTime(currentSnapshot.time, preferences.hourCycle)}</strong>
-                    <p className="muted">Synced with {weather.timezone} timing.</p>
-                  </div>
-                  <div className="range-summary">
-                    <div className="range-header">
-                      <span>Pressure</span>
-                      <strong>{Math.round(currentSnapshot.pressure)} hPa</strong>
+                <div className="support-panel-grid">
+                  <section className="support-panel-section">
+                    <div className="support-panel-header">
+                      <p className="section-label">Today summary</p>
+                      <h3>{formatDayLabel(currentDay.date)}</h3>
                     </div>
-                    <p className="muted">Surface pressure is steady in the live conditions view.</p>
-                  </div>
+                    <div className="compact-info-grid">
+                      <div className="range-summary compact-summary">
+                        <div className="range-header">
+                          <span>Hourly swing</span>
+                          <strong>
+                            {Math.round(Math.min(...hourlySeries.temperature.map((point) => point.value), 0))} to{" "}
+                            {Math.round(Math.max(...hourlySeries.temperature.map((point) => point.value), 0))} {temperatureUnitLabel}
+                          </strong>
+                        </div>
+                        <p className="muted">
+                          {Math.round(currentDay.precipitationSum)} mm across {Math.round(currentDay.precipitationHours)} hours.
+                        </p>
+                      </div>
+                      <div className="range-summary compact-summary">
+                        <div className="range-header">
+                          <span>Wind ceiling</span>
+                          <strong>
+                            {windSpeedDisplay(currentDay.windSpeedMax, preferences.windUnit)} {windUnitLabel}
+                          </strong>
+                        </div>
+                        <p className="muted">
+                          Gusts up to {windSpeedDisplay(currentDay.windGustsMax, preferences.windUnit)} {windUnitLabel}.
+                        </p>
+                      </div>
+                      <div className="range-summary compact-summary">
+                        <div className="range-header">
+                          <span>Visibility + cover</span>
+                          <strong>
+                            {visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
+                          </strong>
+                        </div>
+                        <div className="progress-meter" aria-hidden="true">
+                          <span style={{ width: `${Math.min(100, Math.max(8, currentSnapshot.cloudCover))}%` }} />
+                        </div>
+                        <p className="muted">{Math.round(currentSnapshot.cloudCover)}% cloud cover.</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="support-panel-section">
+                    <div className="support-panel-header">
+                      <p className="section-label">Status</p>
+                      <h3>At a glance</h3>
+                    </div>
+                    <div className="compact-info-grid">
+                      <div className="status-card compact-summary">
+                        <span>Alerts</span>
+                        <strong>{weather.alerts.length}</strong>
+                        <p className="muted">
+                          {weather.alerts.length > 0 ? "Warnings are listed below." : "No severe alerts right now."}
+                        </p>
+                      </div>
+                      <div className="status-card compact-summary">
+                        <span>Local time</span>
+                        <strong>{formatTime(currentSnapshot.time, preferences.hourCycle)}</strong>
+                        <p className="muted">Synced with {weather.timezone} timing.</p>
+                      </div>
+                      <div className="range-summary compact-summary">
+                        <div className="range-header">
+                          <span>Pressure</span>
+                          <strong>{Math.round(currentSnapshot.pressure)} hPa</strong>
+                        </div>
+                        <p className="muted">Surface pressure is steady in the live conditions view.</p>
+                      </div>
+                    </div>
+                  </section>
                 </div>
               </article>
             </section>
