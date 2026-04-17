@@ -99,8 +99,8 @@ button {
 }
 
 .sidebar-copy h1 {
-  margin: 0.35rem 0 0.7rem;
-  font-size: clamp(1.9rem, 3vw, 2.7rem);
+  margin: 0.25rem 0 0.5rem;
+  font-size: clamp(1.65rem, 2.2vw, 2.2rem);
   line-height: 0.95;
   max-width: 8ch;
 }
@@ -113,9 +113,26 @@ button {
 }
 
 .cache-status {
-  margin: 0.75rem 0 0;
+  margin: 0.6rem 0 0;
   color: rgba(228, 235, 242, 0.78);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+}
+
+.sidebar-location-summary {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-location-summary strong {
+  font-size: 0.94rem;
+}
+
+.sidebar-location-summary span {
+  color: var(--text-soft);
+  font-size: 0.86rem;
 }
 
 .search-panel {
@@ -305,7 +322,7 @@ button {
 
 .premium-grid {
   display: grid;
-  grid-template-columns: 1.7fr 1fr 1fr;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr) minmax(220px, 0.9fr);
   gap: 1rem;
 }
 
@@ -347,6 +364,33 @@ button {
   gap: 1rem;
 }
 
+.hero-heading {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.hero-condition-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.hero-condition-icon {
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 20px;
+  background: rgba(255, 213, 108, 0.12);
+  font-size: 1.9rem;
+}
+
+.hero-supporting-copy {
+  margin: 0.2rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
 .summary-badge {
   padding: 0.55rem 0.85rem;
   border-radius: 999px;
@@ -363,12 +407,17 @@ button {
 }
 
 .temperature-block {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
+  display: grid;
+  gap: 0.85rem;
   padding: 1rem;
   border-radius: 26px;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.temperature-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 .temperature-value {
@@ -388,6 +437,22 @@ button {
   font-size: 0.95rem;
 }
 
+.hero-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 242, 200, 0.95);
+  font-size: 0.86rem;
+}
+
 .wind-spotlight {
   padding: 1rem;
   border-radius: 26px;
@@ -399,6 +464,11 @@ button {
   align-items: center;
   gap: 1rem;
   margin-top: 0.75rem;
+}
+
+.wind-copy {
+  display: grid;
+  gap: 0.35rem;
 }
 
 .wind-arrow-ring {
@@ -465,10 +535,53 @@ button {
   gap: 1rem;
 }
 
+.status-stack {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.status-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.status-card span {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: var(--text-soft);
+}
+
+.status-card strong {
+  font-size: 1.2rem;
+}
+
+.compact-status-panel {
+  gap: 0.7rem;
+}
+
 .range-summary {
   padding: 1rem;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.progress-meter {
+  height: 0.45rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.6rem;
+}
+
+.progress-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(141, 241, 211, 0.95), rgba(137, 211, 255, 0.65));
 }
 
 .range-header {
@@ -906,6 +1019,7 @@ button {
   }
 
   .wind-visual,
+  .hero-condition-row,
   .hero-topline,
   .hour-summary-row,
   .range-header,
@@ -922,5 +1036,9 @@ button {
   .sidebar-card,
   .loading-card {
     border-radius: 22px;
+  }
+
+  .hero-pill-row {
+    flex-direction: column;
   }
 }

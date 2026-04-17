@@ -276,6 +276,7 @@ function App() {
   const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [];
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
+  const weatherIcon = weatherGlyph(currentSnapshot?.weatherCode ?? 0, currentSnapshot?.isDay === 1);
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
   const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
   const visibilityUnitLabel = preferences.visibilityUnit === "mi" ? "mi" : "km";
@@ -310,10 +311,11 @@ function App() {
             <aside className="sidebar-card">
               <div className="sidebar-copy">
                 <p className="eyebrow">SkyCanvas Weather</p>
-                <h1>Current weather first.</h1>
-                <p className="hero-text">
-                  Search a place or use your device location to update the live conditions view.
-                </p>
+                <h1>Current weather</h1>
+                <div className="sidebar-location-summary">
+                  <strong>{weather.locationLabel}</strong>
+                  <span>{weatherLabel(currentSnapshot.weatherCode)}</span>
+                </div>
                 {dataStatus && (
                   <p className="cache-status">
                     {dataStatus.source === "cached" ? "Showing cached conditions" : "Live weather updated"}{" "}
@@ -514,23 +516,41 @@ function App() {
             <section className="overview-grid premium-grid primary-priority">
               <article className="primary-panel hero-conditions">
                 <div className="hero-topline">
-                  <div>
+                  <div className="hero-heading">
                     <p className="section-label">{weather.locationLabel}</p>
-                    <h2>{weatherLabel(currentSnapshot.weatherCode)}</h2>
+                    <div className="hero-condition-row">
+                      <span className="hero-condition-icon" aria-hidden="true">
+                        {weatherIcon}
+                      </span>
+                      <div>
+                        <h2>{weatherLabel(currentSnapshot.weatherCode)}</h2>
+                        <p className="hero-supporting-copy">
+                          Updated for {formatDayLabel(currentDay.date)} in {weather.timezone}.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
                 </div>
 
                 <div className="hero-stats">
                   <div className="temperature-block">
-                    <span className="temperature-value">
-                      {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
-                    </span>
-                    <span className="temperature-unit">{temperatureUnitLabel}</span>
-                    <p className="temperature-range">
-                      {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)} /{" "}
-                      {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
-                    </p>
+                    <div className="temperature-main">
+                      <span className="temperature-value">
+                        {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
+                      </span>
+                      <span className="temperature-unit">{temperatureUnitLabel}</span>
+                    </div>
+                    <div className="hero-pill-row">
+                      <span className="hero-pill">
+                        High / low{" "}
+                        {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)} /{" "}
+                        {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel}
+                      </span>
+                      <span className="hero-pill">
+                        Rain {Math.round(currentSnapshot.precipitationProbability)}%
+                      </span>
+                    </div>
                   </div>
 
                   <div className="wind-spotlight">
@@ -545,7 +565,7 @@ function App() {
                           ^
                         </span>
                       </div>
-                      <div>
+                      <div className="wind-copy">
                         <strong>
                           {windDirectionLabel(currentSnapshot.windDirection)} {Math.round(currentSnapshot.windDirection)} deg
                         </strong>
@@ -573,7 +593,7 @@ function App() {
               </article>
 
               <article className="stat-panel insight-panel">
-                <p className="section-label">Daily read</p>
+                <p className="section-label">Today summary</p>
                 <h3>{formatDayLabel(currentDay.date)}</h3>
                 <div className="insight-stack">
                   <div className="range-summary">
@@ -599,32 +619,43 @@ function App() {
                       Gusts can reach {windSpeedDisplay(currentDay.windGustsMax, preferences.windUnit)} {windUnitLabel}.
                     </p>
                   </div>
-                </div>
-              </article>
-
-              <article className="stat-panel insight-panel">
-                <p className="section-label">Sky scan</p>
-                <h3>Visibility and cover</h3>
-                <div className="insight-stack">
                   <div className="range-summary">
                     <div className="range-header">
-                      <span>Visibility now</span>
+                      <span>Visibility + cover</span>
                       <strong>
                         {visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
                       </strong>
                     </div>
+                    <div className="progress-meter" aria-hidden="true">
+                      <span style={{ width: `${Math.min(100, Math.max(8, currentSnapshot.cloudCover))}%` }} />
+                    </div>
+                    <p className="muted">Current cloud cover is {Math.round(currentSnapshot.cloudCover)}%.</p>
+                  </div>
+                </div>
+              </article>
+
+              <article className="stat-panel insight-panel compact-status-panel">
+                <p className="section-label">Status</p>
+                <h3>At a glance</h3>
+                <div className="status-stack">
+                  <div className="status-card">
+                    <span>Alerts</span>
+                    <strong>{weather.alerts.length}</strong>
                     <p className="muted">
-                      Current cloud cover is {Math.round(currentSnapshot.cloudCover)}% with {weather.timezone} local timing.
+                      {weather.alerts.length > 0 ? "Warnings are listed below." : "No severe alerts right now."}
                     </p>
+                  </div>
+                  <div className="status-card">
+                    <span>Local time</span>
+                    <strong>{formatTime(currentSnapshot.time, preferences.hourCycle)}</strong>
+                    <p className="muted">Synced with {weather.timezone} timing.</p>
                   </div>
                   <div className="range-summary">
                     <div className="range-header">
-                      <span>Alerts</span>
-                      <strong>{weather.alerts.length}</strong>
+                      <span>Pressure</span>
+                      <strong>{Math.round(currentSnapshot.pressure)} hPa</strong>
                     </div>
-                    <p className="muted">
-                      Severe alert timing will appear below whenever the feed provides exact windows.
-                    </p>
+                    <p className="muted">Surface pressure is steady in the live conditions view.</p>
                   </div>
                 </div>
               </article>
@@ -915,6 +946,28 @@ function storeOverview(location: LocationOption, overview: WeatherOverviewRespon
 function upsertLocation(locations: LocationOption[], nextLocation: LocationOption) {
   const existing = locations.filter((location) => location.id !== nextLocation.id);
   return [nextLocation, ...existing].slice(0, 6);
+}
+
+function weatherGlyph(weatherCode: number, isDay: boolean) {
+  if (weatherCode === 0) {
+    return isDay ? "☀" : "☾";
+  }
+  if ([1, 2].includes(weatherCode)) {
+    return isDay ? "⛅" : "☁";
+  }
+  if ([3, 45, 48].includes(weatherCode)) {
+    return "☁";
+  }
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82].includes(weatherCode)) {
+    return "☂";
+  }
+  if ([66, 67, 71, 73, 75, 77, 85, 86].includes(weatherCode)) {
+    return "❄";
+  }
+  if ([95, 96, 99].includes(weatherCode)) {
+    return "⚡";
+  }
+  return "☁";
 }
 
 function formatSavedAtLabel(savedAt: string) {
