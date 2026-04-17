@@ -551,6 +551,9 @@ button {
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-card-header strong {
@@ -651,6 +654,7 @@ button {
 
 .weekly-chart-wrap {
   display: grid;
+  justify-items: center;
 }
 
 .visx-card h4 {
@@ -664,6 +668,8 @@ button {
   height: auto;
   min-height: 0;
   overflow: hidden;
+  flex: 1;
+  align-content: start;
 }
 
 .visx-chart {
@@ -673,7 +679,9 @@ button {
 }
 
 .visx-chart-large {
+  width: min(640px, 100%);
   max-height: 196px;
+  margin: 0 auto;
 }
 
 .visx-chart-daylight {

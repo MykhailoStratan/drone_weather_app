@@ -277,12 +277,12 @@ export function WeeklyRangeChart({
   points: RangeDatum[];
   units: string;
 }) {
-  const width = 980;
+  const width = 640;
   const height = 176;
   const marginTop = 14;
-  const marginRight = 28;
+  const marginRight = 36;
   const marginBottom = 34;
-  const marginLeft = 28;
+  const marginLeft = 36;
   const x = scalePoint({
     domain: points.map((point) => point.key),
     range: [marginLeft + 18, width - marginRight - 18],
