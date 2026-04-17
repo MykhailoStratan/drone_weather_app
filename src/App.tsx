@@ -22,7 +22,7 @@ import {
   windSpeedDisplay,
 } from "./lib/format";
 import { fetchWeatherAlerts, fetchWeatherOverview, fetchWeatherTimeline, searchLocations } from "./lib/weather";
-import type { LocationOption, WeatherPayload, WeatherSnapshot } from "./types";
+import type { LocationOption, WeatherOverviewResponse, WeatherPayload, WeatherSnapshot } from "./types";
 
 const starterLocation: LocationOption = {
   id: 1,
@@ -37,12 +37,24 @@ const starterLocation: LocationOption = {
 const SAVED_LOCATIONS_KEY = "skycanvas.savedLocations";
 const LAST_LOCATION_KEY = "skycanvas.lastLocation";
 const PREFERENCES_KEY = "skycanvas.preferences";
+const LAST_OVERVIEW_KEY = "skycanvas.lastOverview";
 
 type Preferences = {
   temperatureUnit: "c" | "f";
   windUnit: "kmh" | "mph";
   visibilityUnit: "km" | "mi";
   hourCycle: "12h" | "24h";
+};
+
+type CachedOverview = {
+  savedAt: string;
+  location: LocationOption;
+  overview: WeatherOverviewResponse;
+};
+
+type DataStatus = {
+  savedAt: string;
+  source: "cached" | "live";
 };
 
 const defaultPreferences: Preferences = {
@@ -65,14 +77,24 @@ function App() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState("");
+  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const debounce = useRef<number | null>(null);
   const requestId = useRef(0);
 
   useEffect(() => {
     const storedLocations = readStoredLocations();
     const preferredLocation = readStoredLocation(LAST_LOCATION_KEY) ?? starterLocation;
+    const cachedOverview = readStoredOverview();
     setSavedLocations(storedLocations);
     setPreferences(readStoredPreferences());
+    if (cachedOverview) {
+      setWeather(buildWeatherFromOverview(cachedOverview.overview));
+      setSelectedDate(cachedOverview.overview.today.date);
+      setActiveLocation(cachedOverview.location);
+      setQuery(cachedOverview.location.name);
+      setDataStatus({ savedAt: cachedOverview.savedAt, source: "cached" });
+      setLoading(false);
+    }
     void loadWeather(preferredLocation);
   }, []);
 
@@ -126,6 +148,8 @@ function App() {
       setResults([]);
       setQuery(location.name);
       setActiveLocation(location);
+      storeOverview(location, overview);
+      setDataStatus({ savedAt: new Date().toISOString(), source: "live" });
       storeLocation(LAST_LOCATION_KEY, location);
       setLoading(false);
 
@@ -290,6 +314,12 @@ function App() {
                 <p className="hero-text">
                   Search a place or use your device location to update the live conditions view.
                 </p>
+                {dataStatus && (
+                  <p className="cache-status">
+                    {dataStatus.source === "cached" ? "Showing cached conditions" : "Live weather updated"}{" "}
+                    {formatSavedAtLabel(dataStatus.savedAt)}.
+                  </p>
+                )}
               </div>
 
               <div className="search-panel sidebar-search">
@@ -814,6 +844,19 @@ function resolveCurrentSnapshot(hourlyForDay: WeatherSnapshot[], current: Weathe
 
 export default App;
 
+function buildWeatherFromOverview(overview: WeatherOverviewResponse): WeatherPayload {
+  return {
+    locationLabel: overview.locationLabel,
+    timezone: overview.timezone,
+    latitude: overview.latitude,
+    longitude: overview.longitude,
+    current: overview.current,
+    hourly: [],
+    daily: [overview.today],
+    alerts: [],
+  };
+}
+
 function readStoredLocations() {
   try {
     const raw = window.localStorage.getItem(SAVED_LOCATIONS_KEY);
@@ -843,6 +886,15 @@ function readStoredPreferences(): Preferences {
   }
 }
 
+function readStoredOverview() {
+  try {
+    const raw = window.localStorage.getItem(LAST_OVERVIEW_KEY);
+    return raw ? (JSON.parse(raw) as CachedOverview) : null;
+  } catch {
+    return null;
+  }
+}
+
 function storeLocations(locations: LocationOption[]) {
   window.localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify(locations));
 }
@@ -851,7 +903,35 @@ function storeLocation(key: string, location: LocationOption) {
   window.localStorage.setItem(key, JSON.stringify(location));
 }
 
+function storeOverview(location: LocationOption, overview: WeatherOverviewResponse) {
+  const cachedOverview: CachedOverview = {
+    savedAt: new Date().toISOString(),
+    location,
+    overview,
+  };
+  window.localStorage.setItem(LAST_OVERVIEW_KEY, JSON.stringify(cachedOverview));
+}
+
 function upsertLocation(locations: LocationOption[], nextLocation: LocationOption) {
   const existing = locations.filter((location) => location.id !== nextLocation.id);
   return [nextLocation, ...existing].slice(0, 6);
+}
+
+function formatSavedAtLabel(savedAt: string) {
+  const deltaMinutes = Math.max(0, Math.round((Date.now() - new Date(savedAt).getTime()) / 60000));
+
+  if (deltaMinutes < 1) {
+    return "just now";
+  }
+  if (deltaMinutes < 60) {
+    return `${deltaMinutes}m ago`;
+  }
+
+  const deltaHours = Math.round(deltaMinutes / 60);
+  if (deltaHours < 24) {
+    return `${deltaHours}h ago`;
+  }
+
+  const deltaDays = Math.round(deltaHours / 24);
+  return `${deltaDays}d ago`;
 }
