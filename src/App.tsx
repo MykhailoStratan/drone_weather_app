@@ -281,6 +281,7 @@ function App() {
   const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [];
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
   const hasAlerts = (weather?.alerts.length ?? 0) > 0;
+  const showSearchFeedback = query.trim().length >= 2;
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
   const weatherIcon = weatherGlyph(currentSnapshot?.weatherCode ?? 0, currentSnapshot?.isDay === 1);
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
@@ -351,11 +352,11 @@ function App() {
                   </div>
                 </div>
 
-                {(results.length > 0 || searching) && (
+                {showSearchFeedback && (
                   <div className="results-panel compact-results">
                     {searching ? (
                       <p className="muted">Searching...</p>
-                    ) : (
+                    ) : results.length > 0 ? (
                       <select
                         className="search-results-select"
                         defaultValue=""
@@ -374,6 +375,8 @@ function App() {
                           </option>
                         ))}
                       </select>
+                    ) : (
+                      <p className="muted search-empty-state">No matching locations yet. Try a nearby city or broader region.</p>
                     )}
                   </div>
                 )}

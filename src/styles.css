@@ -39,6 +39,18 @@ input {
 
 button {
   cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(255, 213, 108, 0.7);
+  outline-offset: 2px;
 }
 
 #root {
@@ -197,6 +209,11 @@ button {
   background: rgba(4, 12, 22, 0.72);
   color: #fff;
   padding: 0.8rem 0.95rem;
+}
+
+.search-empty-state {
+  margin: 0;
+  padding: 0.2rem 0.1rem 0;
 }
 
 .saved-panel {
@@ -676,8 +693,19 @@ button {
 }
 
 .day-chip.active {
-  border-color: rgba(255, 213, 108, 0.9);
-  background: linear-gradient(180deg, rgba(255, 213, 108, 0.24), rgba(255, 213, 108, 0.08));
+  border-color: rgba(255, 213, 108, 0.95);
+  background:
+    linear-gradient(180deg, rgba(255, 213, 108, 0.28), rgba(255, 213, 108, 0.08)),
+    rgba(255, 255, 255, 0.03);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 213, 108, 0.26),
+    0 12px 24px rgba(255, 170, 84, 0.12);
+}
+
+.day-chip.active strong,
+.day-chip.active em,
+.day-chip.active small {
+  color: #fff6da;
 }
 
 .upgraded-hourly-grid {
