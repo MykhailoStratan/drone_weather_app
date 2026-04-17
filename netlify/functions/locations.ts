@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { CACHE_TTLS, createSearchCacheKey, getCached, setCached } from "./_shared/cache";
 import { searchLocationsFromProvider } from "./_shared/weather";
 
 export default async (req: Request) => {
@@ -10,7 +11,14 @@ export default async (req: Request) => {
   }
 
   try {
+    const cacheKey = createSearchCacheKey(query);
+    const cached = getCached<Awaited<ReturnType<typeof searchLocationsFromProvider>>>(cacheKey);
+    if (cached) {
+      return Response.json(cached);
+    }
+
     const locations = await searchLocationsFromProvider(query);
+    setCached(cacheKey, locations, CACHE_TTLS.locations);
     return Response.json(locations);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to search locations.";

@@ -1,6 +1,8 @@
 import type { Config } from "@netlify/functions";
+import { CACHE_TTLS, createWeatherCacheKey, getCached, setCached } from "./_shared/cache";
 import { createTimelineResponse, parseWeatherQuery, toWeatherQuery } from "./_shared/contracts";
 import { fetchForecastBundle } from "./_shared/provider";
+import type { WeatherTimelineResponse } from "../../packages/weather-domain/src";
 
 export default async (req: Request) => {
   if (req.method !== "GET") {
@@ -9,18 +11,23 @@ export default async (req: Request) => {
 
   try {
     const query = toWeatherQuery(parseWeatherQuery(new URL(req.url)));
-    const forecast = await fetchForecastBundle(query);
+    const cacheKey = createWeatherCacheKey("timeline", query);
+    const cached = getCached<WeatherTimelineResponse>(cacheKey);
+    if (cached) {
+      return Response.json(cached);
+    }
 
-    return Response.json(
-      createTimelineResponse({
-        location: query,
-        timezone: forecast.timezone,
-        latitude: forecast.latitude,
-        longitude: forecast.longitude,
-        hourly: forecast.hourly,
-        daily: forecast.daily,
-      }),
-    );
+    const forecast = await fetchForecastBundle(query);
+    const response = createTimelineResponse({
+      location: query,
+      timezone: forecast.timezone,
+      latitude: forecast.latitude,
+      longitude: forecast.longitude,
+      hourly: forecast.hourly,
+      daily: forecast.daily,
+    });
+    setCached(cacheKey, response, CACHE_TTLS.timeline);
+    return Response.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Weather timeline is unavailable right now.";
     return Response.json({ error: message }, { status: 500 });
