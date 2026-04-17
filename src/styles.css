@@ -71,6 +71,34 @@ button {
   margin-bottom: 1.5rem;
 }
 
+.detail-switcher-panel {
+  margin-bottom: 1rem;
+}
+
+.detail-switcher {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 0.4rem;
+  border-radius: 999px;
+  background: rgba(8, 18, 31, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.detail-tab {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: var(--text-soft);
+}
+
+.detail-tab.active {
+  background: rgba(255, 213, 108, 0.14);
+  color: #fff3cc;
+  box-shadow: inset 0 0 0 1px rgba(255, 213, 108, 0.34);
+}
+
 .sidebar-card {
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -870,6 +898,10 @@ button {
   padding: 1rem;
 }
 
+.alerts-empty-state {
+  min-height: 180px;
+}
+
 .alerts-layout {
   align-items: start;
 }
@@ -998,6 +1030,10 @@ button {
   .hero-mini-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .detail-switcher {
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1040,5 +1076,10 @@ button {
 
   .hero-pill-row {
     flex-direction: column;
+  }
+
+  .detail-switcher {
+    grid-template-columns: 1fr;
+    border-radius: 22px;
   }
 }

@@ -57,6 +57,8 @@ type DataStatus = {
   source: "cached" | "live";
 };
 
+type DetailView = "hourly" | "weekly" | "alerts";
+
 const defaultPreferences: Preferences = {
   temperatureUnit: "c",
   windUnit: "kmh",
@@ -78,6 +80,8 @@ function App() {
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState("");
   const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
+  const [detailView, setDetailView] = useState<DetailView>("hourly");
+  const [hourlyCardsOpen, setHourlyCardsOpen] = useState(false);
   const debounce = useRef<number | null>(null);
   const requestId = useRef(0);
 
@@ -145,6 +149,7 @@ function App() {
 
       setWeather(initialPayload);
       setSelectedDate(overview.today.date);
+      setDetailView("hourly");
       setResults([]);
       setQuery(location.name);
       setActiveLocation(location);
@@ -275,6 +280,7 @@ function App() {
   const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
   const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [];
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
+  const hasAlerts = (weather?.alerts.length ?? 0) > 0;
   const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
   const weatherIcon = weatherGlyph(currentSnapshot?.weatherCode ?? 0, currentSnapshot?.isDay === 1);
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
@@ -662,78 +668,184 @@ function App() {
             </section>
           </section>
 
+          <section className="detail-switcher-panel">
+            <div className="detail-switcher">
+              <button
+                type="button"
+                className={detailView === "hourly" ? "detail-tab active" : "detail-tab"}
+                onClick={() => setDetailView("hourly")}
+              >
+                Hourly
+              </button>
+              <button
+                type="button"
+                className={detailView === "weekly" ? "detail-tab active" : "detail-tab"}
+                onClick={() => setDetailView("weekly")}
+              >
+                7 days
+              </button>
+              <button
+                type="button"
+                className={detailView === "alerts" ? "detail-tab active" : "detail-tab"}
+                onClick={() => setDetailView("alerts")}
+              >
+                Alerts {hasAlerts ? `(${weather.alerts.length})` : ""}
+              </button>
+            </div>
+          </section>
+
           {hasTimeline ? (
             <>
-              <section className="timeline-panel">
-                <div className="panel-header compact">
-                  <div>
-                    <p className="section-label">Daily timeline</p>
-                    <h3>Choose a day</h3>
-                  </div>
-                </div>
+              {detailView === "hourly" && (
+                <>
+                  <section className="timeline-panel">
+                    <div className="panel-header compact">
+                      <div>
+                        <p className="section-label">Daily timeline</p>
+                        <h3>Choose a day</h3>
+                      </div>
+                    </div>
 
-                <div className="day-strip">
-                  {weather.daily.map((day, index) => {
-                    const offset = index - 7;
-                    const phase = offset < 0 ? "History" : offset === 0 ? "Today" : "Forecast";
+                    <div className="day-strip">
+                      {weather.daily.map((day, index) => {
+                        const offset = index - 7;
+                        const phase = offset < 0 ? "History" : offset === 0 ? "Today" : "Forecast";
 
-                    return (
+                        return (
+                          <button
+                            key={day.date}
+                            type="button"
+                            className={day.date === selectedDate ? "day-chip active" : "day-chip"}
+                            onClick={() => setSelectedDate(day.date)}
+                          >
+                            <span>{phase}</span>
+                            <strong>{formatDayLabel(day.date)}</strong>
+                            <em>{weatherLabel(day.weatherCode)}</em>
+                            <small>
+                              {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel} /{" "}
+                              {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
+                            </small>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  <section className="hourly-panel visx-panel">
+                    <div className="panel-header compact">
+                      <div>
+                        <p className="section-label">Hourly detail</p>
+                        <h3>{formatDayLabel(selectedDate)}</h3>
+                      </div>
                       <button
-                        key={day.date}
                         type="button"
-                        className={day.date === selectedDate ? "day-chip active" : "day-chip"}
-                        onClick={() => setSelectedDate(day.date)}
+                        className="ghost-button"
+                        onClick={() => setHourlyCardsOpen((open) => !open)}
                       >
-                        <span>{phase}</span>
-                        <strong>{formatDayLabel(day.date)}</strong>
-                        <em>{weatherLabel(day.weatherCode)}</em>
-                        <small>
-                          {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel} /{" "}
-                          {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
-                        </small>
+                        {hourlyCardsOpen ? "Hide hourly cards" : "Show hourly cards"}
                       </button>
-                    );
-                  })}
-                </div>
-              </section>
+                    </div>
 
-              <section className="hourly-panel visx-panel">
-                <div className="panel-header compact">
-                  <div>
-                    <p className="section-label">Hourly detail</p>
-                    <h3>{formatDayLabel(selectedDate)}</h3>
+                    <div className="hourly-chart-grid visx-grid">
+                      <TemperatureCurveChart points={hourlySeries.temperature} units={temperatureUnitLabel} />
+                      <PrecipitationOverlayChart points={hourlySeries.precipitation} />
+                      <WindDirectionChart points={hourlySeries.wind} units={windUnitLabel} />
+                    </div>
+
+                    <div className="secondary-chart-grid">
+                      <PressureTrendChart points={hourlySeries.pressure} />
+                      <CloudVisibilityChart points={hourlySeries.cloudVisibility} visibilityUnits={visibilityUnitLabel} />
+                      <DaylightBandChart
+                        sunrise={currentDay.sunrise}
+                        sunset={currentDay.sunset}
+                        hourCycle={preferences.hourCycle}
+                      />
+                    </div>
+                  </section>
+
+                  {hourlyCardsOpen && (
+                    <section className="hourly-panel">
+                      <div className="panel-header compact">
+                        <div>
+                          <p className="section-label">Hourly cards</p>
+                          <h3>Detailed readout</h3>
+                        </div>
+                      </div>
+
+                      <div className="hourly-grid upgraded-hourly-grid">
+                        {hourlyForDay.map((entry) => (
+                          <article key={entry.time} className="hour-card">
+                            <div className="hour-card-top">
+                              <strong>{formatHourLabel(entry.time, preferences.hourCycle)}</strong>
+                              <span>{weatherLabel(entry.weatherCode)}</span>
+                            </div>
+                            <div className="hour-summary-row">
+                              <p className="hour-temp">
+                                {temperatureDisplay(entry.temperature, preferences.temperatureUnit)} {temperatureUnitLabel}
+                              </p>
+                              <div className="mini-wind">
+                                <span
+                                  className="mini-wind-arrow"
+                                  style={{ transform: `rotate(${entry.windDirection}deg)` }}
+                                  aria-hidden="true"
+                                >
+                                  ^
+                                </span>
+                                <strong>{windDirectionLabel(entry.windDirection)}</strong>
+                              </div>
+                            </div>
+                            <dl>
+                              <div>
+                                <dt>Wind</dt>
+                                <dd>{windSpeedDisplay(entry.windSpeed, preferences.windUnit)} {windUnitLabel}</dd>
+                              </div>
+                              <div>
+                                <dt>Gusts</dt>
+                                <dd>{windSpeedDisplay(entry.windGusts, preferences.windUnit)} {windUnitLabel}</dd>
+                              </div>
+                              <div>
+                                <dt>Dir</dt>
+                                <dd>{Math.round(entry.windDirection)} deg</dd>
+                              </div>
+                              <div>
+                                <dt>Rain</dt>
+                                <dd>
+                                  {entry.precipitationAmount.toFixed(1)} mm / {Math.round(entry.precipitationProbability)}%
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>Clouds</dt>
+                                <dd>{Math.round(entry.cloudCover)}%</dd>
+                              </div>
+                              <div>
+                                <dt>Visibility</dt>
+                                <dd>
+                                  {visibilityDisplay(entry.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
+                                </dd>
+                              </div>
+                            </dl>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </>
+              )}
+
+              {detailView === "weekly" && (
+                <section className="timeline-panel">
+                  <div className="panel-header compact">
+                    <div>
+                      <p className="section-label">Weekly outlook</p>
+                      <h3>Next 7 days</h3>
+                    </div>
                   </div>
-                </div>
 
-                <div className="hourly-chart-grid visx-grid">
-                  <TemperatureCurveChart points={hourlySeries.temperature} units={temperatureUnitLabel} />
-                  <PrecipitationOverlayChart points={hourlySeries.precipitation} />
-                  <WindDirectionChart points={hourlySeries.wind} units={windUnitLabel} />
-                </div>
-
-                <div className="secondary-chart-grid">
-                  <PressureTrendChart points={hourlySeries.pressure} />
-                  <CloudVisibilityChart points={hourlySeries.cloudVisibility} visibilityUnits={visibilityUnitLabel} />
-                  <DaylightBandChart
-                    sunrise={currentDay.sunrise}
-                    sunset={currentDay.sunset}
-                    hourCycle={preferences.hourCycle}
-                  />
-                </div>
-              </section>
-
-              <section className="timeline-panel">
-                <div className="panel-header compact">
-                  <div>
-                    <p className="section-label">Weekly outlook</p>
-                    <h3>Next 7 days</h3>
+                  <div className="weekly-chart-wrap">
+                    <WeeklyRangeChart points={weeklyRange} units={temperatureUnitLabel} />
                   </div>
-                </div>
-
-                <div className="weekly-chart-wrap">
-                  <WeeklyRangeChart points={weeklyRange} units={temperatureUnitLabel} />
-                </div>
-              </section>
+                </section>
+              )}
             </>
           ) : (
             detailsLoading && (
@@ -749,98 +861,37 @@ function App() {
             )
           )}
 
-          {!detailsLoading && weather.alerts.length > 0 && (
+          {detailView === "alerts" && !detailsLoading && (
             <section className="timeline-panel alerts-panel">
               <div className="panel-header compact">
                 <div>
                   <p className="section-label">Active alerts</p>
-                  <h3>Weather warnings for this area</h3>
+                  <h3>{weather.alerts.length > 0 ? "Weather warnings for this area" : "No active severe alerts"}</h3>
                 </div>
               </div>
 
-              <div className="alerts-layout">
-                <AlertTimelineChart alerts={weather.alerts} hourCycle={preferences.hourCycle} />
-                <div className="alerts-grid">
-                  {weather.alerts.map((alert) => (
-                    <article key={alert.id} className="alert-card">
-                      <p className="alert-chip">
-                        {alert.severity} / {alert.urgency}
-                      </p>
-                      <h4>{alert.event}</h4>
-                      <p>{alert.headline}</p>
-                      <small>{alert.area}</small>
-                    </article>
-                  ))}
+              {weather.alerts.length > 0 ? (
+                <div className="alerts-layout">
+                  <AlertTimelineChart alerts={weather.alerts} hourCycle={preferences.hourCycle} />
+                  <div className="alerts-grid">
+                    {weather.alerts.map((alert) => (
+                      <article key={alert.id} className="alert-card">
+                        <p className="alert-chip">
+                          {alert.severity} / {alert.urgency}
+                        </p>
+                        <h4>{alert.event}</h4>
+                        <p>{alert.headline}</p>
+                        <small>{alert.area}</small>
+                      </article>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="chart-empty-state alerts-empty-state">
+                  Severe weather warnings will appear here whenever the provider reports an active alert window.
+                </div>
+              )}
             </section>
-          )}
-
-          {hasTimeline && (
-          <section className="hourly-panel">
-            <div className="panel-header compact">
-              <div>
-                <p className="section-label">Hourly cards</p>
-                <h3>Detailed readout</h3>
-              </div>
-            </div>
-
-            <div className="hourly-grid upgraded-hourly-grid">
-              {hourlyForDay.map((entry) => (
-                <article key={entry.time} className="hour-card">
-                  <div className="hour-card-top">
-                    <strong>{formatHourLabel(entry.time, preferences.hourCycle)}</strong>
-                    <span>{weatherLabel(entry.weatherCode)}</span>
-                  </div>
-                  <div className="hour-summary-row">
-                    <p className="hour-temp">
-                      {temperatureDisplay(entry.temperature, preferences.temperatureUnit)} {temperatureUnitLabel}
-                    </p>
-                    <div className="mini-wind">
-                      <span
-                        className="mini-wind-arrow"
-                        style={{ transform: `rotate(${entry.windDirection}deg)` }}
-                        aria-hidden="true"
-                      >
-                        ^
-                      </span>
-                      <strong>{windDirectionLabel(entry.windDirection)}</strong>
-                    </div>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Wind</dt>
-                      <dd>{windSpeedDisplay(entry.windSpeed, preferences.windUnit)} {windUnitLabel}</dd>
-                    </div>
-                    <div>
-                      <dt>Gusts</dt>
-                      <dd>{windSpeedDisplay(entry.windGusts, preferences.windUnit)} {windUnitLabel}</dd>
-                    </div>
-                    <div>
-                      <dt>Dir</dt>
-                      <dd>{Math.round(entry.windDirection)} deg</dd>
-                    </div>
-                    <div>
-                      <dt>Rain</dt>
-                      <dd>
-                        {entry.precipitationAmount.toFixed(1)} mm / {Math.round(entry.precipitationProbability)}%
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Clouds</dt>
-                      <dd>{Math.round(entry.cloudCover)}%</dd>
-                    </div>
-                    <div>
-                      <dt>Visibility</dt>
-                      <dd>
-                        {visibilityDisplay(entry.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
-                      </dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
-          </section>
           )}
         </>
       )}
