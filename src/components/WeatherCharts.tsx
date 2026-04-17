@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { curveMonotoneX } from "@visx/curve";
 import { LinearGradient } from "@visx/gradient";
 import { Group } from "@visx/group";
@@ -41,6 +41,7 @@ type ChartShellProps = {
   title: string;
   subtitle: string;
   footer?: ReactNode;
+  tooltip?: ReactNode;
   children: ReactNode;
 };
 
@@ -74,6 +75,7 @@ export function TemperatureCurveChart({
   points: HourlyDatum[];
   units: string;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
   const innerHeight = height - marginTop - marginBottom;
   const x = scalePoint({
@@ -90,12 +92,21 @@ export function TemperatureCurveChart({
     paddingInner: 0.18,
   });
   const [min, max] = summarizeRange(points.map((point) => point.value));
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
     <ChartShell
       eyebrow="Hourly arc"
       title="Temperature curve"
       subtitle={`${min} to ${max} ${units}`}
+      tooltip={
+        hoveredPoint ? (
+          <ChartTooltip
+            title={hoveredPoint.label}
+            lines={[`${roundLabel(hoveredPoint.value)} ${units}`, hoveredPoint.isDay ? "Daylight conditions" : "Night conditions"]}
+          />
+        ) : null
+      }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Temperature curve">
@@ -132,6 +143,32 @@ export function TemperatureCurveChart({
           strokeWidth={3}
           curve={curveMonotoneX}
         />
+        {hoveredPoint && (
+          <HoverFocus
+            x={x(hoveredPoint.key) ?? 0}
+            y={y(hoveredPoint.value)}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#ffd56c"
+          />
+        )}
+        {points.map((point, index) => {
+          const bandX = band(point.key) ?? 0;
+          const bandWidth = band.bandwidth();
+          return (
+            <rect
+              key={`${point.key}-hover`}
+              x={bandX}
+              y={marginTop}
+              width={bandWidth}
+              height={innerHeight}
+              fill="transparent"
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseMove={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
+          );
+        })}
       </svg>
     </ChartShell>
   );
@@ -142,6 +179,7 @@ export function PrecipitationOverlayChart({
 }: {
   points: PrecipDatum[];
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
   const x = scaleBand({
     domain: points.map((point) => point.key),
@@ -158,6 +196,7 @@ export function PrecipitationOverlayChart({
   });
   const maxAmount = Math.max(...points.map((point) => point.value), 0);
   const maxProbability = Math.max(...points.map((point) => point.probability), 0);
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
   const subtitle =
     maxAmount < 0.1
       ? `Dry conditions, ${Math.round(maxProbability)}% chance`
@@ -168,6 +207,14 @@ export function PrecipitationOverlayChart({
       eyebrow="Hourly rain"
       title="Precipitation + probability"
       subtitle={subtitle}
+      tooltip={
+        hoveredPoint ? (
+          <ChartTooltip
+            title={hoveredPoint.label}
+            lines={[`${hoveredPoint.value.toFixed(1)} mm precipitation`, `${Math.round(hoveredPoint.probability)}% probability`]}
+          />
+        ) : null
+      }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Precipitation and probability chart">
@@ -196,6 +243,28 @@ export function PrecipitationOverlayChart({
           strokeWidth={2.5}
           curve={curveMonotoneX}
         />
+        {hoveredPoint && (
+          <HoverFocus
+            x={(x(hoveredPoint.key) ?? 0) + x.bandwidth() / 2}
+            y={Math.min(precipitationScale(hoveredPoint.value), probabilityScale(hoveredPoint.probability))}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#8df1d3"
+          />
+        )}
+        {points.map((point, index) => (
+          <rect
+            key={`${point.key}-hover`}
+            x={x(point.key) ?? 0}
+            y={marginTop}
+            width={x.bandwidth()}
+            height={height - marginTop - marginBottom}
+            fill="transparent"
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseMove={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          />
+        ))}
       </svg>
     </ChartShell>
   );
@@ -208,6 +277,7 @@ export function WindDirectionChart({
   points: WindDatum[];
   units: string;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
   const x = scaleBand({
     domain: points.map((point) => point.key),
@@ -219,12 +289,21 @@ export function WindDirectionChart({
     range: [height - marginBottom, marginTop + 18],
   });
   const [min, max] = summarizeRange(points.map((point) => point.value));
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
     <ChartShell
       eyebrow="Wind field"
       title="Speed + direction"
       subtitle={`${min} to ${max} ${units}`}
+      tooltip={
+        hoveredPoint ? (
+          <ChartTooltip
+            title={hoveredPoint.label}
+            lines={[`${roundLabel(hoveredPoint.value)} ${units} wind`, `${Math.round(hoveredPoint.direction)} deg heading`]}
+          />
+        ) : null
+      }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Wind speed and direction chart">
@@ -265,6 +344,28 @@ export function WindDirectionChart({
             </Group>
           );
         })}
+        {hoveredPoint && (
+          <HoverFocus
+            x={(x(hoveredPoint.key) ?? 0) + x.bandwidth() / 2}
+            y={y(hoveredPoint.value)}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#89d3ff"
+          />
+        )}
+        {points.map((point, index) => (
+          <rect
+            key={`${point.key}-hover`}
+            x={x(point.key) ?? 0}
+            y={marginTop}
+            width={x.bandwidth()}
+            height={height - marginTop - marginBottom}
+            fill="transparent"
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseMove={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          />
+        ))}
       </svg>
     </ChartShell>
   );
@@ -277,6 +378,7 @@ export function WeeklyRangeChart({
   points: RangeDatum[];
   units: string;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const width = 640;
   const height = 176;
   const marginTop = 14;
@@ -293,12 +395,21 @@ export function WeeklyRangeChart({
   });
   const minValue = Math.min(...points.map((point) => point.min));
   const maxValue = Math.max(...points.map((point) => point.max));
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
     <ChartShell
       eyebrow="Next seven days"
       title="Min/max temperature range"
       subtitle={`${Math.round(minValue)} to ${Math.round(maxValue)} ${units}`}
+      tooltip={
+        hoveredPoint ? (
+          <ChartTooltip
+            title={hoveredPoint.shortLabel}
+            lines={[`Low ${roundLabel(hoveredPoint.min)} ${units}`, `High ${roundLabel(hoveredPoint.max)} ${units}`]}
+          />
+        ) : null
+      }
       footer={<AxisFooter labels={points.map((point) => point.shortLabel)} dense />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart visx-chart-large" role="img" aria-label="Seven day temperature range chart">
@@ -312,6 +423,31 @@ export function WeeklyRangeChart({
               <circle cx={cx} cy={yMax} r={6} fill="#ffd56c" />
               <circle cx={cx} cy={yMin} r={6} fill="#89d3ff" />
             </Group>
+          );
+        })}
+        {hoveredPoint && (
+          <HoverFocus
+            x={x(hoveredPoint.key) ?? 0}
+            y={y(hoveredPoint.max)}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#ffd56c"
+          />
+        )}
+        {points.map((point, index) => {
+          const cx = x(point.key) ?? 0;
+          return (
+            <rect
+              key={`${point.key}-hover`}
+              x={cx - 26}
+              y={marginTop}
+              width={52}
+              height={height - marginTop - marginBottom}
+              fill="transparent"
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseMove={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
           );
         })}
       </svg>
@@ -370,6 +506,7 @@ export function PressureTrendChart({
 }: {
   points: HourlyDatum[];
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
   const x = scalePoint({
     domain: points.map((point) => point.key),
@@ -380,12 +517,16 @@ export function PressureTrendChart({
     range: [height - marginBottom, marginTop],
   });
   const [min, max] = summarizeRange(points.map((point) => point.value));
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
     <ChartShell
       eyebrow="Pressure"
       title="Trend through the day"
       subtitle={`${min} to ${max} hPa`}
+      tooltip={
+        hoveredPoint ? <ChartTooltip title={hoveredPoint.label} lines={[`${roundLabel(hoveredPoint.value)} hPa`]} /> : null
+      }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Pressure trend chart">
@@ -407,6 +548,35 @@ export function PressureTrendChart({
           strokeWidth={2.5}
           curve={curveMonotoneX}
         />
+        {hoveredPoint && (
+          <HoverFocus
+            x={x(hoveredPoint.key) ?? 0}
+            y={y(hoveredPoint.value)}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#89d3ff"
+          />
+        )}
+        {points.map((point, index) => {
+          const centerX = x(point.key) ?? 0;
+          const nextX =
+            index < points.length - 1 ? ((x(points[index + 1]?.key ?? "") ?? centerX) + centerX) / 2 : width - marginRight;
+          const prevX =
+            index > 0 ? (((x(points[index - 1]?.key ?? "") ?? centerX) + centerX) / 2) : marginLeft;
+          return (
+            <rect
+              key={`${point.key}-hover`}
+              x={prevX}
+              y={marginTop}
+              width={Math.max(14, nextX - prevX)}
+              height={height - marginTop - marginBottom}
+              fill="transparent"
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseMove={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
+          );
+        })}
       </svg>
     </ChartShell>
   );
@@ -419,6 +589,7 @@ export function CloudVisibilityChart({
   points: DualDatum[];
   visibilityUnits: string;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
   const x = scalePoint({
     domain: points.map((point) => point.key),
@@ -433,12 +604,21 @@ export function CloudVisibilityChart({
     range: [height - marginBottom, marginTop],
   });
   const visibilityMax = Math.max(...points.map((point) => point.secondaryValue), 0);
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
     <ChartShell
       eyebrow="Sky clarity"
       title="Cloud cover + visibility"
       subtitle={`${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`}
+      tooltip={
+        hoveredPoint ? (
+          <ChartTooltip
+            title={hoveredPoint.label}
+            lines={[`${Math.round(hoveredPoint.value)}% cloud cover`, `${hoveredPoint.secondaryValue.toFixed(1)} ${visibilityUnits} visibility`]}
+          />
+        ) : null
+      }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Cloud cover and visibility chart">
@@ -467,6 +647,35 @@ export function CloudVisibilityChart({
           strokeWidth={2.5}
           curve={curveMonotoneX}
         />
+        {hoveredPoint && (
+          <HoverFocus
+            x={x(hoveredPoint.key) ?? 0}
+            y={Math.min(cloudScale(hoveredPoint.value), visibilityScale(hoveredPoint.secondaryValue))}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#89d3ff"
+          />
+        )}
+        {points.map((point, index) => {
+          const centerX = x(point.key) ?? 0;
+          const nextX =
+            index < points.length - 1 ? ((x(points[index + 1]?.key ?? "") ?? centerX) + centerX) / 2 : width - marginRight;
+          const prevX =
+            index > 0 ? (((x(points[index - 1]?.key ?? "") ?? centerX) + centerX) / 2) : marginLeft;
+          return (
+            <rect
+              key={`${point.key}-hover`}
+              x={prevX}
+              y={marginTop}
+              width={Math.max(14, nextX - prevX)}
+              height={height - marginTop - marginBottom}
+              fill="transparent"
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseMove={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
+          );
+        })}
       </svg>
     </ChartShell>
   );
@@ -602,7 +811,7 @@ export function buildWeeklyRangeSeries(daily: DailyWeather[]) {
   }));
 }
 
-function ChartShell({ eyebrow, title, subtitle, footer, children }: ChartShellProps) {
+function ChartShell({ eyebrow, title, subtitle, footer, tooltip, children }: ChartShellProps) {
   return (
     <article className="chart-card visx-card">
       <div className="chart-card-header">
@@ -612,9 +821,44 @@ function ChartShell({ eyebrow, title, subtitle, footer, children }: ChartShellPr
           <strong>{subtitle}</strong>
         </div>
       </div>
-      <div className="chart-shell visx-shell">{children}</div>
+      <div className="chart-shell visx-shell">
+        {tooltip}
+        {children}
+      </div>
       {footer}
     </article>
+  );
+}
+
+function ChartTooltip({ title, lines }: { title: string; lines: string[] }) {
+  return (
+    <div className="chart-tooltip">
+      <strong>{title}</strong>
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+    </div>
+  );
+}
+
+function HoverFocus({
+  x,
+  y,
+  top,
+  bottom,
+  color,
+}: {
+  x: number;
+  y: number;
+  top: number;
+  bottom: number;
+  color: string;
+}) {
+  return (
+    <Group pointerEvents="none">
+      <Line from={{ x, y: top }} to={{ x, y: bottom }} stroke="rgba(255,255,255,0.18)" strokeWidth={1.5} strokeDasharray="4 4" />
+      <circle cx={x} cy={y} r={5} fill={color} stroke="rgba(7, 18, 29, 0.9)" strokeWidth={2} />
+    </Group>
   );
 }
 
@@ -713,4 +957,8 @@ function alertTone(severity: string) {
 
 function roundToOne(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function roundLabel(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }

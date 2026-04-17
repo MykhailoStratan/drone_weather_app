@@ -879,6 +879,8 @@ input:focus-visible {
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
     rgba(255, 255, 255, 0.02);
   padding: 0.65rem;
+  position: relative;
+  overflow: hidden;
 }
 
 .chart-bars {
@@ -977,9 +979,33 @@ input:focus-visible {
   gap: 0.75rem;
   height: auto;
   min-height: 0;
-  overflow: hidden;
   flex: 1;
   align-content: start;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.6rem 0.72rem;
+  border-radius: 14px;
+  background: rgba(7, 18, 29, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+
+.chart-tooltip strong {
+  font-size: 0.86rem;
+}
+
+.chart-tooltip span {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 .visx-chart {
