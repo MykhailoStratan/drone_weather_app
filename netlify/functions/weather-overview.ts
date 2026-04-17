@@ -49,6 +49,6 @@ export default async (req: Request) => {
 };
 
 export const config: Config = {
-  path: "/api/weather/overview",
+  path: ["/api/weather/overview", "/api/v1/weather/overview"],
   method: "GET",
 };

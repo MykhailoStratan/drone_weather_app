@@ -40,6 +40,6 @@ export default async (req: Request) => {
 };
 
 export const config: Config = {
-  path: "/api/locations",
+  path: ["/api/locations", "/api/v1/locations"],
   method: "GET",
 };

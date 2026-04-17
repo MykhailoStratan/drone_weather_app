@@ -82,19 +82,19 @@ describe("App preferences", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
-        if (url.includes("/api/weather/overview")) {
+        if (url.includes("/weather/overview")) {
           return new Response(JSON.stringify(overviewPayload), { status: 200 });
         }
 
-        if (url.includes("/api/weather/timeline")) {
+        if (url.includes("/weather/timeline")) {
           return new Response(JSON.stringify(timelinePayload), { status: 200 });
         }
 
-        if (url.includes("/api/weather/alerts")) {
+        if (url.includes("/weather/alerts")) {
           return new Response(JSON.stringify(alertsPayload), { status: 200 });
         }
 
-        if (url.includes("/api/locations")) {
+        if (url.includes("/locations")) {
           return new Response(JSON.stringify([]), { status: 200 });
         }
 

@@ -6,12 +6,14 @@ import type {
   WeatherTimelineResponse,
 } from "../types";
 
+const API_BASE = "/api/v1";
+
 export async function searchLocations(query: string): Promise<LocationOption[]> {
   if (query.trim().length < 2) {
     return [];
   }
 
-  const response = await fetch(`/api/locations?query=${encodeURIComponent(query.trim())}`);
+  const response = await fetch(`${API_BASE}/locations?query=${encodeURIComponent(query.trim())}`);
   if (!response.ok) {
     throw new Error("Unable to search locations right now.");
   }
@@ -57,7 +59,7 @@ function buildWeatherQuery(location: LocationOption) {
 }
 
 export async function fetchWeatherOverview(location: LocationOption): Promise<WeatherOverviewResponse> {
-  const response = await fetch(`/api/weather/overview?${buildWeatherQuery(location)}`);
+  const response = await fetch(`${API_BASE}/weather/overview?${buildWeatherQuery(location)}`);
   if (!response.ok) {
     throw new Error("Weather overview is unavailable right now.");
   }
@@ -66,7 +68,7 @@ export async function fetchWeatherOverview(location: LocationOption): Promise<We
 }
 
 export async function fetchWeatherTimeline(location: LocationOption): Promise<WeatherTimelineResponse> {
-  const response = await fetch(`/api/weather/timeline?${buildWeatherQuery(location)}`);
+  const response = await fetch(`${API_BASE}/weather/timeline?${buildWeatherQuery(location)}`);
   if (!response.ok) {
     throw new Error("Weather timeline is unavailable right now.");
   }
@@ -75,7 +77,7 @@ export async function fetchWeatherTimeline(location: LocationOption): Promise<We
 }
 
 export async function fetchWeatherAlerts(location: LocationOption): Promise<WeatherAlertsResponse> {
-  const response = await fetch(`/api/weather/alerts?${buildWeatherQuery(location)}`);
+  const response = await fetch(`${API_BASE}/weather/alerts?${buildWeatherQuery(location)}`);
   if (!response.ok) {
     throw new Error("Weather alerts are unavailable right now.");
   }
