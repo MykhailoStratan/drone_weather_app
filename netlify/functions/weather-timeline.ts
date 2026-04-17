@@ -1,5 +1,5 @@
 import type { Config } from "@netlify/functions";
-import { CACHE_TTLS, createWeatherCacheKey, getCached, setCached } from "./_shared/cache";
+import { CACHE_TTLS, createWeatherCacheKey, getCacheState, setCached } from "./_shared/cache";
 import { createTimelineResponse, parseWeatherQuery, toWeatherQuery } from "./_shared/contracts";
 import { fetchTimelineBundle } from "./_shared/provider";
 import type { WeatherTimelineResponse } from "../../packages/weather-domain/src";
@@ -12,9 +12,10 @@ export default async (req: Request) => {
   try {
     const query = toWeatherQuery(parseWeatherQuery(new URL(req.url)));
     const cacheKey = createWeatherCacheKey("timeline", query);
-    const cached = getCached<WeatherTimelineResponse>(cacheKey);
-    if (cached) {
-      return Response.json(cached);
+    const cached = getCacheState<WeatherTimelineResponse>(cacheKey);
+    if (cached.state === "fresh") {
+      console.info(`[weather-api] timeline cache=fresh ${cacheKey}`);
+      return Response.json(cached.value);
     }
 
     const forecast = await fetchTimelineBundle(query);
@@ -27,8 +28,21 @@ export default async (req: Request) => {
       daily: forecast.daily,
     });
     setCached(cacheKey, response, CACHE_TTLS.timeline);
+    console.info(`[weather-api] timeline cache=${cached.state} refreshed ${cacheKey}`);
     return Response.json(response);
   } catch (error) {
+    const query = toWeatherQuery(parseWeatherQuery(new URL(req.url)));
+    const cacheKey = createWeatherCacheKey("timeline", query);
+    const cached = getCacheState<WeatherTimelineResponse>(cacheKey);
+    if (cached.state === "stale") {
+      console.warn(`[weather-api] timeline cache=stale-fallback ${cacheKey}`);
+      return Response.json(cached.value, {
+        headers: {
+          "x-skycanvas-cache": "stale",
+        },
+      });
+    }
+
     const message = error instanceof Error ? error.message : "Weather timeline is unavailable right now.";
     return Response.json({ error: message }, { status: 500 });
   }

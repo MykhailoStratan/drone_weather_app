@@ -17,11 +17,35 @@ export { searchLocationsFromProvider } from "./provider";
 
 export async function fetchWeatherFromProvider(location: LocationOption): Promise<WeatherPayload> {
   const query = toWeatherQuery(location);
-  const [overviewBundle, timelineBundle, alerts] = await Promise.all([
+  const [overviewResult, timelineResult, alertsResult] = await Promise.allSettled([
     fetchOverviewBundle(query),
     fetchTimelineBundle(query),
     fetchUnitedStatesAlerts(query),
   ]);
+
+  if (overviewResult.status === "rejected") {
+    throw overviewResult.reason;
+  }
+
+  const overviewBundle = overviewResult.value;
+  const timelineBundle =
+    timelineResult.status === "fulfilled"
+      ? timelineResult.value
+      : {
+          timezone: overviewBundle.timezone,
+          latitude: overviewBundle.latitude,
+          longitude: overviewBundle.longitude,
+          hourly: [],
+          daily: [overviewBundle.today],
+        };
+  const alerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
+
+  if (timelineResult.status === "rejected") {
+    console.warn("[weather-provider] legacy timeline degraded", timelineResult.reason);
+  }
+  if (alertsResult.status === "rejected") {
+    console.warn("[weather-provider] legacy alerts degraded", alertsResult.reason);
+  }
 
   const overview = createOverviewResponse({
     location: query,

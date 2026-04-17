@@ -2,6 +2,13 @@ import type { DailyWeather, LocationOption, WeatherAlert, WeatherSnapshot } from
 
 const GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
+const ALERTS_URL = "https://api.weather.gov/alerts/active";
+const REQUEST_TIMEOUTS_MS = {
+  geocoding: 3000,
+  overview: 4000,
+  timeline: 6500,
+  alerts: 3000,
+} as const;
 
 type GeocodingResponse = {
   results?: Array<{
@@ -95,6 +102,46 @@ export type ProviderTimelineBundle = {
   daily: DailyWeather[];
 };
 
+function logProviderRequest(label: string, startedAt: number, outcome: "ok" | "error") {
+  console.info(`[weather-provider] ${label} ${outcome} ${Date.now() - startedAt}ms`);
+}
+
+async function fetchJsonWithTimeout<T>(
+  input: string | URL,
+  init: RequestInit,
+  options: {
+    label: string;
+    timeoutMs: number;
+    errorMessage: string;
+  },
+) {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+
+  try {
+    const response = await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(options.errorMessage);
+    }
+
+    logProviderRequest(options.label, startedAt, "ok");
+    return (await response.json()) as T;
+  } catch (error) {
+    logProviderRequest(options.label, startedAt, "error");
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`${options.errorMessage} Request timed out.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function toSnapshot(source: ForecastResponse["current"]): WeatherSnapshot {
   return {
     time: source.time,
@@ -152,12 +199,11 @@ export async function searchLocationsFromProvider(query: string): Promise<Locati
   url.searchParams.set("language", "en");
   url.searchParams.set("format", "json");
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Unable to search locations right now.");
-  }
-
-  const data = (await response.json()) as GeocodingResponse;
+  const data = await fetchJsonWithTimeout<GeocodingResponse>(url, {}, {
+    label: "locations",
+    timeoutMs: REQUEST_TIMEOUTS_MS.geocoding,
+    errorMessage: "Unable to search locations right now.",
+  });
   return (data.results ?? []).map((entry) => ({
     id: entry.id,
     name: entry.name,
@@ -177,6 +223,8 @@ async function fetchForecastData(
     includeCurrent?: boolean;
     includeHourly?: boolean;
     includeDaily?: boolean;
+    requestLabel: string;
+    timeoutMs: number;
   },
 ) {
   const url = new URL(WEATHER_URL);
@@ -240,12 +288,11 @@ async function fetchForecastData(
     );
   }
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Weather data is unavailable right now.");
-  }
-
-  return (await response.json()) as ForecastResponse;
+  return fetchJsonWithTimeout<ForecastResponse>(url, {}, {
+    label: options.requestLabel,
+    timeoutMs: options.timeoutMs,
+    errorMessage: "Weather data is unavailable right now.",
+  });
 }
 
 export async function fetchOverviewBundle(
@@ -256,6 +303,8 @@ export async function fetchOverviewBundle(
     pastDays: 0,
     includeCurrent: true,
     includeDaily: true,
+    requestLabel: "overview",
+    timeoutMs: REQUEST_TIMEOUTS_MS.overview,
   });
 
   return {
@@ -275,6 +324,8 @@ export async function fetchTimelineBundle(
     pastDays: 7,
     includeHourly: true,
     includeDaily: true,
+    requestLabel: "timeline",
+    timeoutMs: REQUEST_TIMEOUTS_MS.timeline,
   });
 
   return {
@@ -291,21 +342,24 @@ export async function fetchUnitedStatesAlerts(location: Partial<LocationOption> 
     return [];
   }
 
-  const response = await fetch(
-    `https://api.weather.gov/alerts/active?point=${location.latitude},${location.longitude}`,
+  const url = new URL(ALERTS_URL);
+  url.searchParams.set("point", `${location.latitude},${location.longitude}`);
+
+  const data = await fetchJsonWithTimeout<NwsAlertsResponse>(
+    url,
     {
       headers: {
         Accept: "application/geo+json",
         "User-Agent": "SkyCanvasWeather/1.0",
       },
     },
+    {
+      label: "alerts",
+      timeoutMs: REQUEST_TIMEOUTS_MS.alerts,
+      errorMessage: "Weather alerts are unavailable right now.",
+    },
   );
 
-  if (!response.ok) {
-    return [];
-  }
-
-  const data = (await response.json()) as NwsAlertsResponse;
   return (data.features ?? []).map((feature) => ({
     id: feature.id,
     event: feature.properties.event ?? "Weather alert",

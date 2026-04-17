@@ -3,6 +3,11 @@ type CacheEntry<T> = {
   value: T;
 };
 
+export type CacheState<T> =
+  | { state: "miss"; value: null }
+  | { state: "fresh"; value: T }
+  | { state: "stale"; value: T };
+
 const cacheStore = new Map<string, CacheEntry<unknown>>();
 
 export function getCached<T>(key: string): T | null {
@@ -17,6 +22,19 @@ export function getCached<T>(key: string): T | null {
   }
 
   return entry.value as T;
+}
+
+export function getCacheState<T>(key: string): CacheState<T> {
+  const entry = cacheStore.get(key) as CacheEntry<T> | undefined;
+  if (!entry) {
+    return { state: "miss", value: null };
+  }
+
+  if (Date.now() > entry.expiresAt) {
+    return { state: "stale", value: entry.value };
+  }
+
+  return { state: "fresh", value: entry.value };
 }
 
 export function setCached<T>(key: string, value: T, ttlMs: number) {

@@ -1,5 +1,5 @@
 import type { Config } from "@netlify/functions";
-import { CACHE_TTLS, createWeatherCacheKey, getCached, setCached } from "./_shared/cache";
+import { CACHE_TTLS, createWeatherCacheKey, getCacheState, setCached } from "./_shared/cache";
 import { createOverviewResponse, parseWeatherQuery, toWeatherQuery } from "./_shared/contracts";
 import { fetchOverviewBundle } from "./_shared/provider";
 import type { WeatherOverviewResponse } from "../../packages/weather-domain/src";
@@ -12,9 +12,10 @@ export default async (req: Request) => {
   try {
     const query = toWeatherQuery(parseWeatherQuery(new URL(req.url)));
     const cacheKey = createWeatherCacheKey("overview", query);
-    const cached = getCached<WeatherOverviewResponse>(cacheKey);
-    if (cached) {
-      return Response.json(cached);
+    const cached = getCacheState<WeatherOverviewResponse>(cacheKey);
+    if (cached.state === "fresh") {
+      console.info(`[weather-api] overview cache=fresh ${cacheKey}`);
+      return Response.json(cached.value);
     }
 
     const forecast = await fetchOverviewBundle(query);
@@ -27,8 +28,21 @@ export default async (req: Request) => {
       today: forecast.today,
     });
     setCached(cacheKey, response, CACHE_TTLS.overview);
+    console.info(`[weather-api] overview cache=${cached.state} refreshed ${cacheKey}`);
     return Response.json(response);
   } catch (error) {
+    const query = toWeatherQuery(parseWeatherQuery(new URL(req.url)));
+    const cacheKey = createWeatherCacheKey("overview", query);
+    const cached = getCacheState<WeatherOverviewResponse>(cacheKey);
+    if (cached.state === "stale") {
+      console.warn(`[weather-api] overview cache=stale-fallback ${cacheKey}`);
+      return Response.json(cached.value, {
+        headers: {
+          "x-skycanvas-cache": "stale",
+        },
+      });
+    }
+
     const message = error instanceof Error ? error.message : "Weather overview is unavailable right now.";
     return Response.json({ error: message }, { status: 500 });
   }
