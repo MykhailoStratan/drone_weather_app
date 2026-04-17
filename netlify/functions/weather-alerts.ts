@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { CACHE_TTLS, createWeatherCacheKey, getCached, setCached } from "./_shared/cache";
 import { createAlertsResponse, parseWeatherQuery, toWeatherQuery } from "./_shared/contracts";
-import { fetchForecastBundle, fetchUnitedStatesAlerts } from "./_shared/provider";
+import { fetchUnitedStatesAlerts } from "./_shared/provider";
 import type { WeatherAlertsResponse } from "../../packages/weather-domain/src";
 
 export default async (req: Request) => {
@@ -17,15 +17,12 @@ export default async (req: Request) => {
       return Response.json(cached);
     }
 
-    const [forecast, alerts] = await Promise.all([
-      fetchForecastBundle(query),
-      fetchUnitedStatesAlerts(query),
-    ]);
+    const alerts = await fetchUnitedStatesAlerts(query);
     const response = createAlertsResponse({
       location: query,
-      timezone: forecast.timezone,
-      latitude: forecast.latitude,
-      longitude: forecast.longitude,
+      timezone: query.timezone ?? "auto",
+      latitude: query.latitude,
+      longitude: query.longitude,
       alerts,
     });
     setCached(cacheKey, response, CACHE_TTLS.alerts);

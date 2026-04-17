@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { CACHE_TTLS, createWeatherCacheKey, getCached, setCached } from "./_shared/cache";
 import { createTimelineResponse, parseWeatherQuery, toWeatherQuery } from "./_shared/contracts";
-import { fetchForecastBundle } from "./_shared/provider";
+import { fetchTimelineBundle } from "./_shared/provider";
 import type { WeatherTimelineResponse } from "../../packages/weather-domain/src";
 
 export default async (req: Request) => {
@@ -17,7 +17,7 @@ export default async (req: Request) => {
       return Response.json(cached);
     }
 
-    const forecast = await fetchForecastBundle(query);
+    const forecast = await fetchTimelineBundle(query);
     const response = createTimelineResponse({
       location: query,
       timezone: forecast.timezone,

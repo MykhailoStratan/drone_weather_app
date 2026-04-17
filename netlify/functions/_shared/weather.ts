@@ -7,7 +7,8 @@ import {
   toWeatherQuery,
 } from "./contracts";
 import {
-  fetchForecastBundle,
+  fetchOverviewBundle,
+  fetchTimelineBundle,
   fetchUnitedStatesAlerts,
   searchLocationsFromProvider,
 } from "./provider";
@@ -16,33 +17,35 @@ export { searchLocationsFromProvider } from "./provider";
 
 export async function fetchWeatherFromProvider(location: LocationOption): Promise<WeatherPayload> {
   const query = toWeatherQuery(location);
-  const forecast = await fetchForecastBundle(query);
-  const alerts = await fetchUnitedStatesAlerts(query);
-  const today = forecast.daily[7] ?? forecast.daily[0];
+  const [overviewBundle, timelineBundle, alerts] = await Promise.all([
+    fetchOverviewBundle(query),
+    fetchTimelineBundle(query),
+    fetchUnitedStatesAlerts(query),
+  ]);
 
   const overview = createOverviewResponse({
     location: query,
-    timezone: forecast.timezone,
-    latitude: forecast.latitude,
-    longitude: forecast.longitude,
-    current: forecast.current,
-    today,
+    timezone: overviewBundle.timezone,
+    latitude: overviewBundle.latitude,
+    longitude: overviewBundle.longitude,
+    current: overviewBundle.current,
+    today: overviewBundle.today,
   });
 
   const timeline = createTimelineResponse({
     location: query,
-    timezone: forecast.timezone,
-    latitude: forecast.latitude,
-    longitude: forecast.longitude,
-    hourly: forecast.hourly,
-    daily: forecast.daily,
+    timezone: timelineBundle.timezone,
+    latitude: timelineBundle.latitude,
+    longitude: timelineBundle.longitude,
+    hourly: timelineBundle.hourly,
+    daily: timelineBundle.daily,
   });
 
   const alertsResponse = createAlertsResponse({
     location: query,
-    timezone: forecast.timezone,
-    latitude: forecast.latitude,
-    longitude: forecast.longitude,
+    timezone: overviewBundle.timezone,
+    latitude: overviewBundle.latitude,
+    longitude: overviewBundle.longitude,
     alerts,
   });
 

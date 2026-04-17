@@ -79,11 +79,18 @@ type NwsAlertsResponse = {
   }>;
 };
 
-export type ProviderForecastBundle = {
+export type ProviderOverviewBundle = {
   timezone: string;
   latitude: number;
   longitude: number;
   current: WeatherSnapshot;
+  today: DailyWeather;
+};
+
+export type ProviderTimelineBundle = {
+  timezone: string;
+  latitude: number;
+  longitude: number;
   hourly: WeatherSnapshot[];
   daily: DailyWeather[];
 };
@@ -162,72 +169,118 @@ export async function searchLocationsFromProvider(query: string): Promise<Locati
   }));
 }
 
-export async function fetchForecastBundle(location: Pick<LocationOption, "latitude" | "longitude"> & Partial<LocationOption>): Promise<ProviderForecastBundle> {
+async function fetchForecastData(
+  location: Pick<LocationOption, "latitude" | "longitude"> & Partial<LocationOption>,
+  options: {
+    forecastDays: number;
+    pastDays: number;
+    includeCurrent?: boolean;
+    includeHourly?: boolean;
+    includeDaily?: boolean;
+  },
+) {
   const url = new URL(WEATHER_URL);
   url.searchParams.set("latitude", String(location.latitude));
   url.searchParams.set("longitude", String(location.longitude));
   url.searchParams.set("timezone", location.timezone ?? "auto");
-  url.searchParams.set("forecast_days", "7");
-  url.searchParams.set("past_days", "7");
-  url.searchParams.set(
-    "current",
-    [
-      "temperature_2m",
-      "wind_speed_10m",
-      "wind_gusts_10m",
-      "wind_direction_10m",
-      "precipitation",
-      "precipitation_probability",
-      "cloud_cover",
-      "visibility",
-      "pressure_msl",
-      "weather_code",
-      "is_day",
-    ].join(","),
-  );
-  url.searchParams.set(
-    "hourly",
-    [
-      "temperature_2m",
-      "wind_speed_10m",
-      "wind_gusts_10m",
-      "wind_direction_10m",
-      "precipitation",
-      "precipitation_probability",
-      "cloud_cover",
-      "visibility",
-      "pressure_msl",
-      "weather_code",
-      "is_day",
-    ].join(","),
-  );
-  url.searchParams.set(
-    "daily",
-    [
-      "weather_code",
-      "sunrise",
-      "sunset",
-      "temperature_2m_max",
-      "temperature_2m_min",
-      "wind_speed_10m_max",
-      "wind_gusts_10m_max",
-      "precipitation_probability_max",
-      "precipitation_hours",
-      "precipitation_sum",
-    ].join(","),
-  );
+  url.searchParams.set("forecast_days", String(options.forecastDays));
+  url.searchParams.set("past_days", String(options.pastDays));
+
+  if (options.includeCurrent) {
+    url.searchParams.set(
+      "current",
+      [
+        "temperature_2m",
+        "wind_speed_10m",
+        "wind_gusts_10m",
+        "wind_direction_10m",
+        "precipitation",
+        "precipitation_probability",
+        "cloud_cover",
+        "visibility",
+        "pressure_msl",
+        "weather_code",
+        "is_day",
+      ].join(","),
+    );
+  }
+  if (options.includeHourly) {
+    url.searchParams.set(
+      "hourly",
+      [
+        "temperature_2m",
+        "wind_speed_10m",
+        "wind_gusts_10m",
+        "wind_direction_10m",
+        "precipitation",
+        "precipitation_probability",
+        "cloud_cover",
+        "visibility",
+        "pressure_msl",
+        "weather_code",
+        "is_day",
+      ].join(","),
+    );
+  }
+  if (options.includeDaily) {
+    url.searchParams.set(
+      "daily",
+      [
+        "weather_code",
+        "sunrise",
+        "sunset",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "wind_speed_10m_max",
+        "wind_gusts_10m_max",
+        "precipitation_probability_max",
+        "precipitation_hours",
+        "precipitation_sum",
+      ].join(","),
+    );
+  }
 
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Weather data is unavailable right now.");
   }
 
-  const data = (await response.json()) as ForecastResponse;
+  return (await response.json()) as ForecastResponse;
+}
+
+export async function fetchOverviewBundle(
+  location: Pick<LocationOption, "latitude" | "longitude"> & Partial<LocationOption>,
+): Promise<ProviderOverviewBundle> {
+  const data = await fetchForecastData(location, {
+    forecastDays: 1,
+    pastDays: 0,
+    includeCurrent: true,
+    includeDaily: true,
+  });
+
   return {
     timezone: data.timezone,
     latitude: data.latitude,
     longitude: data.longitude,
     current: toSnapshot(data.current),
+    today: zipDaily(data.daily)[0],
+  };
+}
+
+export async function fetchTimelineBundle(
+  location: Pick<LocationOption, "latitude" | "longitude"> & Partial<LocationOption>,
+): Promise<ProviderTimelineBundle> {
+  const data = await fetchForecastData(location, {
+    forecastDays: 7,
+    pastDays: 7,
+    includeHourly: true,
+    includeDaily: true,
+  });
+
+  return {
+    timezone: data.timezone,
+    latitude: data.latitude,
+    longitude: data.longitude,
     hourly: zipHourly(data.hourly),
     daily: zipDaily(data.daily),
   };

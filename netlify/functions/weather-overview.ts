@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { CACHE_TTLS, createWeatherCacheKey, getCached, setCached } from "./_shared/cache";
 import { createOverviewResponse, parseWeatherQuery, toWeatherQuery } from "./_shared/contracts";
-import { fetchForecastBundle } from "./_shared/provider";
+import { fetchOverviewBundle } from "./_shared/provider";
 import type { WeatherOverviewResponse } from "../../packages/weather-domain/src";
 
 export default async (req: Request) => {
@@ -17,15 +17,14 @@ export default async (req: Request) => {
       return Response.json(cached);
     }
 
-    const forecast = await fetchForecastBundle(query);
-    const today = forecast.daily[7] ?? forecast.daily[0];
+    const forecast = await fetchOverviewBundle(query);
     const response = createOverviewResponse({
       location: query,
       timezone: forecast.timezone,
       latitude: forecast.latitude,
       longitude: forecast.longitude,
       current: forecast.current,
-      today,
+      today: forecast.today,
     });
     setCached(cacheKey, response, CACHE_TTLS.overview);
     return Response.json(response);
