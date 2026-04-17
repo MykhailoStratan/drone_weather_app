@@ -61,9 +61,9 @@ type AlertTimelineChartProps = {
 const baseDimensions: ChartDimensions = {
   width: 420,
   height: 176,
-  marginTop: 14,
+  marginTop: 16,
   marginRight: 16,
-  marginBottom: 26,
+  marginBottom: 34,
   marginLeft: 16,
 };
 
@@ -92,7 +92,12 @@ export function TemperatureCurveChart({
   const [min, max] = summarizeRange(points.map((point) => point.value));
 
   return (
-    <ChartShell eyebrow="Hourly arc" title="Temperature curve" subtitle={`${min} to ${max} ${units}`}>
+    <ChartShell
+      eyebrow="Hourly arc"
+      title="Temperature curve"
+      subtitle={`${min} to ${max} ${units}`}
+      footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
+    >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Temperature curve">
         <LinearGradient id="temperature-fill" from="rgba(255, 213, 108, 0.5)" to="rgba(255, 126, 72, 0.06)" />
         {points.map((point) => {
@@ -128,7 +133,6 @@ export function TemperatureCurveChart({
           curve={curveMonotoneX}
         />
       </svg>
-      <AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />
     </ChartShell>
   );
 }
@@ -164,6 +168,7 @@ export function PrecipitationOverlayChart({
       eyebrow="Hourly rain"
       title="Precipitation + probability"
       subtitle={subtitle}
+      footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Precipitation and probability chart">
         <LinearGradient id="precip-bars" from="rgba(141, 241, 211, 0.92)" to="rgba(90, 151, 255, 0.35)" />
@@ -192,7 +197,6 @@ export function PrecipitationOverlayChart({
           curve={curveMonotoneX}
         />
       </svg>
-      <AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />
     </ChartShell>
   );
 }
@@ -217,7 +221,12 @@ export function WindDirectionChart({
   const [min, max] = summarizeRange(points.map((point) => point.value));
 
   return (
-    <ChartShell eyebrow="Wind field" title="Speed + direction" subtitle={`${min} to ${max} ${units}`}>
+    <ChartShell
+      eyebrow="Wind field"
+      title="Speed + direction"
+      subtitle={`${min} to ${max} ${units}`}
+      footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
+    >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Wind speed and direction chart">
         {points.map((point, index) => {
           const barX = x(point.key) ?? 0;
@@ -257,7 +266,6 @@ export function WindDirectionChart({
           );
         })}
       </svg>
-      <AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />
     </ChartShell>
   );
 }
@@ -273,7 +281,7 @@ export function WeeklyRangeChart({
   const height = 176;
   const marginTop = 14;
   const marginRight = 28;
-  const marginBottom = 26;
+  const marginBottom = 34;
   const marginLeft = 28;
   const x = scalePoint({
     domain: points.map((point) => point.key),
@@ -287,7 +295,12 @@ export function WeeklyRangeChart({
   const maxValue = Math.max(...points.map((point) => point.max));
 
   return (
-    <ChartShell eyebrow="Next seven days" title="Min/max temperature range" subtitle={`${Math.round(minValue)} to ${Math.round(maxValue)} ${units}`}>
+    <ChartShell
+      eyebrow="Next seven days"
+      title="Min/max temperature range"
+      subtitle={`${Math.round(minValue)} to ${Math.round(maxValue)} ${units}`}
+      footer={<AxisFooter labels={points.map((point) => point.shortLabel)} dense />}
+    >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart visx-chart-large" role="img" aria-label="Seven day temperature range chart">
         {points.map((point) => {
           const cx = x(point.key) ?? 0;
@@ -296,13 +309,12 @@ export function WeeklyRangeChart({
           return (
             <Group key={point.key}>
               <Line from={{ x: cx, y: yMax }} to={{ x: cx, y: yMin }} stroke="rgba(255, 255, 255, 0.24)" strokeWidth={8} strokeLinecap="round" />
-              <circle cx={cx} cy={yMax} r={7} fill="#ffd56c" />
-              <circle cx={cx} cy={yMin} r={7} fill="#89d3ff" />
+              <circle cx={cx} cy={yMax} r={6} fill="#ffd56c" />
+              <circle cx={cx} cy={yMin} r={6} fill="#89d3ff" />
             </Group>
           );
         })}
       </svg>
-      <AxisFooter labels={points.map((point) => point.shortLabel)} dense />
     </ChartShell>
   );
 }
@@ -370,7 +382,12 @@ export function PressureTrendChart({
   const [min, max] = summarizeRange(points.map((point) => point.value));
 
   return (
-    <ChartShell eyebrow="Pressure" title="Trend through the day" subtitle={`${min} to ${max} hPa`}>
+    <ChartShell
+      eyebrow="Pressure"
+      title="Trend through the day"
+      subtitle={`${min} to ${max} hPa`}
+      footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
+    >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Pressure trend chart">
         <LinearGradient id="pressure-fill" from="rgba(137, 211, 255, 0.35)" to="rgba(137, 211, 255, 0.04)" />
         <AreaClosed<HourlyDatum>
@@ -391,7 +408,6 @@ export function PressureTrendChart({
           curve={curveMonotoneX}
         />
       </svg>
-      <AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />
     </ChartShell>
   );
 }
@@ -423,6 +439,7 @@ export function CloudVisibilityChart({
       eyebrow="Sky clarity"
       title="Cloud cover + visibility"
       subtitle={`${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`}
+      footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Cloud cover and visibility chart">
         <AreaClosed<DualDatum>
@@ -451,7 +468,6 @@ export function CloudVisibilityChart({
           curve={curveMonotoneX}
         />
       </svg>
-      <AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />
     </ChartShell>
   );
 }
