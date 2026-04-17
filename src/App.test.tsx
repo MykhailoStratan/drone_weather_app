@@ -117,5 +117,6 @@ describe("App preferences", () => {
     fireEvent.click(await view.findByRole("button", { name: "F" }));
 
     expect(document.querySelector(".temperature-unit")?.textContent).toBe("F");
+    view.unmount();
   });
 });
