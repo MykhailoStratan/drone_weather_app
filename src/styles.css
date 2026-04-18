@@ -1875,6 +1875,44 @@ input:focus-visible {
   line-height: 1.5;
 }
 
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 1rem;
+  background: var(--amber-soft);
+  border-bottom: 1px solid var(--amber-edge);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--amber);
+}
+
+.offline-banner-text {
+  flex: 1;
+  text-transform: uppercase;
+}
+
+.offline-banner-retry {
+  flex-shrink: 0;
+  padding: 0.18rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--amber-edge);
+  border-radius: var(--radius-sm);
+  color: var(--amber);
+  cursor: pointer;
+}
+
+.offline-banner-retry:hover {
+  background: var(--amber-edge);
+}
+
 .error-card {
   border-color: var(--danger-edge);
   background-image: radial-gradient(ellipse 60% 50% at 50% 0%, var(--danger-soft), transparent 70%);
