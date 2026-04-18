@@ -18,6 +18,27 @@ type TleRecord = {
   line2: string;
 };
 
+const MAX_GNSS_SCORE = 100;
+const MIN_GNSS_SCORE = 12;
+const GNSS_BASE_SCORE = 48;
+const USABLE_SAT_WEIGHT = 2.5;
+const VISIBLE_SAT_WEIGHT = 1.1;
+const MAX_CLOUD_PENALTY = 14;
+const CLOUD_COVER_FACTOR = 0.06;
+const MIN_GOOD_VISIBILITY_KM = 10;
+const VISIBILITY_PENALTY_PER_KM = 1.8;
+const MAX_PRECIP_PROB_PENALTY = 10;
+const PRECIP_PROB_FACTOR = 0.05;
+const MAX_PRECIP_SUM_PENALTY = 8;
+const PRECIP_SUM_FACTOR = 1.8;
+const KP_INDEX_FACTOR = 1.5;
+const GEOMAGNETIC_SCALE_FACTOR = 2.5;
+const MAX_SPACE_WEATHER_PENALTY = 20;
+const USABLE_ELEVATION_DEG = 10;
+const SCORE_EXCELLENT_THRESHOLD = 85;
+const SCORE_GOOD_THRESHOLD = 70;
+const KP_GEOMAGNETIC_STORM_THRESHOLD = 5;
+
 const CONSTELLATION_GROUPS = [
   { key: "gps", group: "gps-ops" },
   { key: "galileo", group: "galileo" },
@@ -53,16 +74,16 @@ export function scoreGnssEstimate(
   const { weather, environment } = request;
   const visibilityKm = weather.visibilityMeters / 1000;
 
-  let gnssScore = Math.min(100, 48 + counts.usable * 2.5 + counts.visible * 1.1);
+  let gnssScore = Math.min(MAX_GNSS_SCORE, GNSS_BASE_SCORE + counts.usable * USABLE_SAT_WEIGHT + counts.visible * VISIBLE_SAT_WEIGHT);
   gnssScore -= environmentPenalty(environment);
-  gnssScore -= Math.min(14, weather.cloudCover * 0.06);
-  gnssScore -= visibilityKm < 10 ? (10 - visibilityKm) * 1.8 : 0;
-  gnssScore -= Math.min(10, weather.precipitationProbability * 0.05);
-  gnssScore -= Math.min(8, weather.precipitationSum * 1.8);
+  gnssScore -= Math.min(MAX_CLOUD_PENALTY, weather.cloudCover * CLOUD_COVER_FACTOR);
+  gnssScore -= visibilityKm < MIN_GOOD_VISIBILITY_KM ? (MIN_GOOD_VISIBILITY_KM - visibilityKm) * VISIBILITY_PENALTY_PER_KM : 0;
+  gnssScore -= Math.min(MAX_PRECIP_PROB_PENALTY, weather.precipitationProbability * PRECIP_PROB_FACTOR);
+  gnssScore -= Math.min(MAX_PRECIP_SUM_PENALTY, weather.precipitationSum * PRECIP_SUM_FACTOR);
 
   const spaceWeatherPenalty = computeSpaceWeatherPenalty(spaceWeather);
   gnssScore -= spaceWeatherPenalty;
-  gnssScore = Math.max(12, Math.round(gnssScore));
+  gnssScore = Math.max(MIN_GNSS_SCORE, Math.round(gnssScore));
 
   const estimatedVisibleSatellites = counts.visible;
   const estimatedUsableSatellites = Math.max(0, Math.min(counts.usable, estimatedVisibleSatellites));
@@ -96,13 +117,13 @@ function buildGnssSummary(args: {
     trees: "trees or hills nearby",
   } satisfies Record<GnssEnvironmentPreset, string>;
 
-  if (args.score >= 85) {
+  if (args.score >= SCORE_EXCELLENT_THRESHOLD) {
     return `${args.visible} GNSS satellites are likely above the horizon, with about ${args.usable} in strong geometry for a quick lock under ${environmentLabel[args.environment]}.`;
   }
-  if (args.score >= 70) {
+  if (args.score >= SCORE_GOOD_THRESHOLD) {
     return `${args.visible} GNSS satellites are likely visible, with around ${args.usable} expected to be usable. ${environmentLabel[args.environment]} may slow acquisition slightly.`;
   }
-  if (args.kpIndex >= 5) {
+  if (args.kpIndex >= KP_GEOMAGNETIC_STORM_THRESHOLD) {
     return `Geomagnetic activity is elevated, so even with ${args.visible} visible satellites the usable lock may be less stable than normal.`;
   }
   return `${args.visible} GNSS satellites may be visible, but only about ${args.usable} look comfortably usable once ${environmentLabel[args.environment]} is factored in.`;
@@ -119,7 +140,7 @@ function environmentPenalty(environment: GnssEnvironmentPreset) {
 }
 
 function computeSpaceWeatherPenalty(spaceWeather: SpaceWeatherSnapshot) {
-  return Math.min(20, Math.round(spaceWeather.kpIndex * 1.5 + spaceWeather.geomagneticScale * 2.5));
+  return Math.min(MAX_SPACE_WEATHER_PENALTY, Math.round(spaceWeather.kpIndex * KP_INDEX_FACTOR + spaceWeather.geomagneticScale * GEOMAGNETIC_SCALE_FACTOR));
 }
 
 async function fetchConstellationRecords() {
@@ -222,7 +243,7 @@ function estimateSatelliteCounts(
       if (elevationDegrees > 0) {
         visible += 1;
       }
-      if (elevationDegrees >= 10) {
+      if (elevationDegrees >= USABLE_ELEVATION_DEG) {
         usable += 1;
       }
     }
