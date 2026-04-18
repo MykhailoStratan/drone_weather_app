@@ -6,10 +6,18 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:mobile": "npm run build && npx cap sync",
+    "cap:copy": "npx cap copy",
+    "cap:sync": "npx cap sync",
+    "android": "npx cap open android",
+    "ios": "npx cap open ios",
     "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
+    "@capacitor/ios": "^8.3.1",
     "@netlify/functions": "^3.1.8",
     "@visx/curve": "^3.12.0",
     "@visx/gradient": "^3.12.0",
@@ -26,6 +34,7 @@
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "@capacitor/cli": "^8.3.1",
     "jsdom": "^26.1.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",

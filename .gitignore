@@ -6,3 +6,9 @@ vite.config.d.ts
 
 # Local Netlify folder
 .netlify
+
+# Capacitor local files
+android/.gradle/
+android/local.properties
+ios/App/Pods/
+ios/App/DerivedData/
