@@ -627,6 +627,57 @@ input:focus-visible {
   letter-spacing: 0.02em;
 }
 
+.hero-hour-slider {
+  margin-top: 0.25rem;
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--rule);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.hero-hour-slider-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.hero-hour-slider-header strong {
+  display: block;
+  margin-top: 0.18rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.hero-hour-slider-readout {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--amber);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.hero-hour-slider input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--amber);
+  cursor: pointer;
+}
+
+.hero-hour-slider-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+}
+
 /* Wind compass ----------------------------------------------- */
 .wind-spotlight {
   padding: 1.1rem;
@@ -1597,6 +1648,10 @@ input:focus-visible {
   .hour-summary-row,
   .range-header,
   .saved-header { flex-wrap: wrap; }
+
+  .hero-hour-slider-header {
+    flex-wrap: wrap;
+  }
 
   .readiness-chip-grid { grid-template-columns: 1fr; }
 

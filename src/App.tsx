@@ -226,6 +226,7 @@ function App() {
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedHourIndex, setSelectedHourIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -303,6 +304,7 @@ function App() {
 
       setWeather(initialPayload);
       setSelectedDate(overview.today.date);
+      setSelectedHourIndex(-1);
       setDetailView("hourly");
       setResults([]);
       setQuery(location.name);
@@ -437,7 +439,9 @@ function App() {
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
   const hasAlerts = (weather?.alerts.length ?? 0) > 0;
   const showSearchFeedback = query.trim().length >= 2;
-  const currentSnapshot = resolveCurrentSnapshot(hourlyForDay, weather?.current);
+  const selectedSnapshot = resolveSelectedSnapshot(hourlyForDay, selectedHourIndex, weather?.current);
+  const currentSnapshot = selectedSnapshot.snapshot;
+  const activeHourIndex = selectedSnapshot.index;
   const weatherIcon = weatherGlyph(currentSnapshot?.weatherCode ?? 0, currentSnapshot?.isDay === 1);
   const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
   const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
@@ -459,6 +463,24 @@ function App() {
       temperatureMax: temperatureDisplay(day.temperatureMax, preferences.temperatureUnit),
     })),
   );
+  const activeHourSnapshot = hourlyForDay[activeHourIndex] ?? currentSnapshot;
+  const activeHourLabel = activeHourSnapshot ? formatHourLabel(activeHourSnapshot.time, preferences.hourCycle) : "";
+  const activeHourTimestamp = activeHourSnapshot ? formatTime(activeHourSnapshot.time, preferences.hourCycle) : "";
+
+  useEffect(() => {
+    if (!hourlyForDay.length) {
+      setSelectedHourIndex(-1);
+      return;
+    }
+
+    setSelectedHourIndex((currentIndex) => {
+      if (currentIndex >= 0 && currentIndex < hourlyForDay.length) {
+        return currentIndex;
+      }
+
+      return findNearestSnapshotIndex(hourlyForDay);
+    });
+  }, [hourlyForDay]);
 
   useEffect(() => {
     if (!activeLocation || !currentSnapshot || !currentDay) {
@@ -759,6 +781,31 @@ function App() {
                         Rain {Math.round(currentSnapshot.precipitationProbability)}%
                       </span>
                     </div>
+                    {hourlyForDay.length > 0 && (
+                      <div className="hero-hour-slider">
+                        <div className="hero-hour-slider-header">
+                          <div>
+                            <span className="section-label">Hour scrubber</span>
+                            <strong>{activeHourLabel}</strong>
+                          </div>
+                          <span className="hero-hour-slider-readout">{activeHourTimestamp}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.max(hourlyForDay.length - 1, 0)}
+                          step={1}
+                          value={activeHourIndex}
+                          onChange={(event) => setSelectedHourIndex(Number(event.target.value))}
+                          aria-label="Select forecast hour"
+                        />
+                        <div className="hero-hour-slider-scale" aria-hidden="true">
+                          <span>{formatHourLabel(hourlyForDay[0].time, preferences.hourCycle)}</span>
+                          <span>{formatHourLabel(hourlyForDay[Math.floor((hourlyForDay.length - 1) / 2)].time, preferences.hourCycle)}</span>
+                          <span>{formatHourLabel(hourlyForDay[hourlyForDay.length - 1].time, preferences.hourCycle)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="wind-spotlight">
@@ -941,7 +988,11 @@ function App() {
                             key={day.date}
                             type="button"
                             className={day.date === selectedDate ? "day-chip active" : "day-chip"}
-                            onClick={() => setSelectedDate(day.date)}
+                            onClick={() => {
+                              setSelectedDate(day.date);
+                              const nextHourlyForDay = weather.hourly.filter((entry) => entry.time.startsWith(day.date));
+                              setSelectedHourIndex(findNearestSnapshotIndex(nextHourlyForDay));
+                            }}
                           >
                             <span>{phase}</span>
                             <strong>{formatDayLabel(day.date)}</strong>
@@ -1134,17 +1185,33 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
   );
 }
 
-function resolveCurrentSnapshot(hourlyForDay: WeatherSnapshot[], current: WeatherPayload["current"] | undefined) {
+function resolveSelectedSnapshot(hourlyForDay: WeatherSnapshot[], selectedHourIndex: number, current: WeatherPayload["current"] | undefined) {
   if (!hourlyForDay.length) {
-    return current;
+    return { snapshot: current, index: 0 };
+  }
+
+  const index =
+    selectedHourIndex >= 0 && selectedHourIndex < hourlyForDay.length
+      ? selectedHourIndex
+      : findNearestSnapshotIndex(hourlyForDay);
+
+  return {
+    snapshot: hourlyForDay[index],
+    index,
+  };
+}
+
+function findNearestSnapshotIndex(hourlyForDay: WeatherSnapshot[]) {
+  if (!hourlyForDay.length) {
+    return 0;
   }
 
   const now = Date.now();
-  return hourlyForDay.reduce((closest, entry) => {
+  return hourlyForDay.reduce((closestIndex, entry, index) => {
     const distance = Math.abs(new Date(entry.time).getTime() - now);
-    const closestDistance = Math.abs(new Date(closest.time).getTime() - now);
-    return distance < closestDistance ? entry : closest;
-  }, hourlyForDay[0]);
+    const closestDistance = Math.abs(new Date(hourlyForDay[closestIndex].time).getTime() - now);
+    return distance < closestDistance ? index : closestIndex;
+  }, 0);
 }
 
 export default App;

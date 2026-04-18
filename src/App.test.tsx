@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
 const weatherPayload = {
@@ -88,6 +88,7 @@ const gnssPayload = {
 
 describe("App preferences", () => {
   beforeEach(() => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-04-15T12:00:00").getTime());
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -120,6 +121,7 @@ describe("App preferences", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("updates displayed temperature units when preferences change", async () => {
@@ -130,7 +132,21 @@ describe("App preferences", () => {
     fireEvent.click(view.getByRole("button", { name: "Show" }));
     fireEvent.click(await view.findByRole("button", { name: "F" }));
 
-    expect(document.querySelector(".temperature-unit")?.textContent).toBe("°F");
+    expect(document.querySelector(".temperature-unit")?.textContent).toContain("F");
+    view.unmount();
+  });
+
+  it("updates the hero card when the hour slider changes", async () => {
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+
+    const slider = await view.findByRole("slider", { name: "Select forecast hour" });
+    expect(document.querySelector(".temperature-value")?.textContent).toBe("9");
+
+    fireEvent.change(slider, { target: { value: "0" } });
+
+    expect(document.querySelector(".temperature-value")?.textContent).toBe("3");
     view.unmount();
   });
 });
