@@ -5,7 +5,7 @@ import { Group } from "@visx/group";
 import { scaleBand, scaleLinear, scalePoint, scaleTime } from "@visx/scale";
 import { AreaClosed, Bar, Line, LinePath } from "@visx/shape";
 import { formatHourLabel, formatTime } from "../lib/format";
-import type { DailyWeather, WeatherAlert } from "../types";
+import type { WeatherAlert } from "../types";
 
 type HourlyDatum = {
   key: string;
@@ -799,75 +799,6 @@ export function AlertTimelineChart({ alerts, hourCycle }: AlertTimelineChartProp
       </div>
     </ChartShell>
   );
-}
-
-export function buildHourlySeries(
-  entries: Array<{
-    time: string;
-    isDay: number;
-    temperature: number;
-    precipitationAmount: number;
-    precipitationProbability: number;
-    windSpeed: number;
-    windDirection: number;
-    pressure: number;
-    cloudCover: number;
-    visibility: number;
-  }>,
-  hourCycle: "12h" | "24h",
-  visibilityFactor: number,
-) {
-  return {
-    temperature: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      time: entry.time,
-      label: formatHourLabel(entry.time, hourCycle),
-      shortLabel: formatHourTick(entry.time, hourCycle),
-      isDay: entry.isDay === 1,
-      value: entry.temperature,
-    })),
-    precipitation: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      time: entry.time,
-      label: formatHourLabel(entry.time, hourCycle),
-      shortLabel: formatHourTick(entry.time, hourCycle),
-      value: entry.precipitationAmount,
-      probability: entry.precipitationProbability,
-    })),
-    wind: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      time: entry.time,
-      label: formatHourLabel(entry.time, hourCycle),
-      shortLabel: formatHourTick(entry.time, hourCycle),
-      value: entry.windSpeed,
-      direction: entry.windDirection,
-    })),
-    pressure: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      time: entry.time,
-      label: formatHourLabel(entry.time, hourCycle),
-      shortLabel: formatHourTick(entry.time, hourCycle),
-      value: entry.pressure,
-    })),
-    cloudVisibility: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      time: entry.time,
-      label: formatHourLabel(entry.time, hourCycle),
-      shortLabel: formatHourTick(entry.time, hourCycle),
-      value: entry.cloudCover,
-      secondaryValue: roundToOne(entry.visibility * visibilityFactor),
-    })),
-  };
-}
-
-export function buildWeeklyRangeSeries(daily: DailyWeather[]) {
-  return daily.map((day) => ({
-    key: day.date,
-    label: formatTime(`${day.date}T12:00`, "12h"),
-    shortLabel: new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(new Date(`${day.date}T00:00:00`)),
-    min: day.temperatureMin,
-    max: day.temperatureMax,
-  }));
 }
 
 function ChartShell({ eyebrow, title, subtitle, footer, tooltip, children }: ChartShellProps) {

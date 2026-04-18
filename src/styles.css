@@ -1922,6 +1922,13 @@ input:focus-visible {
   color: var(--danger) !important;
 }
 
+.charts-loading-placeholder {
+  min-height: 176px;
+  background: var(--bg-raise);
+  border-radius: var(--radius);
+  opacity: 0.4;
+}
+
 .spinner {
   width: 34px;
   height: 34px;
