@@ -93,6 +93,7 @@ function App() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState<{ message: string; location: LocationOption } | null>(null);
   const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const [detailView, setDetailView] = useState<DetailView>("hourly");
   const [hourlyCardsOpen, setHourlyCardsOpen] = useState(false);
@@ -176,6 +177,7 @@ function App() {
     setLoading(true);
     setDetailsLoading(true);
     setMessage("");
+    setLoadError(null);
 
     try {
       const overview = await fetchWeatherOverview(location);
@@ -247,7 +249,8 @@ function App() {
       });
     } catch (error) {
       if (requestId.current === nextRequestId) {
-        setMessage(error instanceof Error ? error.message : "Unable to load weather.");
+        const message = error instanceof Error ? error.message : "Unable to load weather.";
+        setLoadError({ message, location });
         setLoading(false);
         setDetailsLoading(false);
       }
@@ -430,7 +433,25 @@ function App() {
 
   return (
     <main className="app-shell">
-      {!weather || !currentDay || !currentSnapshot ? (
+      {loadError && !weather ? (
+        <section className="loading-card error-card">
+          <p className="error-card-message">{loadError.message}</p>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => void loadWeather(loadError.location)}
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => { setLoadError(null); setSearchOpen(true); }}
+          >
+            Search for a different location
+          </button>
+        </section>
+      ) : !weather || !currentDay || !currentSnapshot ? (
         <section className="loading-card">
           <div className="spinner" />
           <p>Pulling the latest forecast and recent history...</p>

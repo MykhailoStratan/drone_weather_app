@@ -1875,6 +1875,15 @@ input:focus-visible {
   line-height: 1.5;
 }
 
+.error-card {
+  border-color: var(--danger-edge);
+  background-image: radial-gradient(ellipse 60% 50% at 50% 0%, var(--danger-soft), transparent 70%);
+}
+
+.error-card-message {
+  color: var(--danger) !important;
+}
+
 .spinner {
   width: 34px;
   height: 34px;
