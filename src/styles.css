@@ -119,6 +119,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overscroll-behavior-y: none;
   background-color: var(--bg-void);
   background-image:
     radial-gradient(ellipse 55% 35% at 18% 0%, rgba(245, 183, 58, 0.05), transparent 60%),
@@ -195,7 +196,7 @@ h4 { font-size: 0.92rem; font-weight: 600; }
 .app-shell {
   width: min(1320px, calc(100vw - 2.5rem));
   margin: 0 auto;
-  padding: 1.75rem 0 3rem;
+  padding: calc(1.75rem + env(safe-area-inset-top, 0px)) 0 calc(3rem + env(safe-area-inset-bottom, 0px));
   position: relative;
   z-index: 1;
 }
@@ -228,7 +229,7 @@ h4 { font-size: 0.92rem; font-weight: 600; }
   padding: 1.1rem;
   align-self: start;
   position: sticky;
-  top: 1.25rem;
+  top: calc(1.25rem + env(safe-area-inset-top, 0px));
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -1690,7 +1691,7 @@ input:focus-visible {
 @media (max-width: 720px) {
   .app-shell {
     width: calc(100vw - 1.25rem);
-    padding-top: 1rem;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
   }
 
   .hero-mini-grid { grid-template-columns: 1fr; }
@@ -1701,6 +1702,20 @@ input:focus-visible {
 
   .hero-hour-slider-header {
     flex-wrap: wrap;
+  }
+
+  .search-actions,
+  .saved-dropdown-row {
+    grid-template-columns: 1fr;
+  }
+
+  .secondary-button,
+  .ghost-button,
+  .saved-remove-button,
+  .compact-button,
+  .segment,
+  .detail-tab {
+    min-height: 44px;
   }
 
   .readiness-chip-grid { grid-template-columns: 1fr; }
