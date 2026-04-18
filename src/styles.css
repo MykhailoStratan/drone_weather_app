@@ -201,11 +201,197 @@ h4 { font-size: 0.92rem; font-weight: 600; }
   z-index: 1;
 }
 
-.top-layout {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+/* ─────────────────────────────────────────────────────────
+   Location bar (compact top bar)
+   ───────────────────────────────────────────────────────── */
+.location-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-xl);
+  margin-bottom: 0.75rem;
+}
+
+.location-bar-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.location-bar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 6px var(--teal);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.location-bar-brand {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.location-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.location-bar-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location-bar-sep {
+  color: var(--text-quiet);
+  flex-shrink: 0;
+}
+
+.location-bar-condition {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location-status-badge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-raise);
+  border: 1px solid var(--rule);
+  color: var(--text-tertiary);
+}
+
+.location-status-badge.live {
+  color: var(--teal);
+  background: var(--teal-soft);
+  border-color: var(--teal-edge);
+}
+
+.location-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.bar-toggle-button {
+  padding: 0.32rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  background: var(--bg-raise);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.bar-toggle-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.bar-toggle-button.active {
+  background: var(--amber-glow);
+  color: var(--amber);
+  border-color: var(--amber-edge);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Location bar expandable panel
+   ───────────────────────────────────────────────────────── */
+.location-bar-panel {
+  display: flex;
   gap: 1rem;
-  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-xl);
+  margin-bottom: 0.75rem;
+}
+
+.lbar-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.lbar-search-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lbar-search-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.lbar-search-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.7rem;
+  background: var(--bg-raise);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.lbar-saved-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.lbar-saved-label {
+  flex-shrink: 0;
+}
+
+.lbar-prefs-section {
+  flex: none;
+}
+
+.lbar-prefs-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.lbar-pref-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -1674,14 +1860,11 @@ input:focus-visible {
    Responsive
    ───────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
-  .top-layout,
   .overview-grid,
   .hero-stats,
   .hourly-chart-grid {
     grid-template-columns: 1fr;
   }
-
-  .sidebar-card { position: static; }
 
   .hero-mini-grid      { grid-template-columns: repeat(2, 1fr); }
   .readiness-chip-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1697,8 +1880,20 @@ input:focus-visible {
   .hero-mini-grid { grid-template-columns: 1fr; }
   .hero-condition-row,
   .hour-summary-row,
-  .range-header,
-  .saved-header { flex-wrap: wrap; }
+  .range-header { flex-wrap: wrap; }
+
+  .location-bar {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .location-bar-identity { order: 0; }
+  .location-bar-controls { order: 1; margin-left: 0; }
+  .location-bar-info     { order: 2; flex-basis: 100%; }
+
+  .location-bar-panel { flex-direction: column; }
+
+  .lbar-prefs-row { gap: 0.75rem; }
 
   .hero-hour-slider-header {
     flex-wrap: wrap;
@@ -1730,8 +1925,9 @@ input:focus-visible {
   .stat-panel,
   .timeline-panel,
   .hourly-panel,
-  .sidebar-card,
-  .loading-card {
+  .loading-card,
+  .location-bar,
+  .location-bar-panel {
     border-radius: var(--radius-lg);
   }
 }

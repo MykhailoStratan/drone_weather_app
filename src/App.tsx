@@ -227,6 +227,7 @@ function App() {
   const [savedLocations, setSavedLocations] = useState<LocationOption[]>([]);
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedHourIndex, setSelectedHourIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
@@ -545,139 +546,137 @@ function App() {
         </section>
       ) : (
         <>
-          <section className="top-layout">
-            <aside className="sidebar-card">
-              <div className="sidebar-copy">
-                <p className="eyebrow">SkyCanvas · Weather</p>
-                <h1>Current weather</h1>
-                <div className="sidebar-location-summary">
-                  <strong>{weather.locationLabel}</strong>
-                  <span>{weatherLabel(currentSnapshot.weatherCode)}</span>
-                </div>
-                {dataStatus && (
-                  <p className="cache-status">
-                    {dataStatus.source === "cached" ? "CACHED" : "LIVE"} · UPDATED{" "}
-                    {formatSavedAtLabel(dataStatus.savedAt)}
-                  </p>
-                )}
-              </div>
+          <div className="location-bar">
+            <div className="location-bar-identity">
+              <span className="location-bar-dot" />
+              <span className="location-bar-brand">SkyCanvas · Weather</span>
+            </div>
+            <div className="location-bar-info">
+              <span className="location-bar-name">{weather.locationLabel}</span>
+              <span className="location-bar-sep" aria-hidden="true">·</span>
+              <span className="location-bar-condition">{weatherLabel(currentSnapshot.weatherCode)}</span>
+              {dataStatus && (
+                <span className={`location-status-badge ${dataStatus.source}`}>
+                  {dataStatus.source === "cached" ? "CACHED" : "LIVE"}
+                </span>
+              )}
+            </div>
+            <div className="location-bar-controls">
+              <button
+                type="button"
+                className={searchOpen ? "bar-toggle-button active" : "bar-toggle-button"}
+                onClick={() => setSearchOpen((o) => !o)}
+                aria-expanded={searchOpen}
+              >
+                Search · Places
+              </button>
+              <button
+                type="button"
+                className={preferencesOpen ? "bar-toggle-button active" : "bar-toggle-button"}
+                onClick={() => setPreferencesOpen((o) => !o)}
+                aria-expanded={preferencesOpen}
+              >
+                {preferences.temperatureUnit === "f" ? "°F" : "°C"} · {preferences.windUnit === "mph" ? "mph" : "km/h"} · {preferences.hourCycle}
+              </button>
+            </div>
+          </div>
 
-              <div className="search-panel sidebar-search">
-                <label className="search-label" htmlFor="location-search">
-                  Search location
-                </label>
-                <div className="search-row sidebar-search-row">
-                  <input
-                    id="location-search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Vancouver, Seattle, Tokyo..."
-                  />
-                  <div className="search-actions">
-                    <button type="button" className="secondary-button compact-button" onClick={requestCurrentLocation}>
-                      Locate
-                    </button>
-                    <button type="button" className="ghost-button compact-button" onClick={saveActiveLocation}>
-                      Save
-                    </button>
-                  </div>
-                </div>
-
-                {showSearchFeedback && (
-                  <div className="results-panel compact-results">
-                    {searching ? (
-                      <p className="muted">Searching...</p>
-                    ) : results.length > 0 ? (
-                      <select
-                        className="search-results-select"
-                        defaultValue=""
-                        onChange={(event) => {
-                          const option = results.find((entry) => entry.id === Number(event.target.value));
-                          if (option) {
-                            void loadWeather(option);
-                            event.target.value = "";
-                          }
-                        }}
-                      >
-                        <option value="">Choose a matching location</option>
-                        {results.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {[option.name, option.admin1, option.country].filter(Boolean).join(", ")}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="muted search-empty-state">No matches yet. Try a nearby city or broader region.</p>
-                    )}
-                  </div>
-                )}
-
-                {message && <p className="status-message">{message}</p>}
-              </div>
-
-              <div className="saved-panel">
-                <div className="saved-header">
-                  <div>
-                    <p className="section-label">Saved places</p>
-                    <h3>Quick access</h3>
-                  </div>
-                </div>
-
-                {savedLocations.length === 0 ? (
-                  <p className="muted">No saved places yet. Save a city to pin it here.</p>
-                ) : (
-                  <div className="saved-dropdown-row">
-                    <select
-                      className="saved-select"
-                      value=""
-                      onChange={(event) => {
-                        const value = Number(event.target.value);
-                        if (value) {
-                          handleSavedLocationChange(value);
-                          event.target.value = "";
-                        }
-                      }}
-                    >
-                      <option value="">Choose a saved place</option>
-                      {savedLocations.map((location) => (
-                        <option key={location.id} value={location.id}>
-                          {[location.name, location.admin1, location.country].filter(Boolean).join(", ")}
-                        </option>
-                      ))}
-                    </select>
-                    {activeLocation && activeLocation.id !== 0 && savedLocations.some((location) => location.id === activeLocation.id) && (
-                      <button
-                        type="button"
-                        className="saved-remove-button"
-                        onClick={() => removeSavedLocation(activeLocation.id)}
-                        aria-label={`Remove ${activeLocation.name}`}
-                      >
-                        Remove
+          {(searchOpen || preferencesOpen) && (
+            <div className="location-bar-panel">
+              {searchOpen && (
+                <div className="lbar-section lbar-search-section">
+                  <div className="lbar-search-row">
+                    <input
+                      id="location-search"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Vancouver, Seattle, Tokyo..."
+                    />
+                    <div className="search-actions">
+                      <button type="button" className="secondary-button compact-button" onClick={requestCurrentLocation}>
+                        Locate
                       </button>
-                    )}
+                      <button type="button" className="ghost-button compact-button" onClick={saveActiveLocation}>
+                        Save
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="saved-panel">
-                <div className="saved-header">
-                  <div>
-                    <p className="section-label">Preferences</p>
-                    <h3>Display units</h3>
-                  </div>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => setPreferencesOpen((open) => !open)}
-                    aria-expanded={preferencesOpen}
-                  >
-                    {preferencesOpen ? "Hide" : "Show"}
-                  </button>
+                  {showSearchFeedback && (
+                    <div className="results-panel compact-results">
+                      {searching ? (
+                        <p className="muted">Searching...</p>
+                      ) : results.length > 0 ? (
+                        <select
+                          className="search-results-select"
+                          defaultValue=""
+                          onChange={(event) => {
+                            const option = results.find((entry) => entry.id === Number(event.target.value));
+                            if (option) {
+                              void loadWeather(option);
+                              event.target.value = "";
+                              setSearchOpen(false);
+                            }
+                          }}
+                        >
+                          <option value="">Choose a matching location</option>
+                          {results.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {[option.name, option.admin1, option.country].filter(Boolean).join(", ")}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="muted search-empty-state">No matches yet. Try a nearby city or broader region.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {message && <p className="status-message">{message}</p>}
+
+                  {savedLocations.length > 0 && (
+                    <div className="lbar-saved-row">
+                      <span className="section-label lbar-saved-label">Saved</span>
+                      <div className="saved-dropdown-row">
+                        <select
+                          className="saved-select"
+                          value=""
+                          onChange={(event) => {
+                            const value = Number(event.target.value);
+                            if (value) {
+                              handleSavedLocationChange(value);
+                              event.target.value = "";
+                              setSearchOpen(false);
+                            }
+                          }}
+                        >
+                          <option value="">Choose a saved place</option>
+                          {savedLocations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {[location.name, location.admin1, location.country].filter(Boolean).join(", ")}
+                            </option>
+                          ))}
+                        </select>
+                        {activeLocation && activeLocation.id !== 0 && savedLocations.some((location) => location.id === activeLocation.id) && (
+                          <button
+                            type="button"
+                            className="saved-remove-button"
+                            onClick={() => removeSavedLocation(activeLocation.id)}
+                            aria-label={`Remove ${activeLocation.name}`}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                {preferencesOpen && (
-                  <>
-                    <div className="preference-group">
+              {preferencesOpen && (
+                <div className="lbar-section lbar-prefs-section">
+                  <div className="lbar-prefs-row">
+                    <div className="lbar-pref-group">
                       <span className="preference-label">Theme</span>
                       <div className="segmented-control">
                         <button
@@ -697,7 +696,7 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="preference-group">
+                    <div className="lbar-pref-group">
                       <span className="preference-label">Temperature</span>
                       <div className="segmented-control">
                         <button
@@ -717,7 +716,7 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="preference-group">
+                    <div className="lbar-pref-group">
                       <span className="preference-label">Wind & visibility</span>
                       <div className="segmented-control">
                         <button
@@ -749,7 +748,7 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="preference-group">
+                    <div className="lbar-pref-group">
                       <span className="preference-label">Clock</span>
                       <div className="segmented-control">
                         <button
@@ -768,12 +767,13 @@ function App() {
                         </button>
                       </div>
                     </div>
-                  </>
-                )}
-              </div>
-            </aside>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-            <section className="overview-grid premium-grid primary-priority">
+          <section className="overview-grid premium-grid primary-priority">
               <article className="primary-panel hero-conditions">
                 <div className="hero-topline">
                   <div className="hero-heading">
@@ -964,7 +964,6 @@ function App() {
                   </section>
                 </div>
               </article>
-            </section>
           </section>
 
           <section className="detail-switcher-panel">
