@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTimelineChart,
   CloudVisibilityChart,
@@ -327,12 +327,21 @@ function App() {
     }
   }
 
-  const currentDay = weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0];
-  const hourlyForDay = weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [];
+  const currentDay = useMemo(
+    () => weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0],
+    [weather?.daily, selectedDate],
+  );
+  const hourlyForDay = useMemo(
+    () => weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [],
+    [weather?.hourly, selectedDate],
+  );
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
   const hasAlerts = (weather?.alerts.length ?? 0) > 0;
   const showSearchFeedback = query.trim().length >= 2;
-  const selectedSnapshot = resolveSelectedSnapshot(hourlyForDay, selectedHourIndex, weather?.current);
+  const selectedSnapshot = useMemo(
+    () => resolveSelectedSnapshot(hourlyForDay, selectedHourIndex, weather?.current),
+    [hourlyForDay, selectedHourIndex, weather?.current],
+  );
   const currentSnapshot = selectedSnapshot.snapshot;
   const activeHourIndex = selectedSnapshot.index;
   const weatherIcon = weatherGlyph(currentSnapshot?.weatherCode ?? 0, currentSnapshot?.isDay === 1);
@@ -375,15 +384,9 @@ function App() {
     });
   }, [hourlyForDay]);
 
-  useEffect(() => {
-    if (!activeLocation || !currentSnapshot || !currentDay) {
-      return;
-    }
-
-    let cancelled = false;
-    setGnssLoading(true);
-
-    void fetchGnssEstimate({
+  const gnssInput = useMemo(() => {
+    if (!activeLocation || !currentSnapshot || !currentDay) return null;
+    return {
       location: {
         latitude: activeLocation.latitude,
         longitude: activeLocation.longitude,
@@ -400,27 +403,30 @@ function App() {
         precipitationSum: currentDay.precipitationSum,
         windGusts: currentDay.windGustsMax,
       },
-    })
+    };
+  }, [activeLocation, currentSnapshot, currentDay, environmentPreset]);
+
+  useEffect(() => {
+    if (!gnssInput) return;
+
+    let cancelled = false;
+    setGnssLoading(true);
+
+    void fetchGnssEstimate(gnssInput)
       .then((response) => {
-        if (!cancelled) {
-          setGnssEstimate(response);
-        }
+        if (!cancelled) setGnssEstimate(response);
       })
       .catch(() => {
-        if (!cancelled) {
-          setGnssEstimate(null);
-        }
+        if (!cancelled) setGnssEstimate(null);
       })
       .finally(() => {
-        if (!cancelled) {
-          setGnssLoading(false);
-        }
+        if (!cancelled) setGnssLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [activeLocation, currentDay, currentSnapshot, environmentPreset]);
+  }, [gnssInput]);
 
   return (
     <main className="app-shell">
