@@ -555,6 +555,38 @@ button {
   margin-top: 0.6rem;
 }
 
+.search-results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.search-results-list li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.search-result-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.42rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  background: var(--bg-raise);
+  border: none;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.search-result-item:hover {
+  background: var(--bg-hover);
+  color: var(--amber);
+}
+
 .search-empty-state {
   margin: 0;
   padding: 0.2rem 0.1rem 0;

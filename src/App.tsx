@@ -633,25 +633,22 @@ function App() {
                       {searching ? (
                         <p className="muted">Searching...</p>
                       ) : results.length > 0 ? (
-                        <select
-                          className="search-results-select"
-                          defaultValue=""
-                          onChange={(event) => {
-                            const option = results.find((entry) => entry.id === Number(event.target.value));
-                            if (option) {
-                              void loadWeather(option);
-                              event.target.value = "";
-                              setSearchOpen(false);
-                            }
-                          }}
-                        >
-                          <option value="">Choose a matching location</option>
+                        <ul className="search-results-list">
                           {results.map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {[option.name, option.admin1, option.country].filter(Boolean).join(", ")}
-                            </option>
+                            <li key={option.id}>
+                              <button
+                                type="button"
+                                className="search-result-item"
+                                onClick={() => {
+                                  void loadWeather(option);
+                                  setSearchOpen(false);
+                                }}
+                              >
+                                {[option.name, option.admin1, option.country].filter(Boolean).join(", ")}
+                              </button>
+                            </li>
                           ))}
-                        </select>
+                        </ul>
                       ) : (
                         <p className="muted search-empty-state">No matches yet. Try a nearby city or broader region.</p>
                       )}
