@@ -50,6 +50,7 @@ import {
   defaultPreferences,
 } from "./lib/storage";
 import { resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph, formatSavedAtLabel } from "./lib/app-utils";
+import { validateLocationSearchQuery } from "../packages/weather-domain/src/location-search";
 import type {
   GnssEnvironmentPreset,
   GnssEstimateResponse,
@@ -59,6 +60,17 @@ import type {
 
 function roundCoord(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function createCurrentLocation(latitude: number, longitude: number): LocationOption {
+  return {
+    id: 0,
+    name: "Current location",
+    country: "Detected by device",
+    latitude: roundCoord(latitude),
+    longitude: roundCoord(longitude),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
 }
 
 function readLocationFromUrl(): LocationOption | null {
@@ -137,8 +149,10 @@ function App() {
   const [environmentPreset, setEnvironmentPreset] = useState<GnssEnvironmentPreset>("open");
   const [gnssEstimate, setGnssEstimate] = useState<GnssEstimateResponse | null>(null);
   const [gnssLoading, setGnssLoading] = useState(false);
+  const [requestedLocation, setRequestedLocation] = useState<LocationOption | null>(null);
   const debounce = useRef<number | null>(null);
   const requestId = useRef(0);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const storedLocations = readStoredLocations();
@@ -163,15 +177,7 @@ function App() {
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async ({ coords }) => {
-          const currentLocation: LocationOption = {
-            id: 0,
-            name: "Current location",
-            country: "Detected by device",
-            latitude: roundCoord(coords.latitude),
-            longitude: roundCoord(coords.longitude),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          };
-          await loadWeather(currentLocation);
+          await loadWeather(createCurrentLocation(coords.latitude, coords.longitude));
         },
         () => {
           if (!cachedOverview) void loadWeather(starterLocation);
@@ -191,6 +197,11 @@ function App() {
     }
 
     if (query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+
+    if (!validateLocationSearchQuery(query).valid) {
       setResults([]);
       return;
     }
@@ -220,6 +231,7 @@ function App() {
   async function loadWeather(location: LocationOption) {
     const nextRequestId = requestId.current + 1;
     requestId.current = nextRequestId;
+    setRequestedLocation(location);
     setLoading(true);
     setDetailsLoading(true);
     setMessage("");
@@ -253,6 +265,7 @@ function App() {
       storeOverview(location, overview);
       setDataStatus({ savedAt: new Date().toISOString(), source: "live" });
       storeLocation(LAST_LOCATION_KEY, location);
+      setLoadError(null);
       setLoading(false);
 
       void Promise.allSettled([fetchWeatherTimeline(location), fetchWeatherAlerts(location)]).then((results) => {
@@ -307,6 +320,7 @@ function App() {
       } else {
         const message = error instanceof Error ? error.message : "Unable to load weather.";
         setLoadError({ message, location });
+        setSearchOpen(true);
       }
       setLoading(false);
       setDetailsLoading(false);
@@ -314,13 +328,15 @@ function App() {
   }
 
   async function loadSearchResults(value: string) {
-    if (!/^[\p{L}\p{M}\s',.'\-]{2,100}$/u.test(value.trim())) {
+    const validation = validateLocationSearchQuery(value);
+    if (!validation.valid) {
       setResults([]);
+      setSearching(false);
       return;
     }
     setSearching(true);
     try {
-      const matches = await searchLocations(value);
+      const matches = await searchLocations(validation.normalized);
       setResults(matches);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to search locations.");
@@ -340,16 +356,7 @@ function App() {
 
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
-        const currentLocation: LocationOption = {
-          id: 0,
-          name: "Current location",
-          country: "Detected by device",
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        };
-
-        await loadWeather(currentLocation);
+        await loadWeather(createCurrentLocation(coords.latitude, coords.longitude));
       },
       () => {
         setLoading(false);
@@ -388,6 +395,20 @@ function App() {
     if (nextLocation) {
       void loadWeather(nextLocation);
     }
+  }
+
+  function retryRequestedLocation() {
+    if (requestedLocation) {
+      void loadWeather(requestedLocation);
+    } else if (loadError?.location) {
+      void loadWeather(loadError.location);
+    }
+  }
+
+  function focusSearchInput() {
+    setSearchOpen(true);
+    searchInputRef.current?.focus();
+    setMessage("Search for a city or region to try another forecast.");
   }
 
   const currentDay = useMemo(
@@ -431,6 +452,20 @@ function App() {
   const activeHourSnapshot = hourlyForDay[activeHourIndex] ?? currentSnapshot;
   const activeHourLabel = activeHourSnapshot ? formatHourLabel(activeHourSnapshot.time, preferences.hourCycle) : "";
   const activeHourTimestamp = activeHourSnapshot ? formatTime(activeHourSnapshot.time, preferences.hourCycle) : "";
+  const showWeatherLayout = Boolean(weather && currentDay && currentSnapshot);
+  const locationBarName =
+    weather?.locationLabel ??
+    ([requestedLocation?.name, requestedLocation?.admin1, requestedLocation?.country].filter(Boolean).join(", ") ||
+      "Current weather");
+  const locationBarCondition =
+    showWeatherLayout && currentSnapshot
+      ? weatherLabel(currentSnapshot.weatherCode)
+      : loadError
+        ? "Forecast unavailable"
+        : "Loading forecast";
+  const resolvedWeather = weather as WeatherPayload;
+  const resolvedCurrentDay = currentDay as WeatherPayload["daily"][number];
+  const resolvedCurrentSnapshot = currentSnapshot as WeatherPayload["current"];
 
   useEffect(() => {
     if (!hourlyForDay.length) {
@@ -493,40 +528,24 @@ function App() {
 
   return (
     <main className="app-shell">
-      {loadError && !weather ? (
-        <section className="loading-card error-card">
-          <p className="error-card-message">{loadError.message}</p>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => void loadWeather(loadError.location)}
-          >
-            Retry
-          </button>
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => { setLoadError(null); setSearchOpen(true); }}
-          >
-            Search for a different location
-          </button>
+      {message && (
+        <section className="status-banner" role="status">
+          <div>
+            <p className="section-label">Status update</p>
+            <strong>{message}</strong>
+          </div>
         </section>
-      ) : !weather || !currentDay || !currentSnapshot ? (
-        <section className="loading-card">
-          <div className="spinner" />
-          <p>Pulling the latest forecast and recent history...</p>
-        </section>
-      ) : (
-        <>
+      )}
+      <>
           <div className="location-bar">
             <div className="location-bar-identity">
               <span className="location-bar-dot" />
               <span className="location-bar-brand">SkyCanvas · Weather</span>
             </div>
             <div className="location-bar-info">
-              <span className="location-bar-name">{weather.locationLabel}</span>
+              <span className="location-bar-name">{locationBarName}</span>
               <span className="location-bar-sep" aria-hidden="true">·</span>
-              <span className="location-bar-condition">{weatherLabel(currentSnapshot.weatherCode)}</span>
+              <span className="location-bar-condition">{locationBarCondition}</span>
               {dataStatus && (
                 <span className={`location-status-badge ${dataStatus.source}`}>
                   {dataStatus.source === "cached" ? "CACHED" : "LIVE"}
@@ -553,13 +572,18 @@ function App() {
             </div>
           </div>
 
-          {(searchOpen || preferencesOpen) && (
+          {(searchOpen || preferencesOpen || Boolean(loadError) || !showWeatherLayout) && (
             <div className="location-bar-panel">
-              {searchOpen && (
+              {(searchOpen || Boolean(loadError) || !showWeatherLayout) && (
                 <div className="lbar-section lbar-search-section">
+                  <label className="search-label" htmlFor="location-search">
+                    Search location
+                  </label>
                   <div className="lbar-search-row">
                     <input
+                      ref={searchInputRef}
                       id="location-search"
+                      aria-label="Search location"
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                       placeholder="Vancouver, Seattle, Tokyo..."
@@ -750,36 +774,43 @@ function App() {
               <button
                 type="button"
                 className="offline-banner-retry"
-                onClick={() => activeLocation && void loadWeather(activeLocation)}
+                onClick={retryRequestedLocation}
               >
                 Retry
               </button>
             </div>
           )}
 
+          {showWeatherLayout ? (() => {
+            const weather = resolvedWeather;
+            const currentDay = resolvedCurrentDay;
+            const currentSnapshot = resolvedCurrentSnapshot;
+
+            return (
+            <>
           <section className="overview-grid premium-grid primary-priority">
               <article className="primary-panel hero-conditions">
                 <div className="hero-topline">
                   <div className="hero-heading">
-                    <p className="section-label">{weather.locationLabel}</p>
+                    <p className="section-label">{resolvedWeather.locationLabel}</p>
                     <div className="hero-condition-row">
                       <span className="hero-condition-icon">{weatherIcon}</span>
                       <div>
-                        <h2>{weatherLabel(currentSnapshot.weatherCode)}</h2>
+                        <h2>{weatherLabel(resolvedCurrentSnapshot.weatherCode)}</h2>
                         <p className="hero-supporting-copy">
                           Updated for {formatDayLabel(currentDay.date)} · {weather.timezone}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
+                  <span className="summary-badge">{formatDayLabel(resolvedCurrentDay.date)}</span>
                 </div>
 
                 <div className="hero-stats">
                   <div className="temperature-block">
                     <div className="temperature-main">
                       <span className="temperature-value">
-                        {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
+                        {temperatureDisplay(resolvedCurrentSnapshot.temperature, preferences.temperatureUnit)}
                       </span>
                       <span className="temperature-unit">°{temperatureUnitLabel}</span>
                     </div>
@@ -789,7 +820,7 @@ function App() {
                         {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)}°
                       </span>
                       <span className="hero-pill">
-                        Rain {Math.round(currentSnapshot.precipitationProbability)}%
+                        Rain {Math.round(resolvedCurrentSnapshot.precipitationProbability)}%
                       </span>
                     </div>
                     {hourlyForDay.length > 0 && (
@@ -826,7 +857,7 @@ function App() {
                       <div className="wind-arrow-ring">
                         <span
                           className="wind-arrow"
-                          style={{ transform: `rotate(${currentSnapshot.windDirection}deg)` }}
+                          style={{ transform: `rotate(${resolvedCurrentSnapshot.windDirection}deg)` }}
                           aria-hidden="true"
                         />
                       </div>
@@ -835,9 +866,9 @@ function App() {
                           {windDirectionLabel(currentSnapshot.windDirection)} · {Math.round(currentSnapshot.windDirection)}°
                         </strong>
                         <p>
-                          {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} sustained
+                          {windSpeedDisplay(resolvedCurrentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} sustained
                           <br />
-                          gusts to {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
+                          gusts to {windSpeedDisplay(resolvedCurrentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
                         </p>
                       </div>
                     </div>
@@ -845,16 +876,16 @@ function App() {
                 </div>
 
                 <div className="hero-mini-grid">
-                  <Metric icon={<IconSunrise />} label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
-                  <Metric icon={<IconSunset />} label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
-                  <Metric icon={<IconRain />} label="Rain chance" value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
-                  <Metric icon={<IconCloud />} label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
+                  <Metric icon={<IconSunrise />} label="Sunrise" value={formatTime(resolvedCurrentDay.sunrise, preferences.hourCycle)} />
+                  <Metric icon={<IconSunset />} label="Sunset" value={formatTime(resolvedCurrentDay.sunset, preferences.hourCycle)} />
+                  <Metric icon={<IconRain />} label="Rain chance" value={`${Math.round(resolvedCurrentSnapshot.precipitationProbability)}%`} />
+                  <Metric icon={<IconCloud />} label="Cloud cover" value={`${Math.round(resolvedCurrentSnapshot.cloudCover)}%`} />
                   <Metric
                     icon={<IconEye />}
                     label="Visibility"
-                    value={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
+                    value={`${visibilityDisplay(resolvedCurrentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
                   />
-                  <Metric icon={<IconGauge />} label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
+                  <Metric icon={<IconGauge />} label="Pressure" value={`${Math.round(resolvedCurrentSnapshot.pressure)} hPa`} />
                 </div>
               </article>
 
@@ -862,8 +893,8 @@ function App() {
                 <div className="support-panel-section">
                   <p className="section-label">Flight readiness</p>
                   <FlightReadinessPanel
-                    currentDay={currentDay}
-                    currentSnapshot={currentSnapshot}
+                    currentDay={resolvedCurrentDay}
+                    currentSnapshot={resolvedCurrentSnapshot}
                     environmentPreset={environmentPreset}
                     onEnvironmentChange={setEnvironmentPreset}
                     gnssEstimate={gnssEstimate}
@@ -879,7 +910,7 @@ function App() {
                   <section className="support-panel-section">
                     <div className="support-panel-header">
                       <p className="section-label">Today summary</p>
-                      <h3>{formatDayLabel(currentDay.date)}</h3>
+                      <h3>{formatDayLabel(resolvedCurrentDay.date)}</h3>
                     </div>
                     <div className="compact-info-grid">
                       <div className="range-summary compact-summary">
@@ -891,31 +922,31 @@ function App() {
                           </strong>
                         </div>
                         <p className="muted">
-                          {Math.round(currentDay.precipitationSum)} mm across {Math.round(currentDay.precipitationHours)} hours.
+                          {Math.round(resolvedCurrentDay.precipitationSum)} mm across {Math.round(resolvedCurrentDay.precipitationHours)} hours.
                         </p>
                       </div>
                       <div className="range-summary compact-summary">
                         <div className="range-header">
                           <span>Wind ceiling</span>
                           <strong>
-                            {windSpeedDisplay(currentDay.windSpeedMax, preferences.windUnit)} {windUnitLabel}
+                            {windSpeedDisplay(resolvedCurrentDay.windSpeedMax, preferences.windUnit)} {windUnitLabel}
                           </strong>
                         </div>
                         <p className="muted">
-                          Gusts up to {windSpeedDisplay(currentDay.windGustsMax, preferences.windUnit)} {windUnitLabel}.
+                          Gusts up to {windSpeedDisplay(resolvedCurrentDay.windGustsMax, preferences.windUnit)} {windUnitLabel}.
                         </p>
                       </div>
                       <div className="range-summary compact-summary">
                         <div className="range-header">
                           <span>Visibility · cover</span>
                           <strong>
-                            {visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
+                            {visibilityDisplay(resolvedCurrentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
                           </strong>
                         </div>
                         <div className="progress-meter" aria-hidden="true">
-                          <span style={{ width: `${Math.min(100, Math.max(8, currentSnapshot.cloudCover))}%` }} />
+                          <span style={{ width: `${Math.min(100, Math.max(8, resolvedCurrentSnapshot.cloudCover))}%` }} />
                         </div>
-                        <p className="muted">{Math.round(currentSnapshot.cloudCover)}% cloud cover.</p>
+                        <p className="muted">{Math.round(resolvedCurrentSnapshot.cloudCover)}% cloud cover.</p>
                       </div>
                     </div>
                   </section>
@@ -928,20 +959,20 @@ function App() {
                     <div className="compact-info-grid">
                       <div className="status-card compact-summary">
                         <span>Alerts</span>
-                        <strong>{weather.alerts.length}</strong>
+                        <strong>{resolvedWeather.alerts.length}</strong>
                         <p>
-                          {weather.alerts.length > 0 ? "Warnings listed below." : "No severe alerts right now."}
+                          {resolvedWeather.alerts.length > 0 ? "Warnings listed below." : "No severe alerts right now."}
                         </p>
                       </div>
                       <div className="status-card compact-summary">
                         <span>Local time</span>
-                        <strong>{formatTime(currentSnapshot.time, preferences.hourCycle)}</strong>
-                        <p>Synced with {weather.timezone}.</p>
+                        <strong>{formatTime(resolvedCurrentSnapshot.time, preferences.hourCycle)}</strong>
+                        <p>Synced with {resolvedWeather.timezone}.</p>
                       </div>
                       <div className="range-summary compact-summary">
                         <div className="range-header">
                           <span>Pressure</span>
-                          <strong>{Math.round(currentSnapshot.pressure)} hPa</strong>
+                          <strong>{Math.round(resolvedCurrentSnapshot.pressure)} hPa</strong>
                         </div>
                         <p className="muted">Surface pressure from the live reading.</p>
                       </div>
@@ -972,7 +1003,7 @@ function App() {
                 className={detailView === "alerts" ? "detail-tab active" : "detail-tab"}
                 onClick={() => setDetailView("alerts")}
               >
-                Alerts {hasAlerts ? `(${weather.alerts.length})` : ""}
+                Alerts {hasAlerts ? `(${resolvedWeather.alerts.length})` : ""}
               </button>
             </div>
           </section>
@@ -990,7 +1021,7 @@ function App() {
                     </div>
 
                     <div className="day-strip">
-                      {weather.daily.map((day, index) => {
+                      {resolvedWeather.daily.map((day, index) => {
                         const offset = index - 7;
                         const phase = offset < 0 ? "History" : offset === 0 ? "Today" : "Forecast";
 
@@ -1001,7 +1032,7 @@ function App() {
                             className={day.date === selectedDate ? "day-chip active" : "day-chip"}
                             onClick={() => {
                               setSelectedDate(day.date);
-                              const nextHourlyForDay = weather.hourly.filter((entry) => entry.time.startsWith(day.date));
+                              const nextHourlyForDay = resolvedWeather.hourly.filter((entry) => entry.time.startsWith(day.date));
                               setSelectedHourIndex(findNearestSnapshotIndex(nextHourlyForDay));
                             }}
                           >
@@ -1044,8 +1075,8 @@ function App() {
                       <PressureTrendChart points={hourlySeries.pressure} />
                       <CloudVisibilityChart points={hourlySeries.cloudVisibility} visibilityUnits={visibilityUnitLabel} />
                       <DaylightBandChart
-                        sunrise={currentDay.sunrise}
-                        sunset={currentDay.sunset}
+                        sunrise={resolvedCurrentDay.sunrise}
+                        sunset={resolvedCurrentDay.sunset}
                         hourCycle={preferences.hourCycle}
                       />
                     </div>
@@ -1157,17 +1188,17 @@ function App() {
               <div className="panel-header compact">
                 <div>
                   <p className="section-label">Active alerts</p>
-                  <h3>{weather.alerts.length > 0 ? "Weather warnings for this area" : "No active severe alerts"}</h3>
+                  <h3>{resolvedWeather.alerts.length > 0 ? "Weather warnings for this area" : "No active severe alerts"}</h3>
                 </div>
               </div>
 
-              {weather.alerts.length > 0 ? (
+              {resolvedWeather.alerts.length > 0 ? (
                 <div className="alerts-layout">
                   <Suspense fallback={null}>
-                    <AlertTimelineChart alerts={weather.alerts} hourCycle={preferences.hourCycle} />
+                    <AlertTimelineChart alerts={resolvedWeather.alerts} hourCycle={preferences.hourCycle} />
                   </Suspense>
                   <div className="alerts-grid">
-                    {weather.alerts.map((alert) => (
+                    {resolvedWeather.alerts.map((alert) => (
                       <article key={alert.id} className="alert-card">
                         <p className="alert-chip">
                           {alert.severity} · {alert.urgency}
@@ -1186,8 +1217,31 @@ function App() {
               )}
             </section>
           )}
-        </>
-      )}
+            </>
+            );
+          })() : loadError ? (
+            <section className="loading-card error-card">
+              <div className="error-card-copy">
+                <p className="section-label">Overview failed</p>
+                <h2>Forecast unavailable right now</h2>
+                <p>{loadError.message}</p>
+              </div>
+              <div className="error-card-actions">
+                <button type="button" className="secondary-button" onClick={retryRequestedLocation}>
+                  Retry
+                </button>
+                <button type="button" className="ghost-button" onClick={focusSearchInput}>
+                  Search for another location
+                </button>
+              </div>
+            </section>
+          ) : (
+            <section className="loading-card">
+              <div className="spinner" />
+              <p>Pulling the latest forecast and recent history...</p>
+            </section>
+          )}
+      </>
     </main>
   );
 }

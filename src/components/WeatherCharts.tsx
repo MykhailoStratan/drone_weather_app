@@ -59,6 +59,16 @@ type AlertTimelineChartProps = {
   hourCycle: "12h" | "24h";
 };
 
+type HoverRectProps = {
+  rectKey: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  onHover: () => void;
+  onLeave: () => void;
+};
+
 function nearestIndexFromTouch<T>(
   event: TouchEvent<SVGRectElement>,
   points: T[],
@@ -84,6 +94,22 @@ const baseDimensions: ChartDimensions = {
   marginBottom: 34,
   marginLeft: 16,
 };
+
+function HoverRect({ rectKey, x, y, width, height, onHover, onLeave }: HoverRectProps) {
+  return (
+    <rect
+      key={rectKey}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill="rgba(0, 0, 0, 0.001)"
+      onMouseEnter={onHover}
+      onMouseMove={onHover}
+      onMouseLeave={onLeave}
+    />
+  );
+}
 
 export function TemperatureCurveChart({
   points,
@@ -173,16 +199,15 @@ export function TemperatureCurveChart({
           const bandX = band(point.key) ?? 0;
           const bandWidth = band.bandwidth();
           return (
-            <rect
+            <HoverRect
               key={`${point.key}-hover`}
+              rectKey={`${point.key}-hover`}
               x={bandX}
               y={marginTop}
               width={bandWidth}
               height={innerHeight}
-              fill="transparent"
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseMove={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
+              onHover={() => setHoveredIndex(index)}
+              onLeave={() => setHoveredIndex(null)}
             />
           );
         })}
@@ -277,16 +302,15 @@ export function PrecipitationOverlayChart({
           />
         )}
         {points.map((point, index) => (
-          <rect
+          <HoverRect
             key={`${point.key}-hover`}
+            rectKey={`${point.key}-hover`}
             x={x(point.key) ?? 0}
             y={marginTop}
             width={x.bandwidth()}
             height={height - marginTop - marginBottom}
-            fill="transparent"
-            onMouseEnter={() => setHoveredIndex(index)}
-            onMouseMove={() => setHoveredIndex(index)}
-            onMouseLeave={() => setHoveredIndex(null)}
+            onHover={() => setHoveredIndex(index)}
+            onLeave={() => setHoveredIndex(null)}
           />
         ))}
         <rect
@@ -385,16 +409,15 @@ export function WindDirectionChart({
           />
         )}
         {points.map((point, index) => (
-          <rect
+          <HoverRect
             key={`${point.key}-hover`}
+            rectKey={`${point.key}-hover`}
             x={x(point.key) ?? 0}
             y={marginTop}
             width={x.bandwidth()}
             height={height - marginTop - marginBottom}
-            fill="transparent"
-            onMouseEnter={() => setHoveredIndex(index)}
-            onMouseMove={() => setHoveredIndex(index)}
-            onMouseLeave={() => setHoveredIndex(null)}
+            onHover={() => setHoveredIndex(index)}
+            onLeave={() => setHoveredIndex(null)}
           />
         ))}
         <rect
@@ -475,16 +498,15 @@ export function WeeklyRangeChart({
         {points.map((point, index) => {
           const cx = x(point.key) ?? 0;
           return (
-            <rect
+            <HoverRect
               key={`${point.key}-hover`}
+              rectKey={`${point.key}-hover`}
               x={cx - 26}
               y={marginTop}
               width={52}
               height={height - marginTop - marginBottom}
-              fill="transparent"
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseMove={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
+              onHover={() => setHoveredIndex(index)}
+              onLeave={() => setHoveredIndex(null)}
             />
           );
         })}
@@ -609,16 +631,15 @@ export function PressureTrendChart({
           const prevX =
             index > 0 ? (((x(points[index - 1]?.key ?? "") ?? centerX) + centerX) / 2) : marginLeft;
           return (
-            <rect
+            <HoverRect
               key={`${point.key}-hover`}
+              rectKey={`${point.key}-hover`}
               x={prevX}
               y={marginTop}
               width={Math.max(14, nextX - prevX)}
               height={height - marginTop - marginBottom}
-              fill="transparent"
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseMove={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
+              onHover={() => setHoveredIndex(index)}
+              onLeave={() => setHoveredIndex(null)}
             />
           );
         })}
@@ -715,16 +736,15 @@ export function CloudVisibilityChart({
           const prevX =
             index > 0 ? (((x(points[index - 1]?.key ?? "") ?? centerX) + centerX) / 2) : marginLeft;
           return (
-            <rect
+            <HoverRect
               key={`${point.key}-hover`}
+              rectKey={`${point.key}-hover`}
               x={prevX}
               y={marginTop}
               width={Math.max(14, nextX - prevX)}
               height={height - marginTop - marginBottom}
-              fill="transparent"
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseMove={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
+              onHover={() => setHoveredIndex(index)}
+              onLeave={() => setHoveredIndex(null)}
             />
           );
         })}

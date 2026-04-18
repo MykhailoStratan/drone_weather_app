@@ -8,15 +8,17 @@ import type {
   WeatherPayload,
   WeatherTimelineResponse,
 } from "../types";
+import { validateLocationSearchQuery } from "../../packages/weather-domain/src/location-search";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api/v1";
 
 export async function searchLocations(query: string): Promise<LocationOption[]> {
-  if (query.trim().length < 2) {
+  const validation = validateLocationSearchQuery(query);
+  if (!validation.valid) {
     return [];
   }
 
-  const response = await fetch(`${API_BASE}/locations?query=${encodeURIComponent(query.trim())}`);
+  const response = await fetch(`${API_BASE}/locations?query=${encodeURIComponent(validation.normalized)}`);
   if (!response.ok) {
     throw new Error("Unable to search locations right now.");
   }

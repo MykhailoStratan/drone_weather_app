@@ -1,10 +1,9 @@
 import type { Config } from "@netlify/functions";
+import { validateLocationSearchQuery } from "../../packages/weather-domain/src/location-search";
 import { CACHE_TTLS, createSearchCacheKey, getCacheState, setCached } from "./_shared/cache";
 import { withCacheFallback } from "./_shared/handler";
 import { checkRateLimit } from "./_shared/rateLimit";
 import { searchLocationsFromProvider } from "./_shared/weather";
-
-const QUERY_PATTERN = /^[\p{L}\p{M}\s',.'\-]{2,100}$/u;
 
 export default async (req: Request) => {
   const ip =
@@ -23,14 +22,15 @@ export default async (req: Request) => {
   }
 
   const url = new URL(req.url);
-  const query = url.searchParams.get("query")?.trim() ?? "";
+  const validation = validateLocationSearchQuery(url.searchParams.get("query") ?? "");
+  const query = validation.normalized;
 
-  if (query.length < 2) {
+  if (!query) {
     return Response.json([]);
   }
 
-  if (!QUERY_PATTERN.test(query)) {
-    return Response.json({ error: "Invalid search query." }, { status: 400 });
+  if (!validation.valid) {
+    return Response.json({ error: "Invalid location query." }, { status: 400 });
   }
 
   const cacheKey = createSearchCacheKey(query);
