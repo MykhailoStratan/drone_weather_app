@@ -314,6 +314,10 @@ function App() {
   }
 
   async function loadSearchResults(value: string) {
+    if (!/^[\p{L}\p{M}\s',.'\-]{2,100}$/u.test(value.trim())) {
+      setResults([]);
+      return;
+    }
     setSearching(true);
     try {
       const matches = await searchLocations(value);

@@ -3,12 +3,18 @@ import { CACHE_TTLS, createSearchCacheKey, getCacheState, setCached } from "./_s
 import { withCacheFallback } from "./_shared/handler";
 import { searchLocationsFromProvider } from "./_shared/weather";
 
+const QUERY_PATTERN = /^[\p{L}\p{M}\s',.'\-]{2,100}$/u;
+
 export default async (req: Request) => {
   const url = new URL(req.url);
   const query = url.searchParams.get("query")?.trim() ?? "";
 
   if (query.length < 2) {
     return Response.json([]);
+  }
+
+  if (!QUERY_PATTERN.test(query)) {
+    return Response.json({ error: "Invalid search query." }, { status: 400 });
   }
 
   const cacheKey = createSearchCacheKey(query);
