@@ -9,7 +9,7 @@ import type {
   WeatherTimelineResponse,
 } from "../types";
 
-const API_BASE = "/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "/api/v1";
 
 export async function searchLocations(query: string): Promise<LocationOption[]> {
   if (query.trim().length < 2) {
