@@ -1,11 +1,27 @@
 import type { Config } from "@netlify/functions";
 import { CACHE_TTLS, createSearchCacheKey, getCacheState, setCached } from "./_shared/cache";
 import { withCacheFallback } from "./_shared/handler";
+import { checkRateLimit } from "./_shared/rateLimit";
 import { searchLocationsFromProvider } from "./_shared/weather";
 
 const QUERY_PATTERN = /^[\p{L}\p{M}\s',.'\-]{2,100}$/u;
 
 export default async (req: Request) => {
+  const ip =
+    req.headers.get("x-nf-client-connection-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown";
+
+  const { allowed, retryAfterMs } = checkRateLimit(`locations:${ip}`);
+  if (!allowed) {
+    return new Response("Too Many Requests", {
+      status: 429,
+      headers: {
+        "Retry-After": String(Math.ceil(retryAfterMs / 1000)),
+      },
+    });
+  }
+
   const url = new URL(req.url);
   const query = url.searchParams.get("query")?.trim() ?? "";
 
