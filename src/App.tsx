@@ -57,6 +57,33 @@ import type {
   WeatherPayload,
 } from "./types";
 
+function readLocationFromUrl(): LocationOption | null {
+  const params = new URLSearchParams(window.location.search);
+  const lat = parseFloat(params.get("lat") ?? "");
+  const lon = parseFloat(params.get("lon") ?? "");
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return {
+    id: 0,
+    name: params.get("name") ?? "Shared location",
+    admin1: params.get("admin1") ?? undefined,
+    country: params.get("country") ?? "Unknown",
+    latitude: lat,
+    longitude: lon,
+    timezone: params.get("tz") ?? undefined,
+  };
+}
+
+function writeLocationToUrl(location: LocationOption) {
+  const params = new URLSearchParams();
+  params.set("lat", location.latitude.toFixed(4));
+  params.set("lon", location.longitude.toFixed(4));
+  params.set("name", location.name);
+  if (location.admin1) params.set("admin1", location.admin1);
+  if (location.country) params.set("country", location.country);
+  if (location.timezone) params.set("tz", location.timezone);
+  window.history.replaceState(null, "", `?${params.toString()}`);
+}
+
 const starterLocation: LocationOption = {
   id: 1,
   name: "Vancouver",
@@ -113,6 +140,7 @@ function App() {
     const storedLocations = readStoredLocations();
     const storedLocation = readStoredLocation(LAST_LOCATION_KEY);
     const cachedOverview = readStoredOverview();
+    const urlLocation = readLocationFromUrl();
     setSavedLocations(storedLocations);
     setPreferences(readStoredPreferences());
     if (cachedOverview) {
@@ -124,7 +152,9 @@ function App() {
       setLoading(false);
     }
 
-    if (storedLocation) {
+    if (urlLocation) {
+      void loadWeather(urlLocation);
+    } else if (storedLocation) {
       void loadWeather(storedLocation);
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -176,6 +206,12 @@ function App() {
     document.documentElement.dataset.theme = preferences.theme;
     document.documentElement.style.colorScheme = preferences.theme;
   }, [preferences.theme]);
+
+  useEffect(() => {
+    if (activeLocation) {
+      writeLocationToUrl(activeLocation);
+    }
+  }, [activeLocation]);
 
   async function loadWeather(location: LocationOption) {
     const nextRequestId = requestId.current + 1;
