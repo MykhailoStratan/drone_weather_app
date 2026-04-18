@@ -57,6 +57,10 @@ import type {
   WeatherPayload,
 } from "./types";
 
+function roundCoord(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
 function readLocationFromUrl(): LocationOption | null {
   const params = new URLSearchParams(window.location.search);
   const lat = parseFloat(params.get("lat") ?? "");
@@ -163,8 +167,8 @@ function App() {
             id: 0,
             name: "Current location",
             country: "Detected by device",
-            latitude: coords.latitude,
-            longitude: coords.longitude,
+            latitude: roundCoord(coords.latitude),
+            longitude: roundCoord(coords.longitude),
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           };
           await loadWeather(currentLocation);
