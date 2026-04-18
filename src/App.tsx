@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   AlertTimelineChart,
   CloudVisibilityChart,
@@ -12,6 +12,7 @@ import {
   buildWeeklyRangeSeries,
 } from "./components/WeatherCharts";
 import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
+import { IconSunrise, IconSunset, IconRain, IconCloud, IconEye, IconGauge, IconCompass } from "./components/Icons";
 import {
   formatDayLabel,
   formatHourLabel,
@@ -29,13 +30,25 @@ import {
   fetchWeatherTimeline,
   searchLocations,
 } from "./lib/weather";
+import {
+  readStoredLocations,
+  readStoredLocation,
+  readStoredPreferences,
+  readStoredOverview,
+  storeLocations,
+  storeLocation,
+  storeOverview,
+  storePreferences,
+  upsertLocation,
+  buildWeatherFromOverview,
+  defaultPreferences,
+} from "./lib/storage";
+import { resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph, formatSavedAtLabel } from "./lib/app-utils.tsx";
 import type {
   GnssEnvironmentPreset,
   GnssEstimateResponse,
   LocationOption,
-  WeatherOverviewResponse,
   WeatherPayload,
-  WeatherSnapshot,
 } from "./types";
 
 const starterLocation: LocationOption = {
@@ -48,10 +61,7 @@ const starterLocation: LocationOption = {
   timezone: "America/Vancouver",
 };
 
-const SAVED_LOCATIONS_KEY = "skycanvas.savedLocations";
 const LAST_LOCATION_KEY = "skycanvas.lastLocation";
-const PREFERENCES_KEY = "skycanvas.preferences";
-const LAST_OVERVIEW_KEY = "skycanvas.lastOverview";
 
 type Preferences = {
   theme: "dark" | "light";
@@ -61,163 +71,12 @@ type Preferences = {
   hourCycle: "12h" | "24h";
 };
 
-type CachedOverview = {
-  savedAt: string;
-  location: LocationOption;
-  overview: WeatherOverviewResponse;
-};
-
 type DataStatus = {
   savedAt: string;
   source: "cached" | "live";
 };
 
 type DetailView = "hourly" | "weekly" | "alerts";
-
-const defaultPreferences: Preferences = {
-  theme: "dark",
-  temperatureUnit: "c",
-  windUnit: "kmh",
-  visibilityUnit: "km",
-  hourCycle: "12h",
-};
-
-// ── Inline SVG icons ──────────────────────────────────────────
-// A tiny consistent icon set sized 16×16 with currentColor strokes.
-
-function Icon({ children }: { children: ReactNode }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {children}
-    </svg>
-  );
-}
-
-const IconSunrise = () => (
-  <Icon>
-    <path d="M17 18a5 5 0 0 0-10 0" />
-    <line x1="12" y1="2" x2="12" y2="9" />
-    <line x1="4.22" y1="10.22" x2="5.64" y2="11.64" />
-    <line x1="1" y1="18" x2="3" y2="18" />
-    <line x1="21" y1="18" x2="23" y2="18" />
-    <line x1="18.36" y1="11.64" x2="19.78" y2="10.22" />
-    <line x1="23" y1="22" x2="1" y2="22" />
-    <polyline points="8 6 12 2 16 6" />
-  </Icon>
-);
-
-const IconSunset = () => (
-  <Icon>
-    <path d="M17 18a5 5 0 0 0-10 0" />
-    <line x1="12" y1="9" x2="12" y2="2" />
-    <line x1="4.22" y1="10.22" x2="5.64" y2="11.64" />
-    <line x1="1" y1="18" x2="3" y2="18" />
-    <line x1="21" y1="18" x2="23" y2="18" />
-    <line x1="18.36" y1="11.64" x2="19.78" y2="10.22" />
-    <line x1="23" y1="22" x2="1" y2="22" />
-    <polyline points="16 5 12 9 8 5" />
-  </Icon>
-);
-
-const IconRain = () => (
-  <Icon>
-    <line x1="8" y1="19" x2="8" y2="21" />
-    <line x1="8" y1="13" x2="8" y2="15" />
-    <line x1="16" y1="19" x2="16" y2="21" />
-    <line x1="16" y1="13" x2="16" y2="15" />
-    <line x1="12" y1="21" x2="12" y2="23" />
-    <line x1="12" y1="15" x2="12" y2="17" />
-    <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25" />
-  </Icon>
-);
-
-const IconCloud = () => (
-  <Icon>
-    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
-  </Icon>
-);
-
-const IconEye = () => (
-  <Icon>
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </Icon>
-);
-
-const IconGauge = () => (
-  <Icon>
-    <path d="M12 14l4-4" />
-    <path d="M3.34 19a10 10 0 1 1 17.32 0" />
-  </Icon>
-);
-
-const IconSun = () => (
-  <Icon>
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-  </Icon>
-);
-
-const IconPartlyCloudy = () => (
-  <Icon>
-    <circle cx="8" cy="8" r="3" />
-    <path d="M8 2v1M2 8h1M3.5 3.5l.7.7M13 4.5l-.7.7" />
-    <path d="M20 17.58A5 5 0 0 0 18 8h-.38" />
-    <path d="M9.5 9A6 6 0 0 0 4 15a5 5 0 0 0 5 5h9" />
-  </Icon>
-);
-
-const IconCloudDrizzle = () => (
-  <Icon>
-    <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25" />
-    <line x1="8" y1="19" x2="8" y2="21" />
-    <line x1="16" y1="19" x2="16" y2="21" />
-    <line x1="12" y1="21" x2="12" y2="23" />
-  </Icon>
-);
-
-const IconSnow = () => (
-  <Icon>
-    <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25" />
-    <line x1="8" y1="16" x2="8.01" y2="16" />
-    <line x1="8" y1="20" x2="8.01" y2="20" />
-    <line x1="12" y1="18" x2="12.01" y2="18" />
-    <line x1="12" y1="22" x2="12.01" y2="22" />
-    <line x1="16" y1="16" x2="16.01" y2="16" />
-    <line x1="16" y1="20" x2="16.01" y2="20" />
-  </Icon>
-);
-
-const IconStorm = () => (
-  <Icon>
-    <path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9" />
-    <polyline points="13 11 9 17 15 17 11 23" />
-  </Icon>
-);
-
-const IconMoon = () => (
-  <Icon>
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </Icon>
-);
-
-// Compass-style wind marker (used in hour cards). Rotation is applied
-// via the CSS transform on the parent span — this SVG is the glyph.
-const IconCompass = () => (
-  <Icon>
-    <circle cx="12" cy="12" r="10" />
-    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-  </Icon>
-);
 
 function App() {
   const [query, setQuery] = useState("Vancouver");
@@ -458,7 +317,7 @@ function App() {
 
   function updatePreferences(nextPreferences: Preferences) {
     setPreferences(nextPreferences);
-    window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(nextPreferences));
+    storePreferences(nextPreferences);
   }
 
   function handleSavedLocationChange(locationId: number) {
@@ -1224,7 +1083,7 @@ function App() {
   );
 }
 
-function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="metric-card">
       <span className="metric-icon">{icon}</span>
@@ -1234,150 +1093,4 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
   );
 }
 
-function resolveSelectedSnapshot(hourlyForDay: WeatherSnapshot[], selectedHourIndex: number, current: WeatherPayload["current"] | undefined) {
-  if (!hourlyForDay.length) {
-    return { snapshot: current, index: 0 };
-  }
-
-  const index =
-    selectedHourIndex >= 0 && selectedHourIndex < hourlyForDay.length
-      ? selectedHourIndex
-      : findNearestSnapshotIndex(hourlyForDay);
-
-  return {
-    snapshot: hourlyForDay[index],
-    index,
-  };
-}
-
-function findNearestSnapshotIndex(hourlyForDay: WeatherSnapshot[]) {
-  if (!hourlyForDay.length) {
-    return 0;
-  }
-
-  const now = Date.now();
-  return hourlyForDay.reduce((closestIndex, entry, index) => {
-    const distance = Math.abs(new Date(entry.time).getTime() - now);
-    const closestDistance = Math.abs(new Date(hourlyForDay[closestIndex].time).getTime() - now);
-    return distance < closestDistance ? index : closestIndex;
-  }, 0);
-}
-
 export default App;
-
-function buildWeatherFromOverview(overview: WeatherOverviewResponse): WeatherPayload {
-  return {
-    locationLabel: overview.locationLabel,
-    timezone: overview.timezone,
-    latitude: overview.latitude,
-    longitude: overview.longitude,
-    current: overview.current,
-    hourly: [],
-    daily: [overview.today],
-    alerts: [],
-  };
-}
-
-function readStoredLocations() {
-  try {
-    const raw = window.localStorage.getItem(SAVED_LOCATIONS_KEY);
-    return raw ? (JSON.parse(raw) as LocationOption[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function readStoredLocation(key: string) {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as LocationOption) : null;
-  } catch {
-    return null;
-  }
-}
-
-function readStoredPreferences(): Preferences {
-  try {
-    const raw = window.localStorage.getItem(PREFERENCES_KEY);
-    return raw
-      ? { ...defaultPreferences, ...(JSON.parse(raw) as Partial<Preferences>) }
-      : defaultPreferences;
-  } catch {
-    return defaultPreferences;
-  }
-}
-
-function readStoredOverview() {
-  try {
-    const raw = window.localStorage.getItem(LAST_OVERVIEW_KEY);
-    return raw ? (JSON.parse(raw) as CachedOverview) : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeLocations(locations: LocationOption[]) {
-  window.localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify(locations));
-}
-
-function storeLocation(key: string, location: LocationOption) {
-  window.localStorage.setItem(key, JSON.stringify(location));
-}
-
-function storeOverview(location: LocationOption, overview: WeatherOverviewResponse) {
-  const cachedOverview: CachedOverview = {
-    savedAt: new Date().toISOString(),
-    location,
-    overview,
-  };
-  window.localStorage.setItem(LAST_OVERVIEW_KEY, JSON.stringify(cachedOverview));
-}
-
-function upsertLocation(locations: LocationOption[], nextLocation: LocationOption) {
-  const existing = locations.filter((location) => location.id !== nextLocation.id);
-  return [nextLocation, ...existing].slice(0, 6);
-}
-
-function weatherGlyph(weatherCode: number, isDay: boolean) {
-  if (weatherCode === 0) {
-    return isDay ? <IconSun /> : <IconMoon />;
-  }
-  if ([1, 2].includes(weatherCode)) {
-    return <IconPartlyCloudy />;
-  }
-  if ([3, 45, 48].includes(weatherCode)) {
-    return <IconCloud />;
-  }
-  if ([51, 53, 55, 56, 57].includes(weatherCode)) {
-    return <IconCloudDrizzle />;
-  }
-  if ([61, 63, 65, 80, 81, 82].includes(weatherCode)) {
-    return <IconRain />;
-  }
-  if ([66, 67, 71, 73, 75, 77, 85, 86].includes(weatherCode)) {
-    return <IconSnow />;
-  }
-  if ([95, 96, 99].includes(weatherCode)) {
-    return <IconStorm />;
-  }
-  return <IconCloud />;
-}
-
-function formatSavedAtLabel(savedAt: string) {
-  const deltaMinutes = Math.max(0, Math.round((Date.now() - new Date(savedAt).getTime()) / 60000));
-
-  if (deltaMinutes < 1) {
-    return "JUST NOW";
-  }
-  if (deltaMinutes < 60) {
-    return `${deltaMinutes}M AGO`;
-  }
-
-  const deltaHours = Math.round(deltaMinutes / 60);
-  if (deltaHours < 24) {
-    return `${deltaHours}H AGO`;
-  }
-
-  const deltaDays = Math.round(deltaHours / 24);
-  return `${deltaDays}D AGO`;
-}
