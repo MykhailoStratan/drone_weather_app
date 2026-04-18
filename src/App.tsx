@@ -245,7 +245,7 @@ function App() {
 
   useEffect(() => {
     const storedLocations = readStoredLocations();
-    const preferredLocation = readStoredLocation(LAST_LOCATION_KEY) ?? starterLocation;
+    const storedLocation = readStoredLocation(LAST_LOCATION_KEY);
     const cachedOverview = readStoredOverview();
     setSavedLocations(storedLocations);
     setPreferences(readStoredPreferences());
@@ -257,7 +257,32 @@ function App() {
       setDataStatus({ savedAt: cachedOverview.savedAt, source: "cached" });
       setLoading(false);
     }
-    void loadWeather(preferredLocation);
+
+    if (storedLocation) {
+      void loadWeather(storedLocation);
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async ({ coords }) => {
+          const currentLocation: LocationOption = {
+            id: 0,
+            name: "Current location",
+            country: "Detected by device",
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          };
+          await loadWeather(currentLocation);
+        },
+        () => {
+          if (!cachedOverview) void loadWeather(starterLocation);
+          setSearchOpen(true);
+        },
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    } else {
+      void loadWeather(starterLocation);
+      setSearchOpen(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -406,6 +431,7 @@ function App() {
       },
       () => {
         setLoading(false);
+        setSearchOpen(true);
         setMessage("Location permission was denied. Search for a place instead.");
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -607,25 +633,22 @@ function App() {
                       {searching ? (
                         <p className="muted">Searching...</p>
                       ) : results.length > 0 ? (
-                        <select
-                          className="search-results-select"
-                          defaultValue=""
-                          onChange={(event) => {
-                            const option = results.find((entry) => entry.id === Number(event.target.value));
-                            if (option) {
-                              void loadWeather(option);
-                              event.target.value = "";
-                              setSearchOpen(false);
-                            }
-                          }}
-                        >
-                          <option value="">Choose a matching location</option>
+                        <ul className="search-results-list">
                           {results.map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {[option.name, option.admin1, option.country].filter(Boolean).join(", ")}
-                            </option>
+                            <li key={option.id}>
+                              <button
+                                type="button"
+                                className="search-result-item"
+                                onClick={() => {
+                                  void loadWeather(option);
+                                  setSearchOpen(false);
+                                }}
+                              >
+                                {[option.name, option.admin1, option.country].filter(Boolean).join(", ")}
+                              </button>
+                            </li>
                           ))}
-                        </select>
+                        </ul>
                       ) : (
                         <p className="muted search-empty-state">No matches yet. Try a nearby city or broader region.</p>
                       )}
