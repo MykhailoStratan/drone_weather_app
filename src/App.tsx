@@ -1,16 +1,22 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlertTimelineChart,
-  CloudVisibilityChart,
-  DaylightBandChart,
-  PrecipitationOverlayChart,
-  PressureTrendChart,
-  TemperatureCurveChart,
-  WeeklyRangeChart,
-  WindDirectionChart,
-  buildHourlySeries,
-  buildWeeklyRangeSeries,
-} from "./components/WeatherCharts";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { buildHourlySeries, buildWeeklyRangeSeries } from "./lib/chartUtils";
+
+const AlertTimelineChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.AlertTimelineChart })));
+const CloudVisibilityChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.CloudVisibilityChart })));
+const DaylightBandChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.DaylightBandChart })));
+const PrecipitationOverlayChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.PrecipitationOverlayChart })));
+const PressureTrendChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.PressureTrendChart })));
+const TemperatureCurveChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.TemperatureCurveChart })));
+const WeeklyRangeChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.WeeklyRangeChart })));
+const WindDirectionChart = React.lazy(() =>
+  import("./components/WeatherCharts").then((m) => ({ default: m.WindDirectionChart })));
 import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
 import { IconSunrise, IconSunset, IconRain, IconCloud, IconEye, IconGauge, IconCompass } from "./components/Icons";
 import {
@@ -983,6 +989,7 @@ function App() {
                       </button>
                     </div>
 
+                    <Suspense fallback={<div className="charts-loading-placeholder" />}>
                     <div className="hourly-chart-grid visx-grid">
                       <TemperatureCurveChart points={hourlySeries.temperature} units={temperatureUnitLabel} />
                       <PrecipitationOverlayChart points={hourlySeries.precipitation} />
@@ -998,6 +1005,7 @@ function App() {
                         hourCycle={preferences.hourCycle}
                       />
                     </div>
+                    </Suspense>
                   </section>
 
                   {hourlyCardsOpen && (
@@ -1077,7 +1085,9 @@ function App() {
                   </div>
 
                   <div className="weekly-chart-wrap">
-                    <WeeklyRangeChart points={weeklyRange} units={temperatureUnitLabel} />
+                    <Suspense fallback={<div className="charts-loading-placeholder" />}>
+                      <WeeklyRangeChart points={weeklyRange} units={temperatureUnitLabel} />
+                    </Suspense>
                   </div>
                 </section>
               )}
@@ -1109,7 +1119,9 @@ function App() {
 
               {weather.alerts.length > 0 ? (
                 <div className="alerts-layout">
-                  <AlertTimelineChart alerts={weather.alerts} hourCycle={preferences.hourCycle} />
+                  <Suspense fallback={null}>
+                    <AlertTimelineChart alerts={weather.alerts} hourCycle={preferences.hourCycle} />
+                  </Suspense>
                   <div className="alerts-grid">
                     {weather.alerts.map((alert) => (
                       <article key={alert.id} className="alert-card">
