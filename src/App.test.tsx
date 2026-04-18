@@ -130,7 +130,7 @@ describe("App preferences", () => {
     fireEvent.click(view.getByRole("button", { name: "Show" }));
     fireEvent.click(await view.findByRole("button", { name: "F" }));
 
-    expect(document.querySelector(".temperature-unit")?.textContent).toBe("F");
+    expect(document.querySelector(".temperature-unit")?.textContent).toBe("°F");
     view.unmount();
   });
 });

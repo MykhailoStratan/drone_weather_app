@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertTimelineChart,
   CloudVisibilityChart,
@@ -22,8 +22,21 @@ import {
   windDirectionLabel,
   windSpeedDisplay,
 } from "./lib/format";
-import { fetchGnssEstimate, fetchWeatherAlerts, fetchWeatherOverview, fetchWeatherTimeline, searchLocations } from "./lib/weather";
-import type { GnssEnvironmentPreset, GnssEstimateResponse, LocationOption, WeatherOverviewResponse, WeatherPayload, WeatherSnapshot } from "./types";
+import {
+  fetchGnssEstimate,
+  fetchWeatherAlerts,
+  fetchWeatherOverview,
+  fetchWeatherTimeline,
+  searchLocations,
+} from "./lib/weather";
+import type {
+  GnssEnvironmentPreset,
+  GnssEstimateResponse,
+  LocationOption,
+  WeatherOverviewResponse,
+  WeatherPayload,
+  WeatherSnapshot,
+} from "./types";
 
 const starterLocation: LocationOption = {
   id: 1,
@@ -66,6 +79,143 @@ const defaultPreferences: Preferences = {
   visibilityUnit: "km",
   hourCycle: "12h",
 };
+
+// ── Inline SVG icons ──────────────────────────────────────────
+// A tiny consistent icon set sized 16×16 with currentColor strokes.
+
+function Icon({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+const IconSunrise = () => (
+  <Icon>
+    <path d="M17 18a5 5 0 0 0-10 0" />
+    <line x1="12" y1="2" x2="12" y2="9" />
+    <line x1="4.22" y1="10.22" x2="5.64" y2="11.64" />
+    <line x1="1" y1="18" x2="3" y2="18" />
+    <line x1="21" y1="18" x2="23" y2="18" />
+    <line x1="18.36" y1="11.64" x2="19.78" y2="10.22" />
+    <line x1="23" y1="22" x2="1" y2="22" />
+    <polyline points="8 6 12 2 16 6" />
+  </Icon>
+);
+
+const IconSunset = () => (
+  <Icon>
+    <path d="M17 18a5 5 0 0 0-10 0" />
+    <line x1="12" y1="9" x2="12" y2="2" />
+    <line x1="4.22" y1="10.22" x2="5.64" y2="11.64" />
+    <line x1="1" y1="18" x2="3" y2="18" />
+    <line x1="21" y1="18" x2="23" y2="18" />
+    <line x1="18.36" y1="11.64" x2="19.78" y2="10.22" />
+    <line x1="23" y1="22" x2="1" y2="22" />
+    <polyline points="16 5 12 9 8 5" />
+  </Icon>
+);
+
+const IconRain = () => (
+  <Icon>
+    <line x1="8" y1="19" x2="8" y2="21" />
+    <line x1="8" y1="13" x2="8" y2="15" />
+    <line x1="16" y1="19" x2="16" y2="21" />
+    <line x1="16" y1="13" x2="16" y2="15" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+    <line x1="12" y1="15" x2="12" y2="17" />
+    <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25" />
+  </Icon>
+);
+
+const IconCloud = () => (
+  <Icon>
+    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+  </Icon>
+);
+
+const IconEye = () => (
+  <Icon>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+);
+
+const IconGauge = () => (
+  <Icon>
+    <path d="M12 14l4-4" />
+    <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+  </Icon>
+);
+
+const IconSun = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </Icon>
+);
+
+const IconPartlyCloudy = () => (
+  <Icon>
+    <circle cx="8" cy="8" r="3" />
+    <path d="M8 2v1M2 8h1M3.5 3.5l.7.7M13 4.5l-.7.7" />
+    <path d="M20 17.58A5 5 0 0 0 18 8h-.38" />
+    <path d="M9.5 9A6 6 0 0 0 4 15a5 5 0 0 0 5 5h9" />
+  </Icon>
+);
+
+const IconCloudDrizzle = () => (
+  <Icon>
+    <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25" />
+    <line x1="8" y1="19" x2="8" y2="21" />
+    <line x1="16" y1="19" x2="16" y2="21" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+  </Icon>
+);
+
+const IconSnow = () => (
+  <Icon>
+    <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25" />
+    <line x1="8" y1="16" x2="8.01" y2="16" />
+    <line x1="8" y1="20" x2="8.01" y2="20" />
+    <line x1="12" y1="18" x2="12.01" y2="18" />
+    <line x1="12" y1="22" x2="12.01" y2="22" />
+    <line x1="16" y1="16" x2="16.01" y2="16" />
+    <line x1="16" y1="20" x2="16.01" y2="20" />
+  </Icon>
+);
+
+const IconStorm = () => (
+  <Icon>
+    <path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9" />
+    <polyline points="13 11 9 17 15 17 11 23" />
+  </Icon>
+);
+
+const IconMoon = () => (
+  <Icon>
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </Icon>
+);
+
+// Compass-style wind marker (used in hour cards). Rotation is applied
+// via the CSS transform on the parent span — this SVG is the glyph.
+const IconCompass = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+  </Icon>
+);
 
 function App() {
   const [query, setQuery] = useState("Vancouver");
@@ -369,7 +519,7 @@ function App() {
           <section className="top-layout">
             <aside className="sidebar-card">
               <div className="sidebar-copy">
-                <p className="eyebrow">SkyCanvas Weather</p>
+                <p className="eyebrow">SkyCanvas · Weather</p>
                 <h1>Current weather</h1>
                 <div className="sidebar-location-summary">
                   <strong>{weather.locationLabel}</strong>
@@ -377,22 +527,22 @@ function App() {
                 </div>
                 {dataStatus && (
                   <p className="cache-status">
-                    {dataStatus.source === "cached" ? "Showing cached conditions" : "Live weather updated"}{" "}
-                    {formatSavedAtLabel(dataStatus.savedAt)}.
+                    {dataStatus.source === "cached" ? "CACHED" : "LIVE"} · UPDATED{" "}
+                    {formatSavedAtLabel(dataStatus.savedAt)}
                   </p>
                 )}
               </div>
 
               <div className="search-panel sidebar-search">
                 <label className="search-label" htmlFor="location-search">
-                  Search a city or region
+                  Search location
                 </label>
                 <div className="search-row sidebar-search-row">
                   <input
                     id="location-search"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Try Vancouver, Seattle, Tokyo..."
+                    placeholder="Vancouver, Seattle, Tokyo..."
                   />
                   <div className="search-actions">
                     <button type="button" className="secondary-button compact-button" onClick={requestCurrentLocation}>
@@ -428,7 +578,7 @@ function App() {
                         ))}
                       </select>
                     ) : (
-                      <p className="muted search-empty-state">No matching locations yet. Try a nearby city or broader region.</p>
+                      <p className="muted search-empty-state">No matches yet. Try a nearby city or broader region.</p>
                     )}
                   </div>
                 )}
@@ -519,7 +669,7 @@ function App() {
                     </div>
 
                     <div className="preference-group">
-                      <span className="preference-label">Wind and visibility</span>
+                      <span className="preference-label">Wind & visibility</span>
                       <div className="segmented-control">
                         <button
                           type="button"
@@ -551,7 +701,7 @@ function App() {
                     </div>
 
                     <div className="preference-group">
-                      <span className="preference-label">Time</span>
+                      <span className="preference-label">Clock</span>
                       <div className="segmented-control">
                         <button
                           type="button"
@@ -580,13 +730,11 @@ function App() {
                   <div className="hero-heading">
                     <p className="section-label">{weather.locationLabel}</p>
                     <div className="hero-condition-row">
-                      <span className="hero-condition-icon" aria-hidden="true">
-                        {weatherIcon}
-                      </span>
+                      <span className="hero-condition-icon">{weatherIcon}</span>
                       <div>
                         <h2>{weatherLabel(currentSnapshot.weatherCode)}</h2>
                         <p className="hero-supporting-copy">
-                          Updated for {formatDayLabel(currentDay.date)} in {weather.timezone}.
+                          Updated for {formatDayLabel(currentDay.date)} · {weather.timezone}
                         </p>
                       </div>
                     </div>
@@ -600,13 +748,12 @@ function App() {
                       <span className="temperature-value">
                         {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
                       </span>
-                      <span className="temperature-unit">{temperatureUnitLabel}</span>
+                      <span className="temperature-unit">°{temperatureUnitLabel}</span>
                     </div>
                     <div className="hero-pill-row">
                       <span className="hero-pill">
-                        High / low{" "}
-                        {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)} /{" "}
-                        {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel}
+                        H {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)}° · L{" "}
+                        {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)}°
                       </span>
                       <span className="hero-pill">
                         Rain {Math.round(currentSnapshot.precipitationProbability)}%
@@ -622,17 +769,16 @@ function App() {
                           className="wind-arrow"
                           style={{ transform: `rotate(${currentSnapshot.windDirection}deg)` }}
                           aria-hidden="true"
-                        >
-                          ^
-                        </span>
+                        />
                       </div>
                       <div className="wind-copy">
                         <strong>
-                          {windDirectionLabel(currentSnapshot.windDirection)} {Math.round(currentSnapshot.windDirection)} deg
+                          {windDirectionLabel(currentSnapshot.windDirection)} · {Math.round(currentSnapshot.windDirection)}°
                         </strong>
-                        <p className="muted">
-                          {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} wind with gusts up to{" "}
-                          {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
+                        <p>
+                          {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} sustained
+                          <br />
+                          gusts to {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
                         </p>
                       </div>
                     </div>
@@ -640,16 +786,16 @@ function App() {
                 </div>
 
                 <div className="hero-mini-grid">
-                  <Metric icon="SR" label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
-                  <Metric icon="SS" label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
-                  <Metric icon="PP" label="Rain chance" value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
-                  <Metric icon="CC" label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
+                  <Metric icon={<IconSunrise />} label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
+                  <Metric icon={<IconSunset />} label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
+                  <Metric icon={<IconRain />} label="Rain chance" value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
+                  <Metric icon={<IconCloud />} label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
                   <Metric
-                    icon="VS"
+                    icon={<IconEye />}
                     label="Visibility"
                     value={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
                   />
-                  <Metric icon="PR" label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
+                  <Metric icon={<IconGauge />} label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
                 </div>
               </article>
 
@@ -681,8 +827,8 @@ function App() {
                         <div className="range-header">
                           <span>Hourly swing</span>
                           <strong>
-                            {Math.round(Math.min(...hourlySeries.temperature.map((point) => point.value), 0))} to{" "}
-                            {Math.round(Math.max(...hourlySeries.temperature.map((point) => point.value), 0))} {temperatureUnitLabel}
+                            {Math.round(Math.min(...hourlySeries.temperature.map((point) => point.value), 0))}° →{" "}
+                            {Math.round(Math.max(...hourlySeries.temperature.map((point) => point.value), 0))}°
                           </strong>
                         </div>
                         <p className="muted">
@@ -702,7 +848,7 @@ function App() {
                       </div>
                       <div className="range-summary compact-summary">
                         <div className="range-header">
-                          <span>Visibility + cover</span>
+                          <span>Visibility · cover</span>
                           <strong>
                             {visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
                           </strong>
@@ -724,21 +870,21 @@ function App() {
                       <div className="status-card compact-summary">
                         <span>Alerts</span>
                         <strong>{weather.alerts.length}</strong>
-                        <p className="muted">
-                          {weather.alerts.length > 0 ? "Warnings are listed below." : "No severe alerts right now."}
+                        <p>
+                          {weather.alerts.length > 0 ? "Warnings listed below." : "No severe alerts right now."}
                         </p>
                       </div>
                       <div className="status-card compact-summary">
                         <span>Local time</span>
                         <strong>{formatTime(currentSnapshot.time, preferences.hourCycle)}</strong>
-                        <p className="muted">Synced with {weather.timezone} timing.</p>
+                        <p>Synced with {weather.timezone}.</p>
                       </div>
                       <div className="range-summary compact-summary">
                         <div className="range-header">
                           <span>Pressure</span>
                           <strong>{Math.round(currentSnapshot.pressure)} hPa</strong>
                         </div>
-                        <p className="muted">Surface pressure is steady in the live conditions view.</p>
+                        <p className="muted">Surface pressure from the live reading.</p>
                       </div>
                     </div>
                   </section>
@@ -801,8 +947,8 @@ function App() {
                             <strong>{formatDayLabel(day.date)}</strong>
                             <em>{weatherLabel(day.weatherCode)}</em>
                             <small>
-                              {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)} {temperatureUnitLabel} /{" "}
-                              {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)} {temperatureUnitLabel}
+                              {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)}° /{" "}
+                              {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)}°
                             </small>
                           </button>
                         );
@@ -860,16 +1006,14 @@ function App() {
                             </div>
                             <div className="hour-summary-row">
                               <p className="hour-temp">
-                                {temperatureDisplay(entry.temperature, preferences.temperatureUnit)} {temperatureUnitLabel}
+                                {temperatureDisplay(entry.temperature, preferences.temperatureUnit)}°
                               </p>
                               <div className="mini-wind">
                                 <span
                                   className="mini-wind-arrow"
                                   style={{ transform: `rotate(${entry.windDirection}deg)` }}
                                   aria-hidden="true"
-                                >
-                                  ^
-                                </span>
+                                />
                                 <strong>{windDirectionLabel(entry.windDirection)}</strong>
                               </div>
                             </div>
@@ -884,12 +1028,12 @@ function App() {
                               </div>
                               <div>
                                 <dt>Dir</dt>
-                                <dd>{Math.round(entry.windDirection)} deg</dd>
+                                <dd>{Math.round(entry.windDirection)}°</dd>
                               </div>
                               <div>
                                 <dt>Rain</dt>
                                 <dd>
-                                  {entry.precipitationAmount.toFixed(1)} mm / {Math.round(entry.precipitationProbability)}%
+                                  {entry.precipitationAmount.toFixed(1)} mm · {Math.round(entry.precipitationProbability)}%
                                 </dd>
                               </div>
                               <div>
@@ -935,7 +1079,9 @@ function App() {
                     <h3>Charts and timeline are on the way</h3>
                   </div>
                 </div>
-                <p className="muted">Current conditions are ready. Loading hourly charts, the 14-day timeline, and alerts in the background.</p>
+                <p className="muted">
+                  Current conditions are ready. Loading hourly charts, the 14-day timeline, and alerts in the background.
+                </p>
               </section>
             )
           )}
@@ -956,7 +1102,7 @@ function App() {
                     {weather.alerts.map((alert) => (
                       <article key={alert.id} className="alert-card">
                         <p className="alert-chip">
-                          {alert.severity} / {alert.urgency}
+                          {alert.severity} · {alert.urgency}
                         </p>
                         <h4>{alert.event}</h4>
                         <p>{alert.headline}</p>
@@ -978,12 +1124,10 @@ function App() {
   );
 }
 
-function Metric({ icon, label, value }: { icon: string; label: string; value: string }) {
+function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="metric-card">
-      <span className="metric-icon" aria-hidden="true">
-        {icon}
-      </span>
+      <span className="metric-icon">{icon}</span>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -1080,41 +1224,44 @@ function upsertLocation(locations: LocationOption[], nextLocation: LocationOptio
 
 function weatherGlyph(weatherCode: number, isDay: boolean) {
   if (weatherCode === 0) {
-    return isDay ? "☀" : "☾";
+    return isDay ? <IconSun /> : <IconMoon />;
   }
   if ([1, 2].includes(weatherCode)) {
-    return isDay ? "⛅" : "☁";
+    return <IconPartlyCloudy />;
   }
   if ([3, 45, 48].includes(weatherCode)) {
-    return "☁";
+    return <IconCloud />;
   }
-  if ([51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82].includes(weatherCode)) {
-    return "☂";
+  if ([51, 53, 55, 56, 57].includes(weatherCode)) {
+    return <IconCloudDrizzle />;
+  }
+  if ([61, 63, 65, 80, 81, 82].includes(weatherCode)) {
+    return <IconRain />;
   }
   if ([66, 67, 71, 73, 75, 77, 85, 86].includes(weatherCode)) {
-    return "❄";
+    return <IconSnow />;
   }
   if ([95, 96, 99].includes(weatherCode)) {
-    return "⚡";
+    return <IconStorm />;
   }
-  return "☁";
+  return <IconCloud />;
 }
 
 function formatSavedAtLabel(savedAt: string) {
   const deltaMinutes = Math.max(0, Math.round((Date.now() - new Date(savedAt).getTime()) / 60000));
 
   if (deltaMinutes < 1) {
-    return "just now";
+    return "JUST NOW";
   }
   if (deltaMinutes < 60) {
-    return `${deltaMinutes}m ago`;
+    return `${deltaMinutes}M AGO`;
   }
 
   const deltaHours = Math.round(deltaMinutes / 60);
   if (deltaHours < 24) {
-    return `${deltaHours}h ago`;
+    return `${deltaHours}H AGO`;
   }
 
   const deltaDays = Math.round(deltaHours / 24);
-  return `${deltaDays}d ago`;
+  return `${deltaDays}D AGO`;
 }
