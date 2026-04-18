@@ -5,7 +5,7 @@ This project now uses Capacitor to package the existing Vite app for Android and
 ## Available commands
 
 - `npm run dev:android`
-  Starts Vite on your local network and launches the Android app with Capacitor live reload.
+  Starts the Vite dev server with Netlify platform emulation and launches the Android app with Capacitor live reload.
 - `npm run dev:host`
   Starts the Vite dev server on your local network for mobile testing.
 - `npm run android:live`
@@ -33,7 +33,7 @@ This is a provisional bundle identifier and can still be changed before store su
 
 1. Start an Android emulator in Android Studio, or connect a physical Android device with USB debugging enabled.
 2. Run `npm run dev:android`.
-3. Keep that terminal running while you edit the app. Vite serves the web bundle, and Capacitor launches Android against that live server.
+3. Keep that terminal running while you edit the app. Vite serves the web bundle with Netlify function emulation, and Capacitor launches Android against that live server.
 
 Notes:
 
@@ -46,6 +46,13 @@ Notes:
 1. Run `npm run build:mobile` after web changes you want copied into the native projects.
 2. Open Android Studio with `npm run android` and run the app on an emulator or device.
 3. Open Xcode with `npm run ios` on macOS and run the app on a simulator or device.
+
+## Local web development
+
+- Run `npm run dev`
+- Open the local Vite URL, usually `http://localhost:5173`
+
+Because this repo uses `@netlify/vite-plugin`, the local Vite server also emulates Netlify platform primitives such as Functions and redirects. That means `npm run dev` should work for the app's `/api/v1/...` requests without requiring `netlify dev`.
 
 ## Platform notes
 
