@@ -759,6 +759,7 @@ function App() {
                           value={activeHourIndex}
                           onChange={(event) => setSelectedHourIndex(Number(event.target.value))}
                           aria-label="Select forecast hour"
+                          aria-valuetext={activeHourLabel}
                         />
                         <div className="hero-hour-slider-scale" aria-hidden="true">
                           <span>{formatHourLabel(hourlyForDay[0].time, preferences.hourCycle)}</span>
