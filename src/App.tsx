@@ -248,12 +248,22 @@ function App() {
         setDetailsLoading(false);
       });
     } catch (error) {
-      if (requestId.current === nextRequestId) {
+      if (requestId.current !== nextRequestId) return;
+
+      const cachedFallback = readStoredOverview();
+      if (cachedFallback) {
+        setWeather(buildWeatherFromOverview(cachedFallback.overview));
+        setSelectedDate(cachedFallback.overview.today.date);
+        setActiveLocation(cachedFallback.location);
+        setQuery(cachedFallback.location.name);
+        setDataStatus({ savedAt: cachedFallback.savedAt, source: "cached" });
+        setLoadError(null);
+      } else {
         const message = error instanceof Error ? error.message : "Unable to load weather.";
         setLoadError({ message, location });
-        setLoading(false);
-        setDetailsLoading(false);
       }
+      setLoading(false);
+      setDetailsLoading(false);
     }
   }
 
@@ -679,6 +689,21 @@ function App() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {dataStatus?.source === "cached" && (
+            <div className="offline-banner" role="status">
+              <span className="offline-banner-text">
+                Showing cached data · {formatSavedAtLabel(dataStatus.savedAt)}
+              </span>
+              <button
+                type="button"
+                className="offline-banner-retry"
+                onClick={() => activeLocation && void loadWeather(activeLocation)}
+              >
+                Retry
+              </button>
             </div>
           )}
 
