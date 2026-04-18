@@ -43,7 +43,7 @@ import {
   buildWeatherFromOverview,
   defaultPreferences,
 } from "./lib/storage";
-import { resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph, formatSavedAtLabel } from "./lib/app-utils.tsx";
+import { resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph, formatSavedAtLabel } from "./lib/app-utils";
 import type {
   GnssEnvironmentPreset,
   GnssEstimateResponse,

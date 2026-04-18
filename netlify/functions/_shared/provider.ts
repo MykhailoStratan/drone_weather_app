@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { DailyWeather, LocationOption, WeatherAlert, WeatherSnapshot } from "../../../packages/weather-domain/src/types";
 
 const GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
@@ -10,81 +11,91 @@ const REQUEST_TIMEOUTS_MS = {
   alerts: 3000,
 } as const;
 
-type GeocodingResponse = {
-  results?: Array<{
-    id: number;
-    name: string;
-    country: string;
-    admin1?: string;
-    latitude: number;
-    longitude: number;
-    timezone?: string;
-  }>;
-};
+const GeocodingResponseSchema = z.object({
+  results: z.array(z.object({
+    id: z.number(),
+    name: z.string(),
+    country: z.string(),
+    admin1: z.string().optional(),
+    latitude: z.number(),
+    longitude: z.number(),
+    timezone: z.string().optional(),
+  })).optional(),
+});
 
-type ForecastResponse = {
-  latitude: number;
-  longitude: number;
-  timezone: string;
-  current: {
-    time: string;
-    temperature_2m: number;
-    wind_speed_10m: number;
-    wind_gusts_10m: number;
-    wind_direction_10m: number;
-    precipitation: number;
-    precipitation_probability: number;
-    cloud_cover: number;
-    visibility: number;
-    pressure_msl: number;
-    weather_code: number;
-    is_day: number;
-  };
-  hourly: {
-    time: string[];
-    temperature_2m: number[];
-    wind_speed_10m: number[];
-    wind_gusts_10m: number[];
-    wind_direction_10m: number[];
-    precipitation: number[];
-    precipitation_probability: number[];
-    cloud_cover: number[];
-    visibility: number[];
-    pressure_msl: number[];
-    weather_code: number[];
-    is_day: number[];
-  };
-  daily: {
-    time: string[];
-    sunrise: string[];
-    sunset: string[];
-    temperature_2m_max: number[];
-    temperature_2m_min: number[];
-    wind_speed_10m_max: number[];
-    wind_gusts_10m_max: number[];
-    precipitation_probability_max: number[];
-    precipitation_hours: number[];
-    precipitation_sum: number[];
-    weather_code: number[];
-  };
-};
+const WeatherSnapshotSchema = z.object({
+  time: z.string(),
+  temperature_2m: z.number(),
+  wind_speed_10m: z.number(),
+  wind_gusts_10m: z.number(),
+  wind_direction_10m: z.number(),
+  precipitation: z.number(),
+  precipitation_probability: z.number(),
+  cloud_cover: z.number(),
+  visibility: z.number(),
+  pressure_msl: z.number(),
+  weather_code: z.number(),
+  is_day: z.number(),
+});
 
-type NwsAlertsResponse = {
-  features?: Array<{
-    id: string;
-    properties: {
-      event?: string;
-      headline?: string;
-      severity?: string;
-      urgency?: string;
-      areaDesc?: string;
-      onset?: string;
-      effective?: string;
-      ends?: string;
-      expires?: string;
-    };
-  }>;
-};
+const HourlySchema = z.object({
+  time: z.array(z.string()),
+  temperature_2m: z.array(z.number()),
+  wind_speed_10m: z.array(z.number()),
+  wind_gusts_10m: z.array(z.number()),
+  wind_direction_10m: z.array(z.number()),
+  precipitation: z.array(z.number()),
+  precipitation_probability: z.array(z.number()),
+  cloud_cover: z.array(z.number()),
+  visibility: z.array(z.number()),
+  pressure_msl: z.array(z.number()),
+  weather_code: z.array(z.number()),
+  is_day: z.array(z.number()),
+});
+
+const DailySchema = z.object({
+  time: z.array(z.string()),
+  sunrise: z.array(z.string()),
+  sunset: z.array(z.string()),
+  temperature_2m_max: z.array(z.number()),
+  temperature_2m_min: z.array(z.number()),
+  wind_speed_10m_max: z.array(z.number()),
+  wind_gusts_10m_max: z.array(z.number()),
+  precipitation_probability_max: z.array(z.number()),
+  precipitation_hours: z.array(z.number()),
+  precipitation_sum: z.array(z.number()),
+  weather_code: z.array(z.number()),
+});
+
+const ForecastResponseSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+  timezone: z.string(),
+  current: WeatherSnapshotSchema.optional(),
+  hourly: HourlySchema.optional(),
+  daily: DailySchema.optional(),
+});
+
+const NwsAlertsResponseSchema = z.object({
+  features: z.array(z.object({
+    id: z.string(),
+    properties: z.object({
+      event: z.string().optional(),
+      headline: z.string().optional(),
+      severity: z.string().optional(),
+      urgency: z.string().optional(),
+      areaDesc: z.string().optional(),
+      onset: z.string().optional(),
+      effective: z.string().optional(),
+      ends: z.string().optional(),
+      expires: z.string().optional(),
+    }),
+  })).optional(),
+});
+
+type GeocodingResponse = z.infer<typeof GeocodingResponseSchema>;
+type ForecastResponse = z.infer<typeof ForecastResponseSchema>;
+type NwsAlertsResponse = z.infer<typeof NwsAlertsResponseSchema>;
 
 export type ProviderOverviewBundle = {
   timezone: string;
@@ -113,8 +124,9 @@ async function fetchJsonWithTimeout<T>(
     label: string;
     timeoutMs: number;
     errorMessage: string;
+    schema: z.ZodType<T>;
   },
-) {
+): Promise<T> {
   const startedAt = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
@@ -130,7 +142,7 @@ async function fetchJsonWithTimeout<T>(
     }
 
     logProviderRequest(options.label, startedAt, "ok");
-    return (await response.json()) as T;
+    return options.schema.parse(await response.json());
   } catch (error) {
     logProviderRequest(options.label, startedAt, "error");
     if (error instanceof Error && error.name === "AbortError") {
@@ -199,10 +211,11 @@ export async function searchLocationsFromProvider(query: string): Promise<Locati
   url.searchParams.set("language", "en");
   url.searchParams.set("format", "json");
 
-  const data = await fetchJsonWithTimeout<GeocodingResponse>(url, {}, {
+  const data = await fetchJsonWithTimeout(url, {}, {
     label: "locations",
     timeoutMs: REQUEST_TIMEOUTS_MS.geocoding,
     errorMessage: "Unable to search locations right now.",
+    schema: GeocodingResponseSchema,
   });
   return (data.results ?? []).map((entry) => ({
     id: entry.id,
@@ -288,10 +301,11 @@ async function fetchForecastData(
     );
   }
 
-  return fetchJsonWithTimeout<ForecastResponse>(url, {}, {
+  return fetchJsonWithTimeout(url, {}, {
     label: options.requestLabel,
     timeoutMs: options.timeoutMs,
     errorMessage: "Weather data is unavailable right now.",
+    schema: ForecastResponseSchema,
   });
 }
 
@@ -307,6 +321,9 @@ export async function fetchOverviewBundle(
     timeoutMs: REQUEST_TIMEOUTS_MS.overview,
   });
 
+  if (!data.current || !data.daily) {
+    throw new Error("Weather data is unavailable right now.");
+  }
   return {
     timezone: data.timezone,
     latitude: data.latitude,
@@ -328,6 +345,9 @@ export async function fetchTimelineBundle(
     timeoutMs: REQUEST_TIMEOUTS_MS.timeline,
   });
 
+  if (!data.hourly || !data.daily) {
+    throw new Error("Weather data is unavailable right now.");
+  }
   return {
     timezone: data.timezone,
     latitude: data.latitude,
@@ -345,7 +365,7 @@ export async function fetchUnitedStatesAlerts(location: Partial<LocationOption> 
   const url = new URL(ALERTS_URL);
   url.searchParams.set("point", `${location.latitude},${location.longitude}`);
 
-  const data = await fetchJsonWithTimeout<NwsAlertsResponse>(
+  const data = await fetchJsonWithTimeout(
     url,
     {
       headers: {
@@ -357,6 +377,7 @@ export async function fetchUnitedStatesAlerts(location: Partial<LocationOption> 
       label: "alerts",
       timeoutMs: REQUEST_TIMEOUTS_MS.alerts,
       errorMessage: "Weather alerts are unavailable right now.",
+      schema: NwsAlertsResponseSchema,
     },
   );
 
