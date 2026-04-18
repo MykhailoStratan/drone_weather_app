@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type TouchEvent } from "react";
 import { curveMonotoneX } from "@visx/curve";
 import { LinearGradient } from "@visx/gradient";
 import { Group } from "@visx/group";
@@ -58,6 +58,23 @@ type AlertTimelineChartProps = {
   alerts: WeatherAlert[];
   hourCycle: "12h" | "24h";
 };
+
+function nearestIndexFromTouch<T>(
+  event: TouchEvent<SVGRectElement>,
+  points: T[],
+  getX: (point: T) => number,
+): number | null {
+  const touch = event.touches[0];
+  if (!touch || !points.length) return null;
+  const svgEl = (event.currentTarget as SVGElement).closest("svg");
+  if (!svgEl) return null;
+  const { left, width: renderedWidth } = svgEl.getBoundingClientRect();
+  const viewBoxWidth = parseFloat(svgEl.getAttribute("viewBox")?.split(" ")[2] ?? "420");
+  const localX = (touch.clientX - left) * (viewBoxWidth / renderedWidth);
+  return points.reduce((closest, point, index) => {
+    return Math.abs(getX(point) - localX) < Math.abs(getX(points[closest]) - localX) ? index : closest;
+  }, 0);
+}
 
 const baseDimensions: ChartDimensions = {
   width: 420,
@@ -169,6 +186,13 @@ export function TemperatureCurveChart({
             />
           );
         })}
+        <rect
+          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={innerHeight}
+          fill="transparent" style={{ touchAction: "none" }}
+          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (band(p.key) ?? 0) + band.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (band(p.key) ?? 0) + band.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onTouchEnd={() => setHoveredIndex(null)}
+        />
       </svg>
     </ChartShell>
   );
@@ -265,6 +289,13 @@ export function PrecipitationOverlayChart({
             onMouseLeave={() => setHoveredIndex(null)}
           />
         ))}
+        <rect
+          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
+          fill="transparent" style={{ touchAction: "none" }}
+          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onTouchEnd={() => setHoveredIndex(null)}
+        />
       </svg>
     </ChartShell>
   );
@@ -366,6 +397,13 @@ export function WindDirectionChart({
             onMouseLeave={() => setHoveredIndex(null)}
           />
         ))}
+        <rect
+          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
+          fill="transparent" style={{ touchAction: "none" }}
+          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onTouchEnd={() => setHoveredIndex(null)}
+        />
       </svg>
     </ChartShell>
   );
@@ -450,6 +488,13 @@ export function WeeklyRangeChart({
             />
           );
         })}
+        <rect
+          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
+          fill="transparent" style={{ touchAction: "none" }}
+          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onTouchEnd={() => setHoveredIndex(null)}
+        />
       </svg>
     </ChartShell>
   );
@@ -577,6 +622,13 @@ export function PressureTrendChart({
             />
           );
         })}
+        <rect
+          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
+          fill="transparent" style={{ touchAction: "none" }}
+          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onTouchEnd={() => setHoveredIndex(null)}
+        />
       </svg>
     </ChartShell>
   );
@@ -676,6 +728,13 @@ export function CloudVisibilityChart({
             />
           );
         })}
+        <rect
+          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
+          fill="transparent" style={{ touchAction: "none" }}
+          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onTouchEnd={() => setHoveredIndex(null)}
+        />
       </svg>
     </ChartShell>
   );
