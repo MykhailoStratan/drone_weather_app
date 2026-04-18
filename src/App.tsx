@@ -54,6 +54,7 @@ const PREFERENCES_KEY = "skycanvas.preferences";
 const LAST_OVERVIEW_KEY = "skycanvas.lastOverview";
 
 type Preferences = {
+  theme: "dark" | "light";
   temperatureUnit: "c" | "f";
   windUnit: "kmh" | "mph";
   visibilityUnit: "km" | "mi";
@@ -74,6 +75,7 @@ type DataStatus = {
 type DetailView = "hourly" | "weekly" | "alerts";
 
 const defaultPreferences: Preferences = {
+  theme: "dark",
   temperatureUnit: "c",
   windUnit: "kmh",
   visibilityUnit: "km",
@@ -277,6 +279,11 @@ function App() {
       }
     };
   }, [query]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = preferences.theme;
+    document.documentElement.style.colorScheme = preferences.theme;
+  }, [preferences.theme]);
 
   async function loadWeather(location: LocationOption) {
     const nextRequestId = requestId.current + 1;
@@ -670,6 +677,26 @@ function App() {
 
                 {preferencesOpen && (
                   <>
+                    <div className="preference-group">
+                      <span className="preference-label">Theme</span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={preferences.theme === "dark" ? "segment active" : "segment"}
+                          onClick={() => updatePreferences({ ...preferences, theme: "dark" })}
+                        >
+                          Dark
+                        </button>
+                        <button
+                          type="button"
+                          className={preferences.theme === "light" ? "segment active" : "segment"}
+                          onClick={() => updatePreferences({ ...preferences, theme: "light" })}
+                        >
+                          Light
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="preference-group">
                       <span className="preference-label">Temperature</span>
                       <div className="segmented-control">

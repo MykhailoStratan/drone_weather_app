@@ -136,6 +136,19 @@ describe("App preferences", () => {
     view.unmount();
   });
 
+  it("switches between dark and light themes", async () => {
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    fireEvent.click(view.getByRole("button", { name: "Show" }));
+    fireEvent.click(await view.findByRole("button", { name: "Light" }));
+
+    expect(document.documentElement.dataset.theme).toBe("light");
+    view.unmount();
+  });
+
   it("updates the hero card when the hour slider changes", async () => {
     const view = render(<App />);
 
