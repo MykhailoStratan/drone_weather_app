@@ -70,7 +70,7 @@ type HoverRectProps = {
 };
 
 function nearestIndexFromTouch<T>(
-  event: TouchEvent<SVGRectElement>,
+  event: TouchEvent<SVGElement>,
   points: T[],
   getX: (point: T) => number,
 ): number | null {
@@ -111,6 +111,24 @@ function HoverRect({ rectKey, x, y, width, height, onHover, onLeave }: HoverRect
   );
 }
 
+function createTouchHandlers<T>(
+  points: T[],
+  getX: (point: T) => number,
+  setHoveredIndex: (index: number | null) => void,
+) {
+  return {
+    onTouchStart: (event: TouchEvent<SVGSVGElement>) => {
+      const index = nearestIndexFromTouch(event, points, getX);
+      if (index !== null) setHoveredIndex(index);
+    },
+    onTouchMove: (event: TouchEvent<SVGSVGElement>) => {
+      const index = nearestIndexFromTouch(event, points, getX);
+      if (index !== null) setHoveredIndex(index);
+    },
+    onTouchEnd: () => setHoveredIndex(null),
+  };
+}
+
 export function TemperatureCurveChart({
   points,
   units,
@@ -134,6 +152,11 @@ export function TemperatureCurveChart({
     range: [marginLeft, width - marginRight],
     paddingInner: 0.18,
   });
+  const touchHandlers = createTouchHandlers(
+    points,
+    (point) => (band(point.key) ?? 0) + band.bandwidth() / 2,
+    setHoveredIndex,
+  );
   const [min, max] = summarizeRange(points.map((point) => point.value));
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
@@ -152,7 +175,14 @@ export function TemperatureCurveChart({
       }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
-      <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Temperature curve">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="visx-chart"
+        role="img"
+        aria-label="Temperature curve"
+        style={{ touchAction: "none" }}
+        {...touchHandlers}
+      >
         <LinearGradient id="temperature-fill" from="rgba(255, 213, 108, 0.5)" to="rgba(255, 126, 72, 0.06)" />
         {points.map((point) => {
           const xValue = band(point.key) ?? 0;
@@ -211,13 +241,6 @@ export function TemperatureCurveChart({
             />
           );
         })}
-        <rect
-          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={innerHeight}
-          fill="transparent" style={{ touchAction: "none" }}
-          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (band(p.key) ?? 0) + band.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
-          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (band(p.key) ?? 0) + band.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
-          onTouchEnd={() => setHoveredIndex(null)}
-        />
       </svg>
     </ChartShell>
   );
@@ -245,6 +268,11 @@ export function PrecipitationOverlayChart({
   });
   const maxAmount = Math.max(...points.map((point) => point.value), 0);
   const maxProbability = Math.max(...points.map((point) => point.probability), 0);
+  const touchHandlers = createTouchHandlers(
+    points,
+    (point) => (x(point.key) ?? 0) + x.bandwidth() / 2,
+    setHoveredIndex,
+  );
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
   const subtitle =
     maxAmount < 0.1
@@ -266,7 +294,14 @@ export function PrecipitationOverlayChart({
       }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
-      <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Precipitation and probability chart">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="visx-chart"
+        role="img"
+        aria-label="Precipitation and probability chart"
+        style={{ touchAction: "none" }}
+        {...touchHandlers}
+      >
         <LinearGradient id="precip-bars" from="rgba(141, 241, 211, 0.92)" to="rgba(90, 151, 255, 0.35)" />
         {points.map((point) => {
           const barX = x(point.key) ?? 0;
@@ -313,13 +348,6 @@ export function PrecipitationOverlayChart({
             onLeave={() => setHoveredIndex(null)}
           />
         ))}
-        <rect
-          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
-          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
-          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
-          onTouchEnd={() => setHoveredIndex(null)}
-        />
       </svg>
     </ChartShell>
   );
@@ -343,6 +371,11 @@ export function WindDirectionChart({
     domain: [0, Math.max(1, ...points.map((point) => point.value))],
     range: [height - marginBottom, marginTop + 18],
   });
+  const touchHandlers = createTouchHandlers(
+    points,
+    (point) => (x(point.key) ?? 0) + x.bandwidth() / 2,
+    setHoveredIndex,
+  );
   const [min, max] = summarizeRange(points.map((point) => point.value));
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
@@ -361,7 +394,14 @@ export function WindDirectionChart({
       }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
-      <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Wind speed and direction chart">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="visx-chart"
+        role="img"
+        aria-label="Wind speed and direction chart"
+        style={{ touchAction: "none" }}
+        {...touchHandlers}
+      >
         {points.map((point, index) => {
           const barX = x(point.key) ?? 0;
           const barWidth = x.bandwidth();
@@ -420,13 +460,6 @@ export function WindDirectionChart({
             onLeave={() => setHoveredIndex(null)}
           />
         ))}
-        <rect
-          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
-          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
-          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
-          onTouchEnd={() => setHoveredIndex(null)}
-        />
       </svg>
     </ChartShell>
   );
@@ -456,6 +489,7 @@ export function WeeklyRangeChart({
   });
   const minValue = Math.min(...points.map((point) => point.min));
   const maxValue = Math.max(...points.map((point) => point.max));
+  const touchHandlers = createTouchHandlers(points, (point) => x(point.key) ?? 0, setHoveredIndex);
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
@@ -473,7 +507,14 @@ export function WeeklyRangeChart({
       }
       footer={<AxisFooter labels={points.map((point) => point.shortLabel)} dense />}
     >
-      <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart visx-chart-large" role="img" aria-label="Seven day temperature range chart">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="visx-chart visx-chart-large"
+        role="img"
+        aria-label="Seven day temperature range chart"
+        style={{ touchAction: "none" }}
+        {...touchHandlers}
+      >
         {points.map((point) => {
           const cx = x(point.key) ?? 0;
           const yMin = y(point.min);
@@ -510,13 +551,6 @@ export function WeeklyRangeChart({
             />
           );
         })}
-        <rect
-          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
-          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
-          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
-          onTouchEnd={() => setHoveredIndex(null)}
-        />
       </svg>
     </ChartShell>
   );
@@ -583,6 +617,7 @@ export function PressureTrendChart({
     domain: createValueDomain(points.map((point) => point.value), 4),
     range: [height - marginBottom, marginTop],
   });
+  const touchHandlers = createTouchHandlers(points, (point) => x(point.key) ?? 0, setHoveredIndex);
   const [min, max] = summarizeRange(points.map((point) => point.value));
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
@@ -596,7 +631,14 @@ export function PressureTrendChart({
       }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
-      <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Pressure trend chart">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="visx-chart"
+        role="img"
+        aria-label="Pressure trend chart"
+        style={{ touchAction: "none" }}
+        {...touchHandlers}
+      >
         <LinearGradient id="pressure-fill" from="rgba(137, 211, 255, 0.35)" to="rgba(137, 211, 255, 0.04)" />
         <AreaClosed<HourlyDatum>
           data={points}
@@ -643,13 +685,6 @@ export function PressureTrendChart({
             />
           );
         })}
-        <rect
-          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
-          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
-          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
-          onTouchEnd={() => setHoveredIndex(null)}
-        />
       </svg>
     </ChartShell>
   );
@@ -677,6 +712,7 @@ export function CloudVisibilityChart({
     range: [height - marginBottom, marginTop],
   });
   const visibilityMax = Math.max(...points.map((point) => point.secondaryValue), 0);
+  const touchHandlers = createTouchHandlers(points, (point) => x(point.key) ?? 0, setHoveredIndex);
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
 
   return (
@@ -694,7 +730,14 @@ export function CloudVisibilityChart({
       }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
-      <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart" role="img" aria-label="Cloud cover and visibility chart">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="visx-chart"
+        role="img"
+        aria-label="Cloud cover and visibility chart"
+        style={{ touchAction: "none" }}
+        {...touchHandlers}
+      >
         <AreaClosed<DualDatum>
           data={points}
           x={(point) => x(point.key) ?? 0}
@@ -748,13 +791,6 @@ export function CloudVisibilityChart({
             />
           );
         })}
-        <rect
-          x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
-          onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
-          onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
-          onTouchEnd={() => setHoveredIndex(null)}
-        />
       </svg>
     </ChartShell>
   );
