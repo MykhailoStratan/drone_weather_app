@@ -20,6 +20,7 @@ const WindDirectionChart = React.lazy(() =>
 import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
 import { FlightWindowBar } from "./components/FlightWindowBar";
 import { BatteryThermalPanel } from "./components/BatteryThermalPanel";
+import { DewPointPanel } from "./components/DewPointPanel";
 import { IconSunrise, IconSunset, IconRain, IconCloud, IconEye, IconGauge, IconCompass } from "./components/Icons";
 import {
   formatDayLabel,
@@ -1024,6 +1025,16 @@ function App() {
                 <div className="support-panel-section">
                   <BatteryThermalPanel temperatureCelsius={resolvedCurrentSnapshot.temperature} />
                 </div>
+
+                {resolvedCurrentSnapshot.relativeHumidity !== undefined && (
+                  <div className="support-panel-section">
+                    <DewPointPanel
+                      temperatureCelsius={resolvedCurrentSnapshot.temperature}
+                      relativeHumidity={resolvedCurrentSnapshot.relativeHumidity}
+                      temperatureUnit={preferences.temperatureUnit}
+                    />
+                  </div>
+                )}
               </article>
           </section>
 

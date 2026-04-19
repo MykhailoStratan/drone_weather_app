@@ -27,6 +27,7 @@ export type WeatherSnapshot = {
   windSpeed120m?: number;
   windGusts120m?: number;
   windDirection120m?: number;
+  relativeHumidity?: number;
 };
 
 export type DailyWeather = {

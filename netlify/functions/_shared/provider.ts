@@ -36,6 +36,7 @@ const WeatherSnapshotSchema = z.object({
   pressure_msl: z.number(),
   weather_code: z.number(),
   is_day: z.number(),
+  relative_humidity_2m: z.number().optional(),
 });
 
 const HourlySchema = z.object({
@@ -57,6 +58,7 @@ const HourlySchema = z.object({
   wind_speed_120m: z.array(z.number()).optional(),
   wind_gusts_120m: z.array(z.number()).optional(),
   wind_direction_120m: z.array(z.number()).optional(),
+  relative_humidity_2m: z.array(z.number()).optional(),
 });
 
 const DailySchema = z.object({
@@ -174,6 +176,7 @@ function toSnapshot(source: ForecastResponse["current"]): WeatherSnapshot {
     pressure: source.pressure_msl,
     weatherCode: source.weather_code,
     isDay: source.is_day,
+    relativeHumidity: source.relative_humidity_2m,
   };
 }
 
@@ -197,6 +200,7 @@ function zipHourly(hourly: ForecastResponse["hourly"]): WeatherSnapshot[] {
     windSpeed120m: hourly.wind_speed_120m?.[index],
     windGusts120m: hourly.wind_gusts_120m?.[index],
     windDirection120m: hourly.wind_direction_120m?.[index],
+    relativeHumidity: hourly.relative_humidity_2m?.[index],
   }));
 }
 
@@ -274,6 +278,7 @@ async function fetchForecastData(
         "pressure_msl",
         "weather_code",
         "is_day",
+        "relative_humidity_2m",
       ].join(","),
     );
   }
@@ -298,6 +303,7 @@ async function fetchForecastData(
         "pressure_msl",
         "weather_code",
         "is_day",
+        "relative_humidity_2m",
       ].join(","),
     );
   }
