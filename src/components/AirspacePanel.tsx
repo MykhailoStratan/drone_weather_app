@@ -69,6 +69,14 @@ function formatTFRTime(iso?: string): string {
   }
 }
 
+// Refs shared across both effects
+type MapRefs = {
+  map: import("leaflet").Map | null;
+  airspaceLayer: import("leaflet").LayerGroup | null;
+  tfrLayer: import("leaflet").LayerGroup | null;
+  layerControl: import("leaflet").Control.Layers | null;
+};
+
 function AirspaceMap({
   latitude,
   longitude,
@@ -81,17 +89,19 @@ function AirspaceMap({
   tfrs: TFRFeature[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<import("leaflet").Map | null>(null);
+  const refs = useRef<MapRefs>({ map: null, airspaceLayer: null, tfrLayer: null, layerControl: null });
 
+  // Initialize the map once per location change
   useEffect(() => {
     if (!containerRef.current) return;
 
-    let map: import("leaflet").Map | null = null;
+    let L: typeof import("leaflet") | null = null;
 
-    void import("leaflet").then((leafletModule) => {
-      const L = leafletModule.default ?? (leafletModule as unknown as typeof import("leaflet"));
+    const init = async () => {
+      const mod = await import("leaflet");
+      L = mod.default ?? (mod as unknown as typeof import("leaflet"));
 
-      if (!containerRef.current || mapRef.current) return;
+      if (!containerRef.current || refs.current.map) return;
 
       patchLeafletIcons(L);
 
@@ -103,22 +113,19 @@ function AirspaceMap({
         document.head.appendChild(link);
       }
 
-      map = L.map(containerRef.current, {
+      const map = L.map(containerRef.current, {
         center: [latitude, longitude],
         zoom: 10,
         zoomControl: true,
         attributionControl: true,
       });
 
-      mapRef.current = map;
+      refs.current.map = map;
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 18,
       }).addTo(map);
-
-      // --- Airspace layer group ---
-      const airspaceLayer = L.layerGroup();
 
       const locationIcon = L.divIcon({
         className: "",
@@ -127,8 +134,42 @@ function AirspaceMap({
         iconAnchor: [8, 8],
       });
       L.marker([latitude, longitude], { icon: locationIcon })
-        .addTo(airspaceLayer)
+        .addTo(map)
         .bindPopup("Your location");
+
+      // Create empty layer groups and controls — zones drawn in the second effect
+      const airspaceLayer = L.layerGroup().addTo(map);
+      const tfrLayer = L.layerGroup();
+      refs.current.airspaceLayer = airspaceLayer;
+      refs.current.tfrLayer = tfrLayer;
+
+      const layerControl = L.control.layers(
+        undefined,
+        { "Airspace zones": airspaceLayer },
+        { collapsed: false },
+      ).addTo(map);
+      refs.current.layerControl = layerControl;
+    };
+
+    void init();
+
+    return () => {
+      refs.current.map?.remove();
+      refs.current = { map: null, airspaceLayer: null, tfrLayer: null, layerControl: null };
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude]);
+
+  // Re-draw zones whenever features or TFRs change
+  useEffect(() => {
+    const { map, airspaceLayer, tfrLayer, layerControl } = refs.current;
+    if (!map || !airspaceLayer || !tfrLayer) return;
+
+    import("leaflet").then((mod) => {
+      const L = mod.default ?? (mod as unknown as typeof import("leaflet"));
+
+      airspaceLayer.clearLayers();
+      tfrLayer.clearLayers();
 
       for (const feature of features) {
         const colors = ZONE_COLORS[feature.classification];
@@ -160,13 +201,8 @@ function AirspaceMap({
         L.marker([feature.latitude, feature.longitude], { icon }).addTo(airspaceLayer);
       }
 
-      airspaceLayer.addTo(map);
-
-      // --- TFR layer group ---
-      const tfrLayer = L.layerGroup();
-
       for (const tfr of tfrs) {
-        const radiusM = tfr.radiusNm * 1852;
+        const radiusM = Math.max(tfr.radiusNm * 1852, 1852);
         const alt = altitudeLabel(tfr.altitudeLowerFt, tfr.altitudeUpperFt);
         const popupHtml =
           `<strong>TFR ${tfr.notamNumber}</strong>` +
@@ -177,7 +213,7 @@ function AirspaceMap({
           `<br>${tfr.distanceKm.toFixed(1)} km away`;
 
         L.circle([tfr.latitude, tfr.longitude], {
-          radius: radiusM > 0 ? radiusM : 1852,
+          radius: radiusM,
           color: TFR_COLOR.stroke,
           fillColor: TFR_COLOR.fill,
           fillOpacity: 1,
@@ -196,49 +232,46 @@ function AirspaceMap({
         L.marker([tfr.latitude, tfr.longitude], { icon: tfrIcon }).addTo(tfrLayer);
       }
 
-      if (tfrs.length > 0) {
+      // Add/remove TFR layer from control based on whether there are TFRs
+      if (tfrs.length > 0 && !map.hasLayer(tfrLayer)) {
         tfrLayer.addTo(map);
+        layerControl?.addOverlay(tfrLayer, "TFRs (US)");
+      } else if (tfrs.length === 0 && map.hasLayer(tfrLayer)) {
+        map.removeLayer(tfrLayer);
       }
-
-      // --- Layer control ---
-      const overlays: Record<string, import("leaflet").LayerGroup> = {
-        "Airspace zones": airspaceLayer,
-      };
-      if (tfrs.length > 0) {
-        overlays["TFRs (US)"] = tfrLayer;
-      }
-      L.control.layers(undefined, overlays, { collapsed: false }).addTo(map);
     });
-
-    return () => {
-      map?.remove();
-      mapRef.current = null;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latitude, longitude]);
+  }, [features, tfrs]);
 
   return <div ref={containerRef} className="airspace-map-container" />;
 }
 
 export function AirspacePanel({
+  latitude,
+  longitude,
   airspace,
   loading,
 }: {
+  latitude?: number;
+  longitude?: number;
   airspace: AirspaceResponse | null;
   loading: boolean;
 }) {
-  const withinZone = airspace?.features.find((f) => f.distanceKm < f.zoneRadiusKm);
-  const hasControlledNearby = airspace?.features.some(
+  const features = airspace?.features ?? [];
+  const tfrs = airspace?.tfrs ?? [];
+
+  const withinZone = features.find((f) => f.distanceKm < f.zoneRadiusKm);
+  const hasControlledNearby = features.some(
     (f) => f.classification === "controlled" && f.distanceKm < f.zoneRadiusKm + 5,
   );
-  const activeTFRs = airspace?.tfrs.filter(
-    (t) => t.distanceKm < t.radiusNm * 1.852 + 10,
-  ) ?? [];
+  const activeTFRs = tfrs.filter((t) => t.distanceKm < t.radiusNm * 1.852 + 10);
 
   let statusClass = "good";
   let statusText = "Uncontrolled airspace";
 
-  if (activeTFRs.length > 0) {
+  if (loading) {
+    statusClass = "loading";
+    statusText = "Checking airspace…";
+  } else if (activeTFRs.length > 0) {
     statusClass = "risk";
     statusText = `${activeTFRs.length} active TFR${activeTFRs.length > 1 ? "s" : ""} nearby`;
   } else if (withinZone) {
@@ -250,108 +283,109 @@ export function AirspacePanel({
     statusText = "Controlled airspace nearby";
   }
 
+  const mapLat = airspace?.latitude ?? latitude;
+  const mapLng = airspace?.longitude ?? longitude;
+
   return (
     <div className="airspace-panel">
       <div className="airspace-panel-header">
-        <p className="section-label">Airspace · overlay</p>
+        <p className="section-label">Airspace · restrictions</p>
         <span className={`airspace-status-badge ${statusClass}`}>{statusText}</span>
       </div>
 
-      {loading && !airspace && (
+      {mapLat !== undefined && mapLng !== undefined ? (
+        <AirspaceMap
+          latitude={mapLat}
+          longitude={mapLng}
+          features={features}
+          tfrs={tfrs}
+        />
+      ) : (
         <div className="airspace-loading">
           <div className="spinner spinner-sm" />
-          <span>Loading airspace data…</span>
+          <span>Waiting for location…</span>
         </div>
       )}
 
-      {airspace && (
-        <>
-          <AirspaceMap
-            latitude={airspace.latitude}
-            longitude={airspace.longitude}
-            features={airspace.features}
-            tfrs={airspace.tfrs}
-          />
+      {mapLat !== undefined && (
+        <div className="airspace-legend">
+          <span className="airspace-legend-item controlled">Controlled</span>
+          <span className="airspace-legend-item advisory">Advisory</span>
+          <span className="airspace-legend-item restricted">Restricted</span>
+          {tfrs.length > 0 && (
+            <span className="airspace-legend-item tfr">TFR</span>
+          )}
+        </div>
+      )}
 
-          <div className="airspace-legend">
-            <span className="airspace-legend-item controlled">Controlled</span>
-            <span className="airspace-legend-item advisory">Advisory</span>
-            <span className="airspace-legend-item restricted">Restricted</span>
-            {airspace.tfrs.length > 0 && (
-              <span className="airspace-legend-item tfr">TFR</span>
-            )}
-          </div>
+      {airspace && features.length === 0 && tfrs.length === 0 && (
+        <p className="airspace-empty">No restrictions found within 30 km.</p>
+      )}
 
-          {airspace.features.length === 0 && airspace.tfrs.length === 0 ? (
-            <p className="airspace-empty">No restrictions found within 30 km.</p>
-          ) : (
-            <>
-              {airspace.features.length > 0 && (
-                <ul className="airspace-feature-list">
-                  {airspace.features.slice(0, 5).map((f) => (
-                    <li key={f.id} className="airspace-feature-row">
-                      <div className={`airspace-dot ${f.classification}`} />
-                      <div className="airspace-feature-info">
-                        <strong>{f.name}</strong>
-                        <span className="airspace-icao">
-                          {featureTypeLabel(f.featureType)}
-                          {f.icao ? ` · ${f.icao}` : ""}
-                        </span>
-                        {(f.altitudeLowerFt !== undefined || f.altitudeUpperFt !== undefined) && (
-                          <span className="airspace-altitude">{altitudeLabel(f.altitudeLowerFt, f.altitudeUpperFt)}</span>
-                        )}
-                      </div>
-                      <div className="airspace-feature-distance">
-                        <span>{f.distanceKm.toFixed(1)} km</span>
-                        <span className="airspace-bearing">{bearingLabel(f.bearingDeg)}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+      {features.length > 0 && (
+        <ul className="airspace-feature-list">
+          {features.slice(0, 5).map((f) => (
+            <li key={f.id} className="airspace-feature-row">
+              <div className={`airspace-dot ${f.classification}`} />
+              <div className="airspace-feature-info">
+                <strong>{f.name}</strong>
+                <span className="airspace-icao">
+                  {featureTypeLabel(f.featureType)}
+                  {f.icao ? ` · ${f.icao}` : ""}
+                </span>
+                {(f.altitudeLowerFt !== undefined || f.altitudeUpperFt !== undefined) && (
+                  <span className="airspace-altitude">{altitudeLabel(f.altitudeLowerFt, f.altitudeUpperFt)}</span>
+                )}
+              </div>
+              <div className="airspace-feature-distance">
+                <span>{f.distanceKm.toFixed(1)} km</span>
+                <span className="airspace-bearing">{bearingLabel(f.bearingDeg)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
-              {activeTFRs.length > 0 && (
-                <div className="airspace-tfr-section">
-                  <p className="airspace-tfr-heading">Active TFRs (US)</p>
-                  <ul className="airspace-feature-list">
-                    {activeTFRs.slice(0, 3).map((t) => (
-                      <li key={t.id} className="airspace-feature-row">
-                        <div className="airspace-dot tfr" />
-                        <div className="airspace-feature-info">
-                          <strong>TFR {t.notamNumber}</strong>
-                          <span className="airspace-icao">
-                            {t.radiusNm.toFixed(1)} NM radius
-                            {t.altitudeUpperFt ? ` · SFC–${t.altitudeUpperFt.toLocaleString()} ft` : ""}
-                          </span>
-                          {t.effectiveEnd && (
-                            <span className="airspace-altitude">Until {formatTFRTime(t.effectiveEnd)}</span>
-                          )}
-                        </div>
-                        <div className="airspace-feature-distance">
-                          <span>{t.distanceKm.toFixed(1)} km</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+      {activeTFRs.length > 0 && (
+        <div className="airspace-tfr-section">
+          <p className="airspace-tfr-heading">Active TFRs (US)</p>
+          <ul className="airspace-feature-list">
+            {activeTFRs.slice(0, 3).map((t) => (
+              <li key={t.id} className="airspace-feature-row">
+                <div className="airspace-dot tfr" />
+                <div className="airspace-feature-info">
+                  <strong>TFR {t.notamNumber}</strong>
+                  <span className="airspace-icao">
+                    {t.radiusNm.toFixed(1)} NM radius
+                    {t.altitudeUpperFt ? ` · SFC–${t.altitudeUpperFt.toLocaleString()} ft` : ""}
+                  </span>
+                  {t.effectiveEnd && (
+                    <span className="airspace-altitude">Until {formatTFRTime(t.effectiveEnd)}</span>
+                  )}
                 </div>
-              )}
-            </>
-          )}
+                <div className="airspace-feature-distance">
+                  <span>{t.distanceKm.toFixed(1)} km</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-          {(withinZone || activeTFRs.length > 0) && (
-            <p className="airspace-advice">
-              {activeTFRs.length > 0
-                ? "Active TFR in your area — flight is prohibited without specific authorization."
-                : withinZone?.classification === "controlled"
-                ? "Authorization required before flying. Check local regulations or use the LAANC system."
-                : "Advisory zone — review local rules before flying."}
-            </p>
-          )}
+      {(withinZone || activeTFRs.length > 0) && (
+        <p className="airspace-advice">
+          {activeTFRs.length > 0
+            ? "Active TFR in your area — flight is prohibited without specific authorization."
+            : withinZone?.classification === "controlled"
+            ? "Authorization required before flying. Check local regulations or use the LAANC system."
+            : "Advisory zone — review local rules before flying."}
+        </p>
+      )}
 
-          <p className="airspace-disclaimer">
-            Airspace: OpenStreetMap / Overpass API. TFRs: aviationweather.gov. Always verify with official sources before flight.
-          </p>
-        </>
+      {mapLat !== undefined && (
+        <p className="airspace-disclaimer">
+          Airspace: OpenStreetMap / Overpass API. TFRs: aviationweather.gov. Always verify with official sources before flight.
+        </p>
       )}
     </div>
   );

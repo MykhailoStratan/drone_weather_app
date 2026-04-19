@@ -2426,6 +2426,7 @@ input:focus-visible {
 .airspace-status-badge.good    { background: var(--teal-soft);   color: var(--teal); }
 .airspace-status-badge.caution { background: var(--amber-soft);  color: var(--amber); }
 .airspace-status-badge.risk    { background: var(--danger-soft); color: var(--danger); }
+.airspace-status-badge.loading { background: var(--surface-2, #2a2a2a); color: var(--text-tertiary); }
 
 .airspace-map-container {
   width: 100%;

@@ -1074,7 +1074,12 @@ function App() {
           )}
 
           <section className="airspace-panel-section">
-            <AirspacePanel airspace={airspace} loading={airspaceLoading} />
+            <AirspacePanel
+              latitude={activeLocation?.latitude}
+              longitude={activeLocation?.longitude}
+              airspace={airspace}
+              loading={airspaceLoading}
+            />
           </section>
 
           <section className="detail-switcher-panel">
