@@ -877,6 +877,38 @@ function App() {
                       </div>
                     </div>
                   </div>
+
+                  {resolvedCurrentSnapshot.windSpeed80m !== undefined && (
+                    <div className="wind-aloft-card">
+                      <p className="section-label">Wind aloft</p>
+                      <div className="wind-aloft-levels">
+                        <WindAloftLevel
+                          label="10 m"
+                          speed={resolvedCurrentSnapshot.windSpeed}
+                          gusts={resolvedCurrentSnapshot.windGusts}
+                          direction={resolvedCurrentSnapshot.windDirection}
+                          unit={preferences.windUnit}
+                          unitLabel={windUnitLabel}
+                        />
+                        <WindAloftLevel
+                          label="80 m"
+                          speed={resolvedCurrentSnapshot.windSpeed80m}
+                          gusts={resolvedCurrentSnapshot.windGusts80m}
+                          direction={resolvedCurrentSnapshot.windDirection80m}
+                          unit={preferences.windUnit}
+                          unitLabel={windUnitLabel}
+                        />
+                        <WindAloftLevel
+                          label="120 m"
+                          speed={resolvedCurrentSnapshot.windSpeed120m}
+                          gusts={resolvedCurrentSnapshot.windGusts120m}
+                          direction={resolvedCurrentSnapshot.windDirection120m}
+                          unit={preferences.windUnit}
+                          unitLabel={windUnitLabel}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="hero-mini-grid">
@@ -1247,6 +1279,38 @@ function App() {
           )}
       </>
     </main>
+  );
+}
+
+function WindAloftLevel({
+  label,
+  speed,
+  gusts,
+  direction,
+  unit,
+  unitLabel,
+}: {
+  label: string;
+  speed: number | undefined;
+  gusts: number | undefined;
+  direction: number | undefined;
+  unit: "kmh" | "mph";
+  unitLabel: string;
+}) {
+  if (speed === undefined) return null;
+  const shear = gusts !== undefined && speed > 0 ? Math.round(((gusts - speed) / speed) * 100) : 0;
+  const shearTone = shear > 40 ? "risk" : shear > 20 ? "caution" : "good";
+  return (
+    <div className="wind-aloft-level">
+      <span className="wind-aloft-alt">{label}</span>
+      <span className="wind-aloft-speed">{windSpeedDisplay(speed, unit)} {unitLabel}</span>
+      {gusts !== undefined && (
+        <span className={`wind-aloft-gusts ${shearTone}`}>↑{windSpeedDisplay(gusts, unit)}</span>
+      )}
+      {direction !== undefined && (
+        <span className="wind-aloft-dir">{windDirectionLabel(direction)}</span>
+      )}
+    </div>
   );
 }
 

@@ -51,6 +51,12 @@ const HourlySchema = z.object({
   pressure_msl: z.array(z.number()),
   weather_code: z.array(z.number()),
   is_day: z.array(z.number()),
+  wind_speed_80m: z.array(z.number()).optional(),
+  wind_gusts_80m: z.array(z.number()).optional(),
+  wind_direction_80m: z.array(z.number()).optional(),
+  wind_speed_120m: z.array(z.number()).optional(),
+  wind_gusts_120m: z.array(z.number()).optional(),
+  wind_direction_120m: z.array(z.number()).optional(),
 });
 
 const DailySchema = z.object({
@@ -185,6 +191,12 @@ function zipHourly(hourly: ForecastResponse["hourly"]): WeatherSnapshot[] {
     pressure: hourly.pressure_msl[index],
     weatherCode: hourly.weather_code[index],
     isDay: hourly.is_day[index],
+    windSpeed80m: hourly.wind_speed_80m?.[index],
+    windGusts80m: hourly.wind_gusts_80m?.[index],
+    windDirection80m: hourly.wind_direction_80m?.[index],
+    windSpeed120m: hourly.wind_speed_120m?.[index],
+    windGusts120m: hourly.wind_gusts_120m?.[index],
+    windDirection120m: hourly.wind_direction_120m?.[index],
   }));
 }
 
@@ -273,6 +285,12 @@ async function fetchForecastData(
         "wind_speed_10m",
         "wind_gusts_10m",
         "wind_direction_10m",
+        "wind_speed_80m",
+        "wind_gusts_80m",
+        "wind_direction_80m",
+        "wind_speed_120m",
+        "wind_gusts_120m",
+        "wind_direction_120m",
         "precipitation",
         "precipitation_probability",
         "cloud_cover",

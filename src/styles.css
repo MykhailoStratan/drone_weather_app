@@ -985,6 +985,69 @@ input:focus-visible {
   line-height: 1.4;
 }
 
+.wind-aloft-card {
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-raise);
+  border: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.wind-aloft-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.wind-aloft-level {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.wind-aloft-level:last-child {
+  border-bottom: none;
+}
+
+.wind-aloft-alt {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.wind-aloft-speed {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wind-aloft-gusts {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: var(--radius-sm);
+}
+
+.wind-aloft-gusts.good { color: var(--teal); background: var(--teal-soft); }
+.wind-aloft-gusts.caution { color: var(--amber); background: var(--amber-soft); }
+.wind-aloft-gusts.risk { color: var(--danger); background: var(--danger-soft); }
+
+.wind-aloft-dir {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  min-width: 2rem;
+  text-align: right;
+}
+
 .wind-arrow-ring {
   position: relative;
   width: 98px;
