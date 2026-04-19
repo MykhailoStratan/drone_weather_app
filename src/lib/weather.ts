@@ -1,4 +1,5 @@
 import type {
+  AirspaceResponse,
   GnssEnvironmentPreset,
   GnssEstimateRequest,
   GnssEstimateResponse,
@@ -104,6 +105,18 @@ export async function fetchGnssEstimate(request: GnssEstimateRequest): Promise<G
   }
 
   return (await response.json()) as GnssEstimateResponse;
+}
+
+export async function fetchAirspace(location: Pick<LocationOption, "latitude" | "longitude">): Promise<AirspaceResponse> {
+  const params = new URLSearchParams({
+    lat: String(location.latitude),
+    lng: String(location.longitude),
+  });
+  const response = await fetch(`${API_BASE}/airspace?${params}`);
+  if (!response.ok) {
+    throw new Error("Airspace data is unavailable right now.");
+  }
+  return (await response.json()) as AirspaceResponse;
 }
 
 export type { GnssEnvironmentPreset };
