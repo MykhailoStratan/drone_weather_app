@@ -194,6 +194,28 @@ describe("App preferences", () => {
     view.unmount();
   });
 
+  it("shows gust badges only for levels with gust data in the wind aloft card", async () => {
+    installFetchMock({
+      timeline: createResponse({
+        ...timelinePayload,
+        hourly: timelinePayload.hourly.map((entry, index) => ({
+          ...entry,
+          windSpeed80m: 12 + index / 3,
+          windDirection80m: 130,
+          windSpeed120m: 15 + index / 3,
+          windDirection120m: 145,
+        })),
+      }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    expect(document.querySelectorAll(".wind-aloft-level")).toHaveLength(3);
+    expect(document.querySelectorAll(".wind-aloft-gusts")).toHaveLength(1);
+    view.unmount();
+  });
+
   it("shows recoverable error UI when the initial overview request fails", async () => {
     installFetchMock({
       overview: createResponse({ error: "offline" }, 503),
