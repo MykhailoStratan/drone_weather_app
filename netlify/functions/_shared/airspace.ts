@@ -1,8 +1,11 @@
-import type { AirspaceClass, AirspaceFeature } from "../../../packages/weather-domain/src/types";
+import type { AirspaceClass, AirspaceFeature, TFRFeature } from "../../../packages/weather-domain/src/types";
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const TFR_URL = "https://aviationweather.gov/api/data/tfr";
 const SEARCH_RADIUS_M = 30_000;
+const TFR_SEARCH_RADIUS_KM = 150;
 const TIMEOUT_MS = 8_000;
+const TFR_TIMEOUT_MS = 6_000;
 
 type OverpassElement = {
   type: string;
@@ -15,6 +18,24 @@ type OverpassElement = {
 
 type OverpassResponse = {
   elements: OverpassElement[];
+};
+
+// FAA NOTAM format from aviationweather.gov/api/data/tfr
+type AvwxTFRNotam = {
+  id?: string;
+  number?: string;
+  coordinates?: { lat?: number; lng?: number; lon?: number };
+  radius?: number;
+  minimumFL?: number;
+  maximumFL?: number;
+  startDate?: string;
+  endDate?: string;
+};
+
+type AvwxTFREntry = {
+  coreNOTAMData?: {
+    notam?: AvwxTFRNotam;
+  };
 };
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -66,6 +87,10 @@ export async function fetchNearbyAirspace(lat: number, lng: number): Promise<Air
   way["aeroway"~"^(aerodrome|airport|airstrip)$"](around:${SEARCH_RADIUS_M},${lat},${lng});
   node["aeroway"="helipad"](around:${SEARCH_RADIUS_M},${lat},${lng});
   node["aeroway"="heliport"](around:${SEARCH_RADIUS_M},${lat},${lng});
+  node["military"~"^(airfield|aerodrome)$"](around:${SEARCH_RADIUS_M},${lat},${lng});
+  way["military"~"^(airfield|aerodrome)$"](around:${SEARCH_RADIUS_M},${lat},${lng});
+  relation["military"~"^(airfield|aerodrome|danger_area|training_area)$"](around:${SEARCH_RADIUS_M},${lat},${lng});
+  relation["aeroway"~"^(restricted_area|prohibited_area)$"](around:${SEARCH_RADIUS_M},${lat},${lng});
 );
 out center tags;
 `.trim();
@@ -98,19 +123,43 @@ out center tags;
     const tags = el.tags ?? {};
     const name = tags["name"] ?? tags["ref"] ?? "Unknown aerodrome";
     const icao = tags["icao"] ?? tags["ref:icao"];
-    const aerowayType = tags["aeroway"] ?? "aerodrome";
-    const featureType =
-      aerowayType === "helipad" || aerowayType === "heliport"
-        ? "helipad"
-        : aerowayType === "airport"
-        ? "airport"
-        : "aerodrome";
+    const aerowayType = tags["aeroway"] ?? "";
+    const militaryType = tags["military"] ?? "";
+
+    let featureType: AirspaceFeature["featureType"];
+    let classification: AirspaceClass;
+    let zoneRadiusKm: number;
+
+    if (militaryType === "danger_area" || militaryType === "training_area") {
+      featureType = "danger";
+      classification = "restricted";
+      zoneRadiusKm = 5;
+    } else if (aerowayType === "restricted_area" || aerowayType === "prohibited_area") {
+      featureType = "restricted";
+      classification = "restricted";
+      zoneRadiusKm = 3;
+    } else if (militaryType === "airfield" || militaryType === "aerodrome") {
+      featureType = "military";
+      classification = "restricted";
+      zoneRadiusKm = 5;
+    } else {
+      featureType =
+        aerowayType === "helipad" || aerowayType === "heliport"
+          ? "helipad"
+          : aerowayType === "airport"
+          ? "airport"
+          : "aerodrome";
+      const classified = classifyAirport(tags);
+      classification = classified.classification;
+      zoneRadiusKm = classified.zoneRadiusKm;
+    }
 
     const dedupeKey = `${name}:${Math.round(elLat * 100)}:${Math.round(elLon * 100)}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    const { classification, zoneRadiusKm } = classifyAirport(tags);
+    const altLower = tags["alt:lower"] ? Number(tags["alt:lower"]) : undefined;
+    const altUpper = tags["alt:upper"] ? Number(tags["alt:upper"]) : undefined;
 
     features.push({
       id: `${el.type}/${el.id}`,
@@ -123,8 +172,65 @@ out center tags;
       zoneRadiusKm,
       distanceKm: haversineKm(lat, lng, elLat, elLon),
       bearingDeg: bearingDeg(lat, lng, elLat, elLon),
+      ...(altLower !== undefined && !isNaN(altLower) ? { altitudeLowerFt: altLower } : {}),
+      ...(altUpper !== undefined && !isNaN(altUpper) ? { altitudeUpperFt: altUpper } : {}),
     });
   }
 
-  return features.sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 20);
+  return features.sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 25);
+}
+
+export async function fetchNearbyTFRs(lat: number, lng: number): Promise<TFRFeature[]> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TFR_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(TFR_URL, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return [];
+
+    const raw: unknown = await res.json();
+    if (!Array.isArray(raw)) return [];
+
+    const tfrs: TFRFeature[] = [];
+
+    for (const item of raw as AvwxTFREntry[]) {
+      const notam = item?.coreNOTAMData?.notam;
+      if (!notam) continue;
+
+      const coords = notam.coordinates;
+      if (!coords) continue;
+
+      const tfrLat = coords.lat;
+      const tfrLng = coords.lng ?? coords.lon;
+      if (tfrLat === undefined || tfrLng === undefined) continue;
+
+      const radiusNm = typeof notam.radius === "number" ? notam.radius : 0;
+      const radiusKmTFR = radiusNm * 1.852;
+      const distKm = haversineKm(lat, lng, tfrLat, tfrLng);
+
+      if (distKm > TFR_SEARCH_RADIUS_KM + radiusKmTFR) continue;
+
+      tfrs.push({
+        id: notam.id ?? notam.number ?? `tfr-${tfrs.length}`,
+        notamNumber: notam.number ?? "Unknown",
+        latitude: tfrLat,
+        longitude: tfrLng,
+        radiusNm,
+        altitudeLowerFt: typeof notam.minimumFL === "number" ? notam.minimumFL * 100 : 0,
+        altitudeUpperFt: typeof notam.maximumFL === "number" ? notam.maximumFL * 100 : 18000,
+        effectiveStart: notam.startDate,
+        effectiveEnd: notam.endDate,
+        distanceKm: distKm,
+      });
+    }
+
+    return tfrs.sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 20);
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
 }
