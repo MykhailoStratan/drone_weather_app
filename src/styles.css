@@ -2426,6 +2426,7 @@ input:focus-visible {
 .airspace-status-badge.good    { background: var(--teal-soft);   color: var(--teal); }
 .airspace-status-badge.caution { background: var(--amber-soft);  color: var(--amber); }
 .airspace-status-badge.risk    { background: var(--danger-soft); color: var(--danger); }
+.airspace-status-badge.loading { background: var(--surface-2, #2a2a2a); color: var(--text-tertiary); }
 
 .airspace-map-container {
   width: 100%;
@@ -2465,15 +2466,22 @@ input:focus-visible {
 }
 
 .airspace-airport-dot {
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 2px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .airspace-airport-dot.controlled { color: var(--danger); background: var(--danger-soft); }
 .airspace-airport-dot.advisory   { color: var(--amber);  background: var(--amber-soft); }
 .airspace-airport-dot.restricted { color: var(--sky);    background: var(--sky-soft); }
+.airspace-airport-dot.tfr        { color: #a855f7;       background: rgba(168, 85, 247, 0.15); }
 
 .airspace-legend {
   display: flex;
@@ -2505,6 +2513,7 @@ input:focus-visible {
 .airspace-legend-item.controlled { color: var(--danger); }
 .airspace-legend-item.advisory   { color: var(--amber); }
 .airspace-legend-item.restricted { color: var(--sky); }
+.airspace-legend-item.tfr        { color: #a855f7; }
 
 .airspace-loading {
   display: flex;
@@ -2555,6 +2564,7 @@ input:focus-visible {
 .airspace-dot.controlled { color: var(--danger); background: var(--danger-soft); }
 .airspace-dot.advisory   { color: var(--amber);  background: var(--amber-soft); }
 .airspace-dot.restricted { color: var(--sky);    background: var(--sky-soft); }
+.airspace-dot.tfr        { color: #a855f7;       background: rgba(168, 85, 247, 0.15); }
 
 .airspace-feature-info {
   flex: 1;
@@ -2610,4 +2620,59 @@ input:focus-visible {
   color: var(--text-quiet);
   margin: 0;
   border-top: 1px solid var(--rule);
+}
+
+.airspace-altitude {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+}
+
+.airspace-tfr-section {
+  border-top: 1px solid var(--rule);
+}
+
+.airspace-tfr-heading {
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #a855f7;
+  padding: 0.5rem 1.25rem 0;
+  margin: 0;
+}
+
+/* Leaflet layer control theming */
+.leaflet-control-layers {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 6px !important;
+  font-size: 0.78rem !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12) !important;
+}
+
+.leaflet-control-layers-toggle {
+  background-color: var(--surface-1) !important;
+}
+
+.leaflet-control-layers label {
+  color: var(--text-primary) !important;
+}
+
+.leaflet-control-layers-separator {
+  border-top: 1px solid var(--rule) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--surface-1) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 6px !important;
+  font-size: 0.8rem !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--surface-1) !important;
 }

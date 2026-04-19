@@ -49,7 +49,7 @@ export type AirspaceClass = "controlled" | "advisory" | "restricted";
 export type AirspaceFeature = {
   id: string;
   name: string;
-  featureType: "airport" | "helipad" | "aerodrome";
+  featureType: "airport" | "helipad" | "aerodrome" | "military" | "restricted" | "danger";
   latitude: number;
   longitude: number;
   icao?: string;
@@ -57,6 +57,21 @@ export type AirspaceFeature = {
   zoneRadiusKm: number;
   distanceKm: number;
   bearingDeg: number;
+  altitudeLowerFt?: number;
+  altitudeUpperFt?: number;
+};
+
+export type TFRFeature = {
+  id: string;
+  notamNumber: string;
+  latitude: number;
+  longitude: number;
+  radiusNm: number;
+  altitudeLowerFt: number;
+  altitudeUpperFt: number;
+  effectiveStart?: string;
+  effectiveEnd?: string;
+  distanceKm: number;
 };
 
 export type AirspaceResponse = {
@@ -64,6 +79,7 @@ export type AirspaceResponse = {
   longitude: number;
   fetchedAt: string;
   features: AirspaceFeature[];
+  tfrs: TFRFeature[];
 };
 
 export type WeatherAlert = {
