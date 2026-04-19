@@ -21,6 +21,7 @@ import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
 import { FlightWindowBar } from "./components/FlightWindowBar";
 import { BatteryThermalPanel } from "./components/BatteryThermalPanel";
 import { DewPointPanel } from "./components/DewPointPanel";
+import { DensityAltitudePanel } from "./components/DensityAltitudePanel";
 import { IconSunrise, IconSunset, IconRain, IconCloud, IconEye, IconGauge, IconCompass } from "./components/Icons";
 import {
   formatDayLabel,
@@ -1035,6 +1036,13 @@ function App() {
                     />
                   </div>
                 )}
+
+                <div className="support-panel-section">
+                  <DensityAltitudePanel
+                    temperatureCelsius={resolvedCurrentSnapshot.temperature}
+                    pressureHPa={resolvedCurrentSnapshot.pressure}
+                  />
+                </div>
               </article>
           </section>
 
