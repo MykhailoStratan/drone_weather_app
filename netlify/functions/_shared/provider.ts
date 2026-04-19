@@ -52,13 +52,13 @@ const HourlySchema = z.object({
   pressure_msl: z.array(z.number()),
   weather_code: z.array(z.number()),
   is_day: z.array(z.number()),
-  wind_speed_80m: z.array(z.number()).optional(),
-  wind_gusts_80m: z.array(z.number()).optional(),
-  wind_direction_80m: z.array(z.number()).optional(),
-  wind_speed_120m: z.array(z.number()).optional(),
-  wind_gusts_120m: z.array(z.number()).optional(),
-  wind_direction_120m: z.array(z.number()).optional(),
-  relative_humidity_2m: z.array(z.number()).optional(),
+  wind_speed_80m: z.array(z.number().nullable()).optional(),
+  wind_gusts_80m: z.array(z.number().nullable()).optional(),
+  wind_direction_80m: z.array(z.number().nullable()).optional(),
+  wind_speed_120m: z.array(z.number().nullable()).optional(),
+  wind_gusts_120m: z.array(z.number().nullable()).optional(),
+  wind_direction_120m: z.array(z.number().nullable()).optional(),
+  relative_humidity_2m: z.array(z.number().nullable()).optional(),
 });
 
 const DailySchema = z.object({
@@ -194,13 +194,13 @@ function zipHourly(hourly: ForecastResponse["hourly"]): WeatherSnapshot[] {
     pressure: hourly.pressure_msl[index],
     weatherCode: hourly.weather_code[index],
     isDay: hourly.is_day[index],
-    windSpeed80m: hourly.wind_speed_80m?.[index],
-    windGusts80m: hourly.wind_gusts_80m?.[index],
-    windDirection80m: hourly.wind_direction_80m?.[index],
-    windSpeed120m: hourly.wind_speed_120m?.[index],
-    windGusts120m: hourly.wind_gusts_120m?.[index],
-    windDirection120m: hourly.wind_direction_120m?.[index],
-    relativeHumidity: hourly.relative_humidity_2m?.[index],
+    windSpeed80m: hourly.wind_speed_80m?.[index] ?? undefined,
+    windGusts80m: hourly.wind_gusts_80m?.[index] ?? undefined,
+    windDirection80m: hourly.wind_direction_80m?.[index] ?? undefined,
+    windSpeed120m: hourly.wind_speed_120m?.[index] ?? undefined,
+    windGusts120m: hourly.wind_gusts_120m?.[index] ?? undefined,
+    windDirection120m: hourly.wind_direction_120m?.[index] ?? undefined,
+    relativeHumidity: hourly.relative_humidity_2m?.[index] ?? undefined,
   }));
 }
 
