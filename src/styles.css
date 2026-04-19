@@ -2046,3 +2046,69 @@ input:focus-visible {
     border-radius: var(--radius-lg);
   }
 }
+
+/* ─────────────────────────────────────────────────────────
+   Dew point · condensation risk
+   ───────────────────────────────────────────────────────── */
+.dew-point-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dew-point-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.dew-point-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15em 0.55em;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.dew-point-badge.low      { color: var(--teal);   background: var(--teal-soft);   border: 1px solid var(--teal-edge); }
+.dew-point-badge.moderate { color: var(--amber);  background: var(--amber-soft);  border: 1px solid var(--amber-edge); }
+.dew-point-badge.high     { color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-edge); }
+
+.dew-point-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.dew-point-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dew-point-stat span {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.dew-point-stat strong {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dew-spread-value.low      { color: var(--teal); }
+.dew-spread-value.moderate { color: var(--amber); }
+.dew-spread-value.high     { color: var(--danger); }
+
+.dew-point-advice {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0;
+}

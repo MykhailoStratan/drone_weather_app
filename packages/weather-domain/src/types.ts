@@ -21,6 +21,7 @@ export type WeatherSnapshot = {
   pressure: number;
   weatherCode: number;
   isDay: number;
+  relativeHumidity?: number;
 };
 
 export type DailyWeather = {

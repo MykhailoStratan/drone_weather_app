@@ -18,6 +18,7 @@ const WeeklyRangeChart = React.lazy(() =>
 const WindDirectionChart = React.lazy(() =>
   import("./components/WeatherCharts").then((m) => ({ default: m.WindDirectionChart })));
 import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
+import { DewPointPanel } from "./components/DewPointPanel";
 import { IconSunrise, IconSunset, IconRain, IconCloud, IconEye, IconGauge, IconCompass } from "./components/Icons";
 import {
   formatDayLabel,
@@ -979,6 +980,16 @@ function App() {
                     </div>
                   </section>
                 </div>
+
+                {resolvedCurrentSnapshot.relativeHumidity !== undefined && (
+                  <div className="support-panel-section">
+                    <DewPointPanel
+                      temperatureCelsius={resolvedCurrentSnapshot.temperature}
+                      relativeHumidity={resolvedCurrentSnapshot.relativeHumidity}
+                      temperatureUnit={preferences.temperatureUnit}
+                    />
+                  </div>
+                )}
               </article>
           </section>
 
