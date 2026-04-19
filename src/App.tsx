@@ -18,6 +18,7 @@ const WeeklyRangeChart = React.lazy(() =>
 const WindDirectionChart = React.lazy(() =>
   import("./components/WeatherCharts").then((m) => ({ default: m.WindDirectionChart })));
 import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
+import { FlightWindowBar } from "./components/FlightWindowBar";
 import { IconSunrise, IconSunset, IconRain, IconCloud, IconEye, IconGauge, IconCompass } from "./components/Icons";
 import {
   formatDayLabel,
@@ -420,6 +421,11 @@ function App() {
     [weather?.hourly, selectedDate],
   );
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
+  const todayDate = new Date().toISOString().slice(0, 10);
+  const hourlyForToday = useMemo(
+    () => weather?.hourly.filter((e) => e.time.startsWith(todayDate)) ?? [],
+    [weather?.hourly, todayDate],
+  );
   const hasAlerts = (weather?.alerts.length ?? 0) > 0;
   const showSearchFeedback = query.trim().length >= 2;
   const selectedSnapshot = useMemo(
@@ -981,6 +987,12 @@ function App() {
                 </div>
               </article>
           </section>
+
+          {hourlyForToday.length > 0 && (
+            <section className="flight-window-section">
+              <FlightWindowBar hourlyToday={hourlyForToday} hourCycle={preferences.hourCycle} />
+            </section>
+          )}
 
           <section className="detail-switcher-panel">
             <div className="detail-switcher">
