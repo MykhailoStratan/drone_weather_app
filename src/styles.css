@@ -2178,3 +2178,77 @@ input:focus-visible {
   font-size: 0.68rem;
   color: var(--text-tertiary);
 }
+
+/* ─────────────────────────────────────────────────────────
+   Battery thermal performance
+   ───────────────────────────────────────────────────────── */
+.battery-thermal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.battery-thermal-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.battery-thermal-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15em 0.55em;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.battery-thermal-badge.good    { color: var(--teal);   background: var(--teal-soft);   border: 1px solid var(--teal-edge); }
+.battery-thermal-badge.caution { color: var(--amber);  background: var(--amber-soft);  border: 1px solid var(--amber-edge); }
+.battery-thermal-badge.risk    { color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-edge); }
+
+.battery-thermal-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.battery-thermal-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+
+.battery-thermal-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 400ms ease;
+}
+
+.battery-thermal-fill.good    { background: var(--teal); }
+.battery-thermal-fill.caution { background: var(--amber); }
+.battery-thermal-fill.risk    { background: var(--danger); }
+
+.battery-thermal-temp {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.battery-thermal-impact {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.battery-thermal-advice {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
