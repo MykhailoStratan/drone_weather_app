@@ -1343,6 +1343,46 @@ input:focus-visible {
   margin-bottom: 0.85rem;
 }
 
+.environment-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.environment-option {
+  width: 100%;
+  min-width: 0;
+  padding: 0.62rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--rule-strong);
+  background: var(--bg-deep);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.environment-option:hover {
+  border-color: var(--amber-dim);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.environment-option:focus-visible {
+  outline: none;
+  border-color: var(--amber-dim);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 2px rgba(255, 213, 108, 0.14);
+}
+
+.environment-option.active {
+  border-color: var(--amber);
+  background: rgba(255, 213, 108, 0.14);
+  color: var(--text-primary);
+}
+
 .readiness-chip-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

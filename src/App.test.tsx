@@ -194,6 +194,23 @@ describe("App preferences", () => {
     view.unmount();
   });
 
+  it("lets users change the flight environment without relying on a native dropdown", async () => {
+    const fetchMock = installFetchMock();
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+
+    const urbanOption = view.getByRole("radio", { name: "Urban canyon" });
+    fireEvent.click(urbanOption);
+
+    expect(urbanOption.getAttribute("aria-checked")).toBe("true");
+
+    const gnssCalls = fetchMock.mock.calls.filter(([input]) => String(input).includes("/gnss/estimate"));
+    const latestGnssRequest = gnssCalls[gnssCalls.length - 1]?.[1] as RequestInit | undefined;
+    expect(latestGnssRequest?.body).toContain("\"environment\":\"urban\"");
+    view.unmount();
+  });
+
   it("shows gust badges only for levels with gust data in the wind aloft card", async () => {
     installFetchMock({
       timeline: createResponse({

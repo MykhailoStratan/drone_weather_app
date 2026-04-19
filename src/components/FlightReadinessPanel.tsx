@@ -2,6 +2,13 @@ import { visibilityDisplay, windSpeedDisplay } from "../lib/format";
 import type { GnssEnvironmentPreset } from "../lib/weather";
 import type { DailyWeather, GnssEstimateResponse, WeatherSnapshot } from "../types";
 
+const ENVIRONMENT_OPTIONS: Array<{ value: GnssEnvironmentPreset; label: string }> = [
+  { value: "open", label: "Open field" },
+  { value: "suburban", label: "Suburban" },
+  { value: "urban", label: "Urban canyon" },
+  { value: "trees", label: "Trees / hills" },
+];
+
 type FlightReadinessPanelProps = {
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
@@ -54,20 +61,30 @@ export function FlightReadinessPanel({
       </div>
 
       <div className="environment-row">
-        <label className="preference-label" htmlFor="environment-preset">
+        <span className="preference-label" id="environment-preset-label">
           Flight environment
-        </label>
-        <select
-          id="environment-preset"
-          className="environment-select"
-          value={environmentPreset}
-          onChange={(event) => onEnvironmentChange(event.target.value as GnssEnvironmentPreset)}
+        </span>
+        <div
+          className="environment-options"
+          role="radiogroup"
+          aria-labelledby="environment-preset-label"
         >
-          <option value="open">Open field</option>
-          <option value="suburban">Suburban</option>
-          <option value="urban">Urban canyon</option>
-          <option value="trees">Trees / hills</option>
-        </select>
+          {ENVIRONMENT_OPTIONS.map((option) => {
+            const selected = option.value === environmentPreset;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={selected ? "environment-option active" : "environment-option"}
+                onClick={() => onEnvironmentChange(option.value)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="readiness-chip-grid">
