@@ -21,6 +21,12 @@ export type WeatherSnapshot = {
   pressure: number;
   weatherCode: number;
   isDay: number;
+  windSpeed80m?: number;
+  windGusts80m?: number;
+  windDirection80m?: number;
+  windSpeed120m?: number;
+  windGusts120m?: number;
+  windDirection120m?: number;
 };
 
 export type DailyWeather = {
