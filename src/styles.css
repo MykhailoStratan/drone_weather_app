@@ -2109,3 +2109,72 @@ input:focus-visible {
     border-radius: var(--radius-lg);
   }
 }
+
+/* ─────────────────────────────────────────────────────────
+   Flight window bar
+   ───────────────────────────────────────────────────────── */
+.flight-window-section {
+  padding: 0 1rem;
+}
+
+.flight-window-card {
+  padding: 1rem 1.1rem 0.9rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-raise);
+  border: 1px solid var(--rule);
+}
+
+.flight-window-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+  gap: 0.5rem;
+}
+
+.flight-window-summary {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.flight-window-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  gap: 1px;
+}
+
+.flight-window-seg {
+  flex: 1;
+  min-width: 0;
+  cursor: default;
+  transition: opacity 80ms ease;
+}
+
+.flight-window-seg:hover {
+  opacity: 0.75;
+}
+
+.flight-window-seg.good    { background: var(--teal); }
+.flight-window-seg.caution { background: var(--amber); }
+.flight-window-seg.risk    { background: var(--danger); }
+
+.flight-window-seg.now {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.flight-window-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
