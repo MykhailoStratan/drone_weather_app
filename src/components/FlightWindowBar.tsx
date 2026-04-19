@@ -9,24 +9,29 @@ type HourWindow = {
   reasons: string[];
 };
 
+const TONE_RANK: Record<WindowTone, number> = { good: 0, caution: 1, risk: 2 };
+
+function escalate(current: WindowTone, next: WindowTone): WindowTone {
+  return TONE_RANK[next] > TONE_RANK[current] ? next : current;
+}
+
 function classifyHour(snap: WeatherSnapshot): HourWindow {
   const reasons: string[] = [];
   let worst: WindowTone = "good";
 
   const gustsKmh = snap.windGusts;
-  if (gustsKmh >= 28) { worst = "risk"; reasons.push(`gusts ${Math.round(gustsKmh)} km/h`); }
-  else if (gustsKmh >= 18) { if (worst !== "risk") worst = "caution"; reasons.push(`gusts ${Math.round(gustsKmh)} km/h`); }
+  if (gustsKmh >= 28) { worst = escalate(worst, "risk"); reasons.push(`gusts ${Math.round(gustsKmh)} km/h`); }
+  else if (gustsKmh >= 18) { worst = escalate(worst, "caution"); reasons.push(`gusts ${Math.round(gustsKmh)} km/h`); }
 
   const rainPct = snap.precipitationProbability;
-  if (rainPct >= 60) { worst = "risk"; reasons.push(`rain ${Math.round(rainPct)}%`); }
-  else if (rainPct >= 30) { if (worst !== "risk") worst = "caution"; reasons.push(`rain ${Math.round(rainPct)}%`); }
+  if (rainPct >= 60) { worst = escalate(worst, "risk"); reasons.push(`rain ${Math.round(rainPct)}%`); }
+  else if (rainPct >= 30) { worst = escalate(worst, "caution"); reasons.push(`rain ${Math.round(rainPct)}%`); }
 
   const visKm = snap.visibility / 1000;
-  if (visKm < 3) { worst = "risk"; reasons.push(`vis ${visKm.toFixed(1)} km`); }
-  else if (visKm < 6) { if (worst !== "risk") worst = "caution"; reasons.push(`vis ${visKm.toFixed(1)} km`); }
+  if (visKm < 3) { worst = escalate(worst, "risk"); reasons.push(`vis ${visKm.toFixed(1)} km`); }
+  else if (visKm < 6) { worst = escalate(worst, "caution"); reasons.push(`vis ${visKm.toFixed(1)} km`); }
 
-  const cloud = snap.cloudCover;
-  if (cloud >= 90) { if (worst !== "risk") worst = "caution"; }
+  if (snap.cloudCover >= 90) { worst = escalate(worst, "caution"); }
 
   return { time: snap.time, tone: worst, reasons };
 }

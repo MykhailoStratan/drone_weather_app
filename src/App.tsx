@@ -1023,6 +1023,8 @@ function App() {
                       </div>
                     </div>
                   </section>
+                </div>
+
                 <div className="support-panel-section">
                   <BatteryThermalPanel temperatureCelsius={resolvedCurrentSnapshot.temperature} />
                 </div>
