@@ -17,6 +17,7 @@ const WeeklyRangeChart = React.lazy(() =>
   import("./components/WeatherCharts").then((m) => ({ default: m.WeeklyRangeChart })));
 const WindDirectionChart = React.lazy(() =>
   import("./components/WeatherCharts").then((m) => ({ default: m.WindDirectionChart })));
+import { AirspacePanel } from "./components/AirspacePanel";
 import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
 import { FlightWindowBar } from "./components/FlightWindowBar";
 import { BatteryThermalPanel } from "./components/BatteryThermalPanel";
@@ -34,6 +35,7 @@ import {
   windSpeedDisplay,
 } from "./lib/format";
 import {
+  fetchAirspace,
   fetchGnssEstimate,
   fetchWeatherAlerts,
   fetchWeatherOverview,
@@ -56,6 +58,7 @@ import {
 import { resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph, formatSavedAtLabel } from "./lib/app-utils";
 import { validateLocationSearchQuery } from "../packages/weather-domain/src/location-search";
 import type {
+  AirspaceResponse,
   GnssEnvironmentPreset,
   GnssEstimateResponse,
   LocationOption,
@@ -157,6 +160,8 @@ function App() {
   const [environmentPreset, setEnvironmentPreset] = useState<GnssEnvironmentPreset>("open");
   const [gnssEstimate, setGnssEstimate] = useState<GnssEstimateResponse | null>(null);
   const [gnssLoading, setGnssLoading] = useState(false);
+  const [airspace, setAirspace] = useState<AirspaceResponse | null>(null);
+  const [airspaceLoading, setAirspaceLoading] = useState(false);
   const [requestedLocation, setRequestedLocation] = useState<LocationOption | null>(null);
   const debounce = useRef<number | null>(null);
   const requestId = useRef(0);
@@ -538,6 +543,20 @@ function App() {
       cancelled = true;
     };
   }, [gnssInput]);
+
+  useEffect(() => {
+    if (!activeLocation) return;
+
+    let cancelled = false;
+    setAirspaceLoading(true);
+
+    void fetchAirspace(activeLocation)
+      .then((response) => { if (!cancelled) setAirspace(response); })
+      .catch(() => { if (!cancelled) setAirspace(null); })
+      .finally(() => { if (!cancelled) setAirspaceLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [activeLocation]);
 
   return (
     <main className="app-shell">
@@ -1053,6 +1072,10 @@ function App() {
               <FlightWindowBar hourlyToday={hourlyForToday} hourCycle={preferences.hourCycle} />
             </section>
           )}
+
+          <section className="airspace-panel-section">
+            <AirspacePanel airspace={airspace} loading={airspaceLoading} />
+          </section>
 
           <section className="detail-switcher-panel">
             <div className="detail-switcher">

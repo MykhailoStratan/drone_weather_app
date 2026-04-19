@@ -44,6 +44,28 @@ export type DailyWeather = {
   weatherCode: number;
 };
 
+export type AirspaceClass = "controlled" | "advisory" | "restricted";
+
+export type AirspaceFeature = {
+  id: string;
+  name: string;
+  featureType: "airport" | "helipad" | "aerodrome";
+  latitude: number;
+  longitude: number;
+  icao?: string;
+  classification: AirspaceClass;
+  zoneRadiusKm: number;
+  distanceKm: number;
+  bearingDeg: number;
+};
+
+export type AirspaceResponse = {
+  latitude: number;
+  longitude: number;
+  fetchedAt: string;
+  features: AirspaceFeature[];
+};
+
 export type WeatherAlert = {
   id: string;
   event: string;
