@@ -73,13 +73,17 @@ function createCurrentLocation(latitude: number, longitude: number): LocationOpt
   };
 }
 
+function coordsToId(lat: number, lon: number): number {
+  return Math.abs(Math.round(lat * 1000) * 10000 + Math.round(lon * 1000)) || 1;
+}
+
 function readLocationFromUrl(): LocationOption | null {
   const params = new URLSearchParams(window.location.search);
   const lat = parseFloat(params.get("lat") ?? "");
   const lon = parseFloat(params.get("lon") ?? "");
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   return {
-    id: 0,
+    id: coordsToId(lat, lon),
     name: params.get("name") ?? "Shared location",
     admin1: params.get("admin1") ?? undefined,
     country: params.get("country") ?? "Unknown",
