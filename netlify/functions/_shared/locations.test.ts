@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import handler from "./locations";
+import handler from "../locations";
 
-vi.mock("./_shared/weather", () => ({
+vi.mock("./weather", () => ({
   searchLocationsFromProvider: vi.fn(),
 }));
 
-import { searchLocationsFromProvider } from "./_shared/weather";
+import { searchLocationsFromProvider } from "./weather";
 
 describe("locations function", () => {
   afterEach(() => {

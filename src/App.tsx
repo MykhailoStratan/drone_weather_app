@@ -902,7 +902,7 @@ function App() {
                         <WindAloftLevel
                           label="80 m"
                           speed={resolvedCurrentSnapshot.windSpeed80m}
-                          gusts={resolvedCurrentSnapshot.windGusts80m}
+                          gusts={resolvedCurrentSnapshot.windGusts80m ?? resolvedCurrentSnapshot.windGusts}
                           direction={resolvedCurrentSnapshot.windDirection80m}
                           unit={preferences.windUnit}
                           unitLabel={windUnitLabel}
@@ -910,7 +910,7 @@ function App() {
                         <WindAloftLevel
                           label="120 m"
                           speed={resolvedCurrentSnapshot.windSpeed120m}
-                          gusts={resolvedCurrentSnapshot.windGusts120m}
+                          gusts={resolvedCurrentSnapshot.windGusts120m ?? resolvedCurrentSnapshot.windGusts}
                           direction={resolvedCurrentSnapshot.windDirection120m}
                           unit={preferences.windUnit}
                           unitLabel={windUnitLabel}
