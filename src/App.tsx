@@ -921,7 +921,7 @@ function App() {
                         <WindAloftLevel
                           label="80 m"
                           speed={resolvedCurrentSnapshot.windSpeed80m}
-                          gusts={resolvedCurrentSnapshot.windGusts80m ?? resolvedCurrentSnapshot.windGusts}
+                          gusts={resolvedCurrentSnapshot.windGusts80m}
                           direction={resolvedCurrentSnapshot.windDirection80m}
                           unit={preferences.windUnit}
                           unitLabel={windUnitLabel}
@@ -929,7 +929,7 @@ function App() {
                         <WindAloftLevel
                           label="120 m"
                           speed={resolvedCurrentSnapshot.windSpeed120m}
-                          gusts={resolvedCurrentSnapshot.windGusts120m ?? resolvedCurrentSnapshot.windGusts}
+                          gusts={resolvedCurrentSnapshot.windGusts120m}
                           direction={resolvedCurrentSnapshot.windDirection120m}
                           unit={preferences.windUnit}
                           unitLabel={windUnitLabel}
@@ -1362,18 +1362,23 @@ function WindAloftLevel({
   unitLabel: string;
 }) {
   if (speed === undefined) return null;
+  const hasAdditionalInfo = gusts !== undefined;
   const shear = gusts !== undefined && speed > 0 ? Math.round(((gusts - speed) / speed) * 100) : 0;
   const shearTone = shear > 40 ? "risk" : shear > 20 ? "caution" : "good";
   return (
     <div className="wind-aloft-level">
       <span className="wind-aloft-alt">{label}</span>
       <span className="wind-aloft-speed">{windSpeedDisplay(speed, unit)} {unitLabel}</span>
+      {hasAdditionalInfo ? (
+        <>
       {gusts !== undefined && (
         <span className={`wind-aloft-gusts ${shearTone}`}>↑{windSpeedDisplay(gusts, unit)}</span>
       )}
       {direction !== undefined && (
         <span className="wind-aloft-dir">{windDirectionLabel(direction)}</span>
       )}
+        </>
+      ) : null}
     </div>
   );
 }

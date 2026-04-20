@@ -194,6 +194,36 @@ describe("App preferences", () => {
     view.unmount();
   });
 
+  it("shows wind aloft right-side details only when gust data exists", async () => {
+    installFetchMock({
+      overview: createResponse({
+        ...overviewPayload,
+        current: {
+          ...overviewPayload.current,
+          windSpeed80m: 14,
+          windDirection80m: 135,
+          windSpeed120m: 18,
+        },
+      }),
+      timeline: createResponse({ error: "timeline unavailable" }, 503),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+
+    const levels = Array.from(document.querySelectorAll(".wind-aloft-level"));
+    expect(levels).toHaveLength(3);
+    expect(document.querySelectorAll(".wind-aloft-gusts")).toHaveLength(1);
+    expect(levels[0]?.querySelector(".wind-aloft-gusts")?.textContent).toContain("8");
+    expect(document.querySelectorAll(".wind-aloft-dir")).toHaveLength(1);
+    expect(levels[1]?.querySelector(".wind-aloft-gusts")).toBeNull();
+    expect(levels[1]?.querySelector(".wind-aloft-dir")).toBeNull();
+    expect(levels[2]?.querySelector(".wind-aloft-dir")).toBeNull();
+    expect(levels[2]?.querySelector(".wind-aloft-gusts")).toBeNull();
+    view.unmount();
+  });
+
   it("shows recoverable error UI when the initial overview request fails", async () => {
     installFetchMock({
       overview: createResponse({ error: "offline" }, 503),
