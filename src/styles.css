@@ -933,8 +933,9 @@ input:focus-visible {
 
 .hour-scrubber-track-wrap {
   position: relative;
-  padding-bottom: 8px;
   outline: none;
+  touch-action: none;
+  cursor: ew-resize;
 }
 
 .hour-scrubber-track-wrap:focus-visible .hour-scrubber-bar {
@@ -942,6 +943,7 @@ input:focus-visible {
 }
 
 .hour-scrubber-bar {
+  position: relative;
   display: flex;
   height: 20px;
   border-radius: 6px;
@@ -954,50 +956,52 @@ input:focus-visible {
   flex: 1;
   min-width: 0;
   border-radius: 3px;
-  transition: opacity 80ms ease, transform 80ms ease;
+  transition: opacity 80ms ease;
   cursor: pointer;
 }
 
 .hour-scrubber-seg:first-child { border-radius: 6px 3px 3px 6px; }
 .hour-scrubber-seg:last-child  { border-radius: 3px 6px 6px 3px; }
 
-.hour-scrubber-seg:hover { opacity: 0.8; }
-
-.hour-scrubber-seg.selected {
-  transform: scaleY(1.15);
-  transform-origin: bottom;
-}
-
 .hour-scrubber-seg.good    { background: var(--teal); }
 .hour-scrubber-seg.caution { background: var(--amber); }
 .hour-scrubber-seg.risk    { background: var(--danger); }
+.hour-scrubber-seg.empty   { background: var(--rule-strong); opacity: 0.5; }
+.hour-scrubber-seg.next-day { opacity: 0.55; }
+.hour-scrubber-seg.prev-day { opacity: 0.55; }
 
+/* Current hour: always at slot 11, taller bar */
 .hour-scrubber-seg.now {
-  outline: 2px solid var(--text-primary);
-  outline-offset: 1px;
+  transform: scaleY(1.5);
+  transform-origin: center;
   z-index: 1;
+  filter: brightness(1.25);
 }
 
-.hour-scrubber-thumb {
+/* Draggable red border cursor — overlays the selected slot */
+.hour-scrubber-cursor {
   position: absolute;
-  bottom: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  border: 2px solid var(--bg-surface);
-  transform: translateX(-50%);
+  top: -3px;
+  bottom: -3px;
+  border: 2px solid var(--danger);
+  border-radius: 4px;
   pointer-events: none;
-  transition: left 80ms ease;
+  z-index: 2;
 }
 
 .hour-scrubber-ticks {
   display: flex;
   justify-content: space-between;
+  margin-top: 6px;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
+}
+
+.hour-scrubber-tick-now {
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 /* Wind compass ----------------------------------------------- */
@@ -1789,15 +1793,32 @@ input:focus-visible {
   color: var(--text-secondary);
 }
 
+.day-chip.today {
+  border-color: var(--teal-edge);
+  box-shadow: inset 0 0 0 1px var(--teal-edge);
+}
+
+.day-chip.today > span {
+  color: var(--teal);
+  font-weight: 600;
+}
+
 .day-chip.active {
   background: var(--amber-glow);
-  border-color: var(--amber-edge);
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px var(--amber-edge), 0 2px 12px var(--amber-soft);
 }
 
 .day-chip.active strong,
 .day-chip.active em,
 .day-chip.active small {
   color: var(--text-primary);
+}
+
+.day-chip.today.active {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 1px var(--teal-edge), 0 2px 12px var(--teal-soft);
+  background: var(--teal-soft);
 }
 
 /* ─────────────────────────────────────────────────────────

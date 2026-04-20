@@ -425,6 +425,20 @@ function App() {
     () => weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [],
     [weather?.hourly, selectedDate],
   );
+  const nextDayHourly = useMemo(() => {
+    if (!selectedDate || !weather) return [];
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    const nextDate = d.toISOString().slice(0, 10);
+    return weather.hourly.filter((e) => e.time.startsWith(nextDate));
+  }, [weather?.hourly, selectedDate]);
+  const prevDayHourly = useMemo(() => {
+    if (!selectedDate || !weather) return [];
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    const prevDate = d.toISOString().slice(0, 10);
+    return weather.hourly.filter((e) => e.time.startsWith(prevDate));
+  }, [weather?.hourly, selectedDate]);
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
   const hasAlerts = (weather?.alerts.length ?? 0) > 0;
   const showSearchFeedback = query.trim().length >= 2;
@@ -798,9 +812,25 @@ function App() {
                     </div>
                     <HourScrubber
                       hourlyForDay={hourlyForDay}
+                      nextDayHourly={nextDayHourly}
+                      prevDayHourly={prevDayHourly}
                       hourCycle={preferences.hourCycle}
                       activeHourIndex={activeHourIndex}
                       onHourChange={setSelectedHourIndex}
+                      onNextDayHourChange={(nextI) => {
+                        const nextDate = nextDayHourly[0]?.time.slice(0, 10);
+                        if (nextDate) {
+                          setSelectedDate(nextDate);
+                          setSelectedHourIndex(nextI);
+                        }
+                      }}
+                      onPrevDayHourChange={(prevI) => {
+                        const prevDate = prevDayHourly[0]?.time.slice(0, 10);
+                        if (prevDate) {
+                          setSelectedDate(prevDate);
+                          setSelectedHourIndex(prevI);
+                        }
+                      }}
                     />
                   </div>
 
@@ -1041,7 +1071,7 @@ function App() {
                           <button
                             key={day.date}
                             type="button"
-                            className={day.date === selectedDate ? "day-chip active" : "day-chip"}
+                            className={`day-chip${day.date === selectedDate ? " active" : ""}${offset === 0 ? " today" : ""}`}
                             onClick={() => {
                               setSelectedDate(day.date);
                               const nextHourlyForDay = resolvedWeather.hourly.filter((entry) => entry.time.startsWith(day.date));

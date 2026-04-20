@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import type { WeatherSnapshot } from "../types";
 import { formatHourLabel } from "../lib/format";
 
@@ -10,6 +11,11 @@ type HourWindow = {
 };
 
 const TONE_RANK: Record<WindowTone, number> = { good: 0, caution: 1, risk: 2 };
+
+// Fixed window: 11 past hours + now + 12 future hours = 24 total slots
+const PAST_SLOTS = 11;
+const FUTURE_SLOTS = 12;
+const TOTAL_SLOTS = PAST_SLOTS + 1 + FUTURE_SLOTS; // 24
 
 function escalate(current: WindowTone, next: WindowTone): WindowTone {
   return TONE_RANK[next] > TONE_RANK[current] ? next : current;
@@ -38,14 +44,22 @@ function classifyHour(snap: WeatherSnapshot): HourWindow {
 
 export function HourScrubber({
   hourlyForDay,
+  nextDayHourly = [],
+  prevDayHourly = [],
   hourCycle,
   activeHourIndex,
   onHourChange,
+  onNextDayHourChange,
+  onPrevDayHourChange,
 }: {
   hourlyForDay: WeatherSnapshot[];
+  nextDayHourly?: WeatherSnapshot[];
+  prevDayHourly?: WeatherSnapshot[];
   hourCycle: "12h" | "24h";
   activeHourIndex: number;
   onHourChange: (index: number) => void;
+  onNextDayHourChange?: (index: number) => void;
+  onPrevDayHourChange?: (index: number) => void;
 }) {
   if (hourlyForDay.length === 0) return null;
 
@@ -59,6 +73,33 @@ export function HourScrubber({
     0,
   );
 
+  // Build fixed 24-slot display centred on nowIndex
+  // Slot 0 = nowIndex - PAST_SLOTS, slot PAST_SLOTS = nowIndex, slot 23 = nowIndex + FUTURE_SLOTS
+  const slotStart = nowIndex - PAST_SLOTS;
+  const nextDayWindows = nextDayHourly.map(classifyHour);
+  const prevDayWindows = prevDayHourly.map(classifyHour);
+
+  type Slot = { absIndex: number; window: HourWindow | null; isNextDay: boolean; isPrevDay: boolean };
+  const slots: Slot[] = Array.from({ length: TOTAL_SLOTS }, (_, i) => {
+    const absI = slotStart + i;
+    if (absI >= 0 && absI < windows.length) {
+      return { absIndex: absI, window: windows[absI], isNextDay: false, isPrevDay: false };
+    }
+    if (absI < 0) {
+      // Underflow into previous day: absI=-1 → last hour of prev day, absI=-2 → second-last, etc.
+      const prevI = prevDayWindows.length + absI;
+      if (prevI >= 0) {
+        return { absIndex: absI, window: prevDayWindows[prevI], isNextDay: false, isPrevDay: true };
+      }
+    } else {
+      const nextI = absI - windows.length;
+      if (nextI < nextDayWindows.length) {
+        return { absIndex: absI, window: nextDayWindows[nextI], isNextDay: true, isPrevDay: false };
+      }
+    }
+    return { absIndex: absI, window: null, isNextDay: false, isPrevDay: false };
+  });
+
   const goodCount = windows.filter((w) => w.tone === "good").length;
   const summary =
     goodCount === windows.length
@@ -67,24 +108,90 @@ export function HourScrubber({
       ? "No safe windows"
       : `${goodCount}/${windows.length}h flyable`;
 
-  const tickIndices = [0, Math.floor((windows.length - 1) / 2), windows.length - 1];
   const activeSnap = hourlyForDay[activeHourIndex];
   const activeLabel = activeSnap ? formatHourLabel(activeSnap.time, hourCycle) : "";
 
-  // Center the thumb within the selected segment
-  const thumbPct = windows.length > 1
-    ? ((activeHourIndex + 0.5) / windows.length) * 100
-    : 50;
+  // Local slot index of the selected hour (may be outside [0, TOTAL_SLOTS-1] if user picks out-of-window hour)
+  const selectedLocalIndex = Math.max(0, Math.min(TOTAL_SLOTS - 1, activeHourIndex - slotStart));
+  const cursorLeftPct = (selectedLocalIndex / TOTAL_SLOTS) * 100;
+  const cursorWidthPct = (1 / TOTAL_SLOTS) * 100;
+
+  const barRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const dragStartIndex = useRef(0);
+  const dragSegWidth = useRef(0);
+
+  function localIndexFromClientX(clientX: number): number {
+    const rect = barRef.current?.getBoundingClientRect();
+    if (!rect) return selectedLocalIndex;
+    const ratio = (clientX - rect.left) / rect.width;
+    return Math.max(0, Math.min(TOTAL_SLOTS - 1, Math.floor(ratio * TOTAL_SLOTS)));
+  }
+
+  function selectLocal(local: number) {
+    const abs = slotStart + local;
+    if (abs >= 0 && abs < windows.length) {
+      onHourChange(abs);
+    } else if (abs >= windows.length) {
+      const nextI = abs - windows.length;
+      if (nextI < nextDayWindows.length) onNextDayHourChange?.(nextI);
+    } else {
+      // abs < 0 → previous day
+      const prevI = prevDayWindows.length + abs;
+      if (prevI >= 0) onPrevDayHourChange?.(prevI);
+    }
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+    const local = localIndexFromClientX(e.clientX);
+    selectLocal(local);
+    dragStartX.current = e.clientX;
+    dragStartIndex.current = local;
+    dragSegWidth.current = barRef.current
+      ? barRef.current.clientWidth / TOTAL_SLOTS
+      : 12;
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    const deltaSlots = Math.round((e.clientX - dragStartX.current) / dragSegWidth.current);
+    const newLocal = Math.max(0, Math.min(TOTAL_SLOTS - 1, dragStartIndex.current + deltaSlots));
+    selectLocal(newLocal);
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setDragging(false);
+  }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowRight" || e.key === "ArrowUp") {
       e.preventDefault();
-      onHourChange(Math.min(activeHourIndex + 1, windows.length - 1));
+      if (activeHourIndex < windows.length - 1) {
+        onHourChange(activeHourIndex + 1);
+      } else if (nextDayWindows.length > 0) {
+        onNextDayHourChange?.(0);
+      }
     } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
       e.preventDefault();
-      onHourChange(Math.max(activeHourIndex - 1, 0));
+      if (activeHourIndex > 0) {
+        onHourChange(activeHourIndex - 1);
+      } else if (prevDayWindows.length > 0) {
+        onPrevDayHourChange?.(prevDayWindows.length - 1);
+      }
     }
   }
+
+  const leftWin = slots[0].window;
+  const rightWin = slots[TOTAL_SLOTS - 1].window;
+  const leftLabel = leftWin ? formatHourLabel(leftWin.time, hourCycle) : "—";
+  const nowLabel = formatHourLabel(windows[nowIndex].time, hourCycle);
+  const rightLabel = rightWin ? formatHourLabel(rightWin.time, hourCycle) : "—";
 
   return (
     <div className="hour-scrubber">
@@ -106,28 +213,45 @@ export function HourScrubber({
         aria-label="Select forecast hour"
         tabIndex={0}
         onKeyDown={handleKeyDown}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        data-dragging={dragging || undefined}
       >
-        <div className="hour-scrubber-bar">
-          {windows.map((w, i) => (
-            <div
-              key={w.time}
-              className={`hour-scrubber-seg ${w.tone}${i === activeHourIndex ? " selected" : ""}${i === nowIndex ? " now" : ""}`}
-              onClick={() => onHourChange(i)}
-              title={`${formatHourLabel(w.time, hourCycle)}${w.reasons.length ? " · " + w.reasons.join(", ") : " · good conditions"}`}
-            />
-          ))}
+        <div className="hour-scrubber-bar" ref={barRef}>
+          {slots.map((slot, localI) => {
+            const isNow = localI === PAST_SLOTS;
+            const isSelected = slot.absIndex === activeHourIndex;
+            const tone = slot.window?.tone ?? "empty";
+            const title = slot.window
+              ? `${formatHourLabel(slot.window.time, hourCycle)}${slot.window.reasons.length ? " · " + slot.window.reasons.join(", ") : " · good conditions"}`
+              : undefined;
+            return (
+              <div
+                key={localI}
+                className={`hour-scrubber-seg ${tone}${isNow ? " now" : ""}${isSelected ? " selected" : ""}${slot.isNextDay ? " next-day" : ""}${slot.isPrevDay ? " prev-day" : ""}`}
+                title={title}
+              />
+            );
+          })}
+          {/* Red border cursor for selected hour */}
+          <div
+            className="hour-scrubber-cursor"
+            style={{
+              left: `${cursorLeftPct}%`,
+              width: `${cursorWidthPct}%`,
+              transition: dragging ? "none" : "left 80ms ease",
+            }}
+            aria-hidden="true"
+          />
         </div>
-        <div
-          className="hour-scrubber-thumb"
-          style={{ left: `${thumbPct}%` }}
-          aria-hidden="true"
-        />
       </div>
 
       <div className="hour-scrubber-ticks" aria-hidden="true">
-        {tickIndices.map((i) => (
-          <span key={i}>{formatHourLabel(windows[i].time, hourCycle)}</span>
-        ))}
+        <span>{leftLabel}</span>
+        <span className="hour-scrubber-tick-now">{nowLabel}</span>
+        <span>{rightLabel}</span>
       </div>
     </div>
   );
