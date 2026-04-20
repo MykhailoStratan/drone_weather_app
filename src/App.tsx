@@ -36,7 +36,6 @@ import {
 } from "./lib/format";
 import {
   fetchAirspace,
-  fetchGnssEstimate,
   fetchWeatherAlerts,
   fetchWeatherOverview,
   fetchWeatherTimeline,
@@ -59,8 +58,6 @@ import { resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph, format
 import { validateLocationSearchQuery } from "../packages/weather-domain/src/location-search";
 import type {
   AirspaceResponse,
-  GnssEnvironmentPreset,
-  GnssEstimateResponse,
   LocationOption,
   WeatherPayload,
 } from "./types";
@@ -157,9 +154,6 @@ function App() {
   const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const [detailView, setDetailView] = useState<DetailView>("hourly");
   const [hourlyCardsOpen, setHourlyCardsOpen] = useState(false);
-  const [environmentPreset, setEnvironmentPreset] = useState<GnssEnvironmentPreset>("open");
-  const [gnssEstimate, setGnssEstimate] = useState<GnssEstimateResponse | null>(null);
-  const [gnssLoading, setGnssLoading] = useState(false);
   const [airspace, setAirspace] = useState<AirspaceResponse | null>(null);
   const [airspaceLoading, setAirspaceLoading] = useState(false);
   const [requestedLocation, setRequestedLocation] = useState<LocationOption | null>(null);
@@ -274,7 +268,6 @@ function App() {
       setResults([]);
       setQuery(location.name);
       setActiveLocation(location);
-      setGnssEstimate(null);
       storeOverview(location, overview);
       setDataStatus({ savedAt: new Date().toISOString(), source: "live" });
       storeLocation(LAST_LOCATION_KEY, location);
@@ -499,50 +492,6 @@ function App() {
       return findNearestSnapshotIndex(hourlyForDay);
     });
   }, [hourlyForDay]);
-
-  const gnssInput = useMemo(() => {
-    if (!activeLocation || !currentSnapshot || !currentDay) return null;
-    return {
-      location: {
-        latitude: activeLocation.latitude,
-        longitude: activeLocation.longitude,
-        timezone: activeLocation.timezone,
-        name: activeLocation.name,
-        admin1: activeLocation.admin1,
-        country: activeLocation.country,
-      },
-      environment: environmentPreset,
-      weather: {
-        cloudCover: currentSnapshot.cloudCover,
-        visibilityMeters: currentSnapshot.visibility,
-        precipitationProbability: currentDay.precipitationProbabilityMax,
-        precipitationSum: currentDay.precipitationSum,
-        windGusts: currentDay.windGustsMax,
-      },
-    };
-  }, [activeLocation, currentSnapshot, currentDay, environmentPreset]);
-
-  useEffect(() => {
-    if (!gnssInput) return;
-
-    let cancelled = false;
-    setGnssLoading(true);
-
-    void fetchGnssEstimate(gnssInput)
-      .then((response) => {
-        if (!cancelled) setGnssEstimate(response);
-      })
-      .catch(() => {
-        if (!cancelled) setGnssEstimate(null);
-      })
-      .finally(() => {
-        if (!cancelled) setGnssLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [gnssInput]);
 
   useEffect(() => {
     if (!activeLocation) return;
@@ -959,10 +908,7 @@ function App() {
                   <FlightReadinessPanel
                     currentDay={resolvedCurrentDay}
                     currentSnapshot={resolvedCurrentSnapshot}
-                    environmentPreset={environmentPreset}
-                    onEnvironmentChange={setEnvironmentPreset}
-                    gnssEstimate={gnssEstimate}
-                    loading={gnssLoading}
+                    temperatureUnit={preferences.temperatureUnit}
                     windUnit={preferences.windUnit}
                     windUnitLabel={windUnitLabel}
                     visibilityUnit={preferences.visibilityUnit}
