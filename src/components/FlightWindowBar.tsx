@@ -36,51 +36,95 @@ function classifyHour(snap: WeatherSnapshot): HourWindow {
   return { time: snap.time, tone: worst, reasons };
 }
 
-export function FlightWindowBar({
-  hourlyToday,
+export function HourScrubber({
+  hourlyForDay,
   hourCycle,
+  activeHourIndex,
+  onHourChange,
 }: {
-  hourlyToday: WeatherSnapshot[];
+  hourlyForDay: WeatherSnapshot[];
   hourCycle: "12h" | "24h";
+  activeHourIndex: number;
+  onHourChange: (index: number) => void;
 }) {
-  if (hourlyToday.length === 0) return null;
+  if (hourlyForDay.length === 0) return null;
 
-  const windows: HourWindow[] = hourlyToday.map(classifyHour);
+  const windows: HourWindow[] = hourlyForDay.map(classifyHour);
+
   const nowMs = Date.now();
-  const nowIndex = hourlyToday.reduce((closest, snap, i) => {
-    return Math.abs(new Date(snap.time).getTime() - nowMs) <
-      Math.abs(new Date(hourlyToday[closest].time).getTime() - nowMs)
-      ? i
-      : closest;
-  }, 0);
+  const nowIndex = hourlyForDay.reduce((closest, snap, i) =>
+    Math.abs(new Date(snap.time).getTime() - nowMs) <
+    Math.abs(new Date(hourlyForDay[closest].time).getTime() - nowMs)
+      ? i : closest,
+    0,
+  );
 
   const goodCount = windows.filter((w) => w.tone === "good").length;
   const summary =
     goodCount === windows.length
-      ? "All clear today"
+      ? "All clear"
       : goodCount === 0
-      ? "No safe windows today"
-      : `${goodCount} of ${windows.length}h flyable`;
+      ? "No safe windows"
+      : `${goodCount}/${windows.length}h flyable`;
 
-  const tickIndices = [0, Math.floor(windows.length / 2), windows.length - 1];
+  const tickIndices = [0, Math.floor((windows.length - 1) / 2), windows.length - 1];
+  const activeSnap = hourlyForDay[activeHourIndex];
+  const activeLabel = activeSnap ? formatHourLabel(activeSnap.time, hourCycle) : "";
+
+  // Center the thumb within the selected segment
+  const thumbPct = windows.length > 1
+    ? ((activeHourIndex + 0.5) / windows.length) * 100
+    : 50;
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+      e.preventDefault();
+      onHourChange(Math.min(activeHourIndex + 1, windows.length - 1));
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+      e.preventDefault();
+      onHourChange(Math.max(activeHourIndex - 1, 0));
+    }
+  }
 
   return (
-    <div className="flight-window-card">
-      <div className="flight-window-header">
-        <p className="section-label">Flight window · today</p>
-        <span className="flight-window-summary">{summary}</span>
+    <div className="hour-scrubber">
+      <div className="hour-scrubber-header">
+        <div>
+          <span className="section-label">Hour scrubber</span>
+          <strong>{activeLabel}</strong>
+        </div>
+        <span className="hour-scrubber-summary">{summary}</span>
       </div>
-      <div className="flight-window-bar" aria-label="Hourly flight conditions for today">
-        {windows.map((w, i) => (
-          <div
-            key={w.time}
-            className={`flight-window-seg ${w.tone}${i === nowIndex ? " now" : ""}`}
-            title={`${formatHourLabel(w.time, hourCycle)}${w.reasons.length ? " · " + w.reasons.join(", ") : " · good conditions"}`}
-            aria-label={`${formatHourLabel(w.time, hourCycle)}: ${w.tone}${w.reasons.length ? " — " + w.reasons.join(", ") : ""}`}
-          />
-        ))}
+
+      <div
+        className="hour-scrubber-track-wrap"
+        role="slider"
+        aria-valuenow={activeHourIndex}
+        aria-valuemin={0}
+        aria-valuemax={windows.length - 1}
+        aria-valuetext={activeLabel}
+        aria-label="Select forecast hour"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+      >
+        <div className="hour-scrubber-bar">
+          {windows.map((w, i) => (
+            <div
+              key={w.time}
+              className={`hour-scrubber-seg ${w.tone}${i === activeHourIndex ? " selected" : ""}${i === nowIndex ? " now" : ""}`}
+              onClick={() => onHourChange(i)}
+              title={`${formatHourLabel(w.time, hourCycle)}${w.reasons.length ? " · " + w.reasons.join(", ") : " · good conditions"}`}
+            />
+          ))}
+        </div>
+        <div
+          className="hour-scrubber-thumb"
+          style={{ left: `${thumbPct}%` }}
+          aria-hidden="true"
+        />
       </div>
-      <div className="flight-window-ticks">
+
+      <div className="hour-scrubber-ticks" aria-hidden="true">
         {tickIndices.map((i) => (
           <span key={i}>{formatHourLabel(windows[i].time, hourCycle)}</span>
         ))}

@@ -19,7 +19,7 @@ const WindDirectionChart = React.lazy(() =>
   import("./components/WeatherCharts").then((m) => ({ default: m.WindDirectionChart })));
 import { AirspacePanel } from "./components/AirspacePanel";
 import { FlightReadinessPanel } from "./components/FlightReadinessPanel";
-import { FlightWindowBar } from "./components/FlightWindowBar";
+import { HourScrubber } from "./components/FlightWindowBar";
 import { BatteryThermalPanel } from "./components/BatteryThermalPanel";
 import { DewPointPanel } from "./components/DewPointPanel";
 import { DensityAltitudePanel } from "./components/DensityAltitudePanel";
@@ -426,11 +426,6 @@ function App() {
     [weather?.hourly, selectedDate],
   );
   const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
-  const todayDate = new Date().toISOString().slice(0, 10);
-  const hourlyForToday = useMemo(
-    () => weather?.hourly.filter((e) => e.time.startsWith(todayDate)) ?? [],
-    [weather?.hourly, todayDate],
-  );
   const hasAlerts = (weather?.alerts.length ?? 0) > 0;
   const showSearchFeedback = query.trim().length >= 2;
   const selectedSnapshot = useMemo(
@@ -460,9 +455,6 @@ function App() {
       temperatureMax: temperatureDisplay(day.temperatureMax, preferences.temperatureUnit),
     })),
   );
-  const activeHourSnapshot = hourlyForDay[activeHourIndex] ?? currentSnapshot;
-  const activeHourLabel = activeHourSnapshot ? formatHourLabel(activeHourSnapshot.time, preferences.hourCycle) : "";
-  const activeHourTimestamp = activeHourSnapshot ? formatTime(activeHourSnapshot.time, preferences.hourCycle) : "";
   const showWeatherLayout = Boolean(weather && currentDay && currentSnapshot);
   const locationBarName =
     weather?.locationLabel ??
@@ -804,32 +796,12 @@ function App() {
                         Rain {Math.round(resolvedCurrentSnapshot.precipitationProbability)}%
                       </span>
                     </div>
-                    {hourlyForDay.length > 0 && (
-                      <div className="hero-hour-slider">
-                        <div className="hero-hour-slider-header">
-                          <div>
-                            <span className="section-label">Hour scrubber</span>
-                            <strong>{activeHourLabel}</strong>
-                          </div>
-                          <span className="hero-hour-slider-readout">{activeHourTimestamp}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={Math.max(hourlyForDay.length - 1, 0)}
-                          step={1}
-                          value={activeHourIndex}
-                          onChange={(event) => setSelectedHourIndex(Number(event.target.value))}
-                          aria-label="Select forecast hour"
-                          aria-valuetext={activeHourLabel}
-                        />
-                        <div className="hero-hour-slider-scale" aria-hidden="true">
-                          <span>{formatHourLabel(hourlyForDay[0].time, preferences.hourCycle)}</span>
-                          <span>{formatHourLabel(hourlyForDay[Math.floor((hourlyForDay.length - 1) / 2)].time, preferences.hourCycle)}</span>
-                          <span>{formatHourLabel(hourlyForDay[hourlyForDay.length - 1].time, preferences.hourCycle)}</span>
-                        </div>
-                      </div>
-                    )}
+                    <HourScrubber
+                      hourlyForDay={hourlyForDay}
+                      hourCycle={preferences.hourCycle}
+                      activeHourIndex={activeHourIndex}
+                      onHourChange={setSelectedHourIndex}
+                    />
                   </div>
 
                   <div className="wind-spotlight">
@@ -1012,12 +984,6 @@ function App() {
                 </div>
               </article>
           </section>
-
-          {hourlyForToday.length > 0 && (
-            <section className="flight-window-section">
-              <FlightWindowBar hourlyToday={hourlyForToday} hourCycle={preferences.hourCycle} />
-            </section>
-          )}
 
           <section className="airspace-panel-section">
             <AirspacePanel
