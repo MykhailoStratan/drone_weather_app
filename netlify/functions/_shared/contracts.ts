@@ -33,6 +33,7 @@ export function createGnssEstimateResponse(args: {
   timezone: string;
   latitude: number;
   longitude: number;
+  dataStatus?: "available";
   estimatedVisibleSatellites: number;
   estimatedUsableSatellites: number;
   gnssScore: number;
@@ -45,11 +46,36 @@ export function createGnssEstimateResponse(args: {
     latitude: args.latitude,
     longitude: args.longitude,
     fetchedAt: new Date().toISOString(),
+    dataStatus: args.dataStatus ?? "available",
     estimatedVisibleSatellites: args.estimatedVisibleSatellites,
     estimatedUsableSatellites: args.estimatedUsableSatellites,
     gnssScore: args.gnssScore,
     summary: args.summary,
     spaceWeatherPenalty: args.spaceWeatherPenalty,
+  };
+}
+
+export function createUnavailableGnssEstimateResponse(args: {
+  location: WeatherQuery;
+  timezone: string;
+  latitude: number;
+  longitude: number;
+  summary: string;
+  unavailableReason: string;
+}): GnssEstimateResponse {
+  return {
+    locationLabel: buildLocationLabel(args.location),
+    timezone: args.timezone,
+    latitude: args.latitude,
+    longitude: args.longitude,
+    fetchedAt: new Date().toISOString(),
+    dataStatus: "unavailable",
+    estimatedVisibleSatellites: null,
+    estimatedUsableSatellites: null,
+    gnssScore: null,
+    summary: args.summary,
+    spaceWeatherPenalty: null,
+    unavailableReason: args.unavailableReason,
   };
 }
 

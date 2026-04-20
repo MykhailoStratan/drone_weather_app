@@ -101,7 +101,8 @@ export async function fetchGnssEstimate(request: GnssEstimateRequest): Promise<G
   });
 
   if (!response.ok) {
-    throw new Error("GNSS estimate is unavailable right now.");
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? "GNSS estimate is unavailable right now.");
   }
 
   return (await response.json()) as GnssEstimateResponse;

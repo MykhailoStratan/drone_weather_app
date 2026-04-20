@@ -45,9 +45,11 @@ export type GnssEstimateRequest = {
 
 export type GnssEstimateResponse = WeatherLocationMeta & {
   fetchedAt: string;
-  estimatedVisibleSatellites: number;
-  estimatedUsableSatellites: number;
-  gnssScore: number;
+  dataStatus: "available" | "unavailable";
+  estimatedVisibleSatellites: number | null;
+  estimatedUsableSatellites: number | null;
+  gnssScore: number | null;
   summary: string;
-  spaceWeatherPenalty: number;
+  spaceWeatherPenalty: number | null;
+  unavailableReason?: string;
 };

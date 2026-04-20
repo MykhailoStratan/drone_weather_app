@@ -1,7 +1,7 @@
 import { degreesToRadians, ecfToLookAngles, eciToEcf, gstime, propagate, twoline2satrec } from "satellite.js";
 import type { GnssEnvironmentPreset, GnssEstimateRequest, GnssEstimateResponse, WeatherQuery } from "../../../packages/weather-domain/src";
-import { CACHE_TTLS, getCached, setCached } from "./cache";
-import { createGnssEstimateResponse } from "./contracts";
+import { CACHE_TTLS, getCacheState, setCached } from "./cache";
+import { createGnssEstimateResponse, createUnavailableGnssEstimateResponse } from "./contracts";
 
 const CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php";
 const NOAA_SCALES_URL = "https://services.swpc.noaa.gov/products/noaa-scales.json";
@@ -49,7 +49,22 @@ type ConstellationKey = (typeof CONSTELLATION_GROUPS)[number]["key"];
 
 export async function fetchGnssEstimate(request: GnssEstimateRequest): Promise<GnssEstimateResponse> {
   const query = request.location;
-  const [constellations, spaceWeather] = await Promise.all([fetchConstellationRecords(), fetchSpaceWeather()]);
+  let constellations: Record<ConstellationKey, TleRecord[]>;
+  try {
+    constellations = await fetchConstellationRecords();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "GNSS constellation data is unavailable.";
+    return createUnavailableGnssEstimateResponse({
+      location: query,
+      timezone: query.timezone ?? "auto",
+      latitude: query.latitude,
+      longitude: query.longitude,
+      summary: "GNSS data is not available right now. Satellite geometry could not be refreshed for this location.",
+      unavailableReason: message,
+    });
+  }
+
+  const spaceWeather = await fetchSpaceWeather();
   const counts = estimateSatelliteCounts(query, constellations);
   const scored = scoreGnssEstimate(request, counts, spaceWeather);
 
@@ -144,19 +159,31 @@ function computeSpaceWeatherPenalty(spaceWeather: SpaceWeatherSnapshot) {
 }
 
 async function fetchConstellationRecords() {
-  const cached = getCached<Record<ConstellationKey, TleRecord[]>>("gnss:constellations");
-  if (cached) {
-    return cached;
+  const cached = getCacheState<Record<ConstellationKey, TleRecord[]>>("gnss:constellations");
+  if (cached.state === "fresh") {
+    return cached.value;
   }
 
-  const records = Object.fromEntries(
-    await Promise.all(
-      CONSTELLATION_GROUPS.map(async ({ key, group }) => [key, await fetchTleGroup(group)]),
-    ),
-  ) as Record<ConstellationKey, TleRecord[]>;
+  try {
+    const records = Object.fromEntries(
+      await Promise.all(
+        CONSTELLATION_GROUPS.map(async ({ key, group }) => [key, await fetchTleGroup(group)]),
+      ),
+    ) as Record<ConstellationKey, TleRecord[]>;
 
-  setCached("gnss:constellations", records, CACHE_TTLS.gnssConstellation);
-  return records;
+    setCached("gnss:constellations", records, CACHE_TTLS.gnssConstellation);
+    return records;
+  } catch (error) {
+    const combinedFallback = await fetchCombinedConstellationFallback().catch(() => null);
+    if (combinedFallback) {
+      setCached("gnss:constellations", combinedFallback, CACHE_TTLS.gnssConstellation);
+      return combinedFallback;
+    }
+    if (cached.state === "stale") {
+      return cached.value;
+    }
+    throw error;
+  }
 }
 
 async function fetchTleGroup(group: string) {
@@ -169,7 +196,22 @@ async function fetchTleGroup(group: string) {
     throw new Error(`Unable to fetch GNSS constellation data for ${group}.`);
   }
 
-  const raw = await response.text();
+  return parseTleRecords(await response.text());
+}
+
+async function fetchCombinedConstellationFallback() {
+  const records = await fetchTleGroup("gnss");
+  if (records.length === 0) {
+    return null;
+  }
+  return {
+    gps: records,
+    galileo: [],
+    glonass: [],
+  } satisfies Record<ConstellationKey, TleRecord[]>;
+}
+
+function parseTleRecords(raw: string) {
   const lines = raw
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
@@ -189,28 +231,38 @@ async function fetchTleGroup(group: string) {
 }
 
 async function fetchSpaceWeather(): Promise<SpaceWeatherSnapshot> {
-  const cached = getCached<SpaceWeatherSnapshot>("gnss:space-weather");
-  if (cached) {
-    return cached;
+  const cached = getCacheState<SpaceWeatherSnapshot>("gnss:space-weather");
+  if (cached.state === "fresh") {
+    return cached.value;
   }
 
-  const [scaleResponse, kpResponse] = await Promise.all([fetch(NOAA_SCALES_URL), fetch(NOAA_KP_URL)]);
-  if (!scaleResponse.ok || !kpResponse.ok) {
-    throw new Error("Unable to fetch current space weather conditions.");
+  try {
+    const [scaleResponse, kpResponse] = await Promise.all([
+      fetch(NOAA_SCALES_URL),
+      fetch(NOAA_KP_URL),
+    ]);
+    if (!scaleResponse.ok || !kpResponse.ok) {
+      throw new Error("Unable to fetch current space weather conditions.");
+    }
+
+    const scales = (await scaleResponse.json()) as Record<string, { G?: { Scale?: string | null } }>;
+    const kpSeries = (await kpResponse.json()) as Array<{ Kp?: number }>;
+
+    const currentScale = Number(scales["0"]?.G?.Scale ?? 0);
+    const latestKp = kpSeries.at(-1)?.Kp ?? 0;
+    const snapshot = {
+      kpIndex: latestKp,
+      geomagneticScale: Number.isFinite(currentScale) ? currentScale : 0,
+    };
+
+    setCached("gnss:space-weather", snapshot, CACHE_TTLS.gnssSpaceWeather);
+    return snapshot;
+  } catch {
+    if (cached.state === "stale") {
+      return cached.value;
+    }
+    return { kpIndex: 0, geomagneticScale: 0 };
   }
-
-  const scales = (await scaleResponse.json()) as Record<string, { G?: { Scale?: string | null } }>;
-  const kpSeries = (await kpResponse.json()) as Array<{ Kp?: number }>;
-
-  const currentScale = Number(scales["0"]?.G?.Scale ?? 0);
-  const latestKp = kpSeries.at(-1)?.Kp ?? 0;
-  const snapshot = {
-    kpIndex: latestKp,
-    geomagneticScale: Number.isFinite(currentScale) ? currentScale : 0,
-  };
-
-  setCached("gnss:space-weather", snapshot, CACHE_TTLS.gnssSpaceWeather);
-  return snapshot;
 }
 
 function estimateSatelliteCounts(
