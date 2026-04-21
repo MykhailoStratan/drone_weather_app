@@ -2908,9 +2908,21 @@ input:focus-visible {
 .airspace-legend-item.danger     { color: var(--sky); }
 .airspace-legend-item.military   { color: #818cf8; }
 .airspace-legend-item.tfr        { color: #a855f7; }
+.airspace-legend-item.openaip    { color: #14b8a6; }
 .airspace-legend-item.icao-a     { color: #ff3b30; }
 .airspace-legend-item.icao-c     { color: #ff9500; }
 .airspace-legend-item.icao-d     { color: #f59e3f; }
+
+.airspace-source-status {
+  margin: 0;
+  padding: 0.55rem 1.25rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
 .airspace-loading {
   display: flex;

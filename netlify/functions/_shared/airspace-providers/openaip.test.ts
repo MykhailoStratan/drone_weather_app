@@ -40,6 +40,7 @@ describe("fetchOpenAipAirspace", () => {
 
     expect(requested.searchParams.get("pos")).toBe("49.2497,-123.1193");
     expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({
+      "x-openaip-api-key": "client-id",
       "x-openaip-client-id": "client-id",
     });
     expect(features[0]).toMatchObject({

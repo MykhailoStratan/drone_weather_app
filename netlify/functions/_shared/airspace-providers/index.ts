@@ -74,7 +74,6 @@ export async function fetchAirspaceBundle(
   const openAipTask = openAipKey
     ? safely("OpenAIP", fetchOpenAipAirspace(lat, lng, openAipKey))
     : Promise.resolve(null);
-  const openAipSource = openAipKey ? ["OpenAIP"] : [];
 
   if (country === "US") {
     const [faa, tfrs, openAip, fallback] = await Promise.all([
@@ -83,6 +82,7 @@ export async function fetchAirspaceBundle(
       openAipTask,
       safely("Overpass (US fallback)", fetchOverpassAirspace(lat, lng)),
     ]);
+    const openAipSource = openAip?.length ? ["OpenAIP"] : [];
     return {
       country,
       dataSources: ["FAA ArcGIS (Class & Special Use)", ...openAipSource, "aviationweather.gov TFR", "OSM Overpass"],
@@ -97,6 +97,7 @@ export async function fetchAirspaceBundle(
       openAipTask,
       safely("Overpass (CA fallback)", fetchOverpassAirspace(lat, lng)),
     ]);
+    const openAipSource = openAip?.length ? ["OpenAIP"] : [];
     return {
       country,
       dataSources: ["Transport Canada airports (geo.ca)", ...openAipSource, "OSM Overpass"],
@@ -110,6 +111,7 @@ export async function fetchAirspaceBundle(
       safely("Japan", fetchJapanAirspace(lat, lng)),
       openAipTask,
     ]);
+    const openAipSource = openAip?.length ? ["OpenAIP"] : [];
     return {
       country,
       dataSources: ["OSM Overpass (Japan) + Civil Aeronautics Act 9 km rule", ...openAipSource],
@@ -122,6 +124,7 @@ export async function fetchAirspaceBundle(
     openAipTask,
     safely("Overpass (default)", fetchOverpassAirspace(lat, lng)),
   ]);
+  const openAipSource = openAip?.length ? ["OpenAIP"] : [];
   return {
     country,
     dataSources: [...openAipSource, "OSM Overpass (worldwide fallback)"],

@@ -380,6 +380,9 @@ export function AirspacePanel({
 }) {
   const features = airspace?.features ?? [];
   const tfrs = airspace?.tfrs ?? [];
+  const openAipFeatures = features.filter((feature) => feature.source === "openaip");
+  const hasOpenAipSource =
+    airspace?.dataSources.some((source) => source.toLowerCase().includes("openaip")) ?? false;
 
   const insideFeatures = features.filter(featureIsInside);
   const highestRisk = insideFeatures.find((f) => f.classification === "restricted")
@@ -457,7 +460,19 @@ export function AirspacePanel({
             <span className="airspace-legend-item military">Military</span>
           )}
           {tfrs.length > 0 && <span className="airspace-legend-item tfr">TFR</span>}
+          {openAipFeatures.length > 0 && (
+            <span className="airspace-legend-item openaip">OpenAIP</span>
+          )}
         </div>
+      )}
+
+      {hasOpenAipSource && (
+        <p className="airspace-source-status">
+          OpenAIP:{" "}
+          {openAipFeatures.length > 0
+            ? `${openAipFeatures.length} mapped airspace ${openAipFeatures.length === 1 ? "feature" : "features"}`
+            : "no mapped airspace features returned for this location"}
+        </p>
       )}
 
       {airspace && features.length === 0 && tfrs.length === 0 && (
@@ -474,6 +489,7 @@ export function AirspacePanel({
                 <span className="airspace-icao">
                   {featureTypeLabel(feature.featureType)}
                   {feature.icao ? ` · ${feature.icao}` : ""}
+                  {feature.source === "openaip" ? " · OpenAIP" : ""}
                 </span>
                 {(feature.altitudeLowerFt !== undefined || feature.altitudeUpperFt !== undefined) && (
                   <span className="airspace-altitude">

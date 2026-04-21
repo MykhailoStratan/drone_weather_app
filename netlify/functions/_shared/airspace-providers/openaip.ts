@@ -134,6 +134,7 @@ export async function fetchOpenAipAirspace(
     const res = await fetch(`${OPENAIP_URL}?${params}`, {
       signal: controller.signal,
       headers: {
+        "x-openaip-api-key": apiKey,
         "x-openaip-client-id": apiKey,
         Accept: "application/json",
       },
