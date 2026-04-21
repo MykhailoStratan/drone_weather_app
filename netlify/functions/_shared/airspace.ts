@@ -1,4 +1,4 @@
-import type { AirspaceClass, AirspaceFeature, TFRFeature } from "../../../packages/weather-domain/src/types";
+import type { AirspaceClass, AirspaceFeature, AirspacePolygon, IcaoAirspaceClass, TFRFeature } from "../../../packages/weather-domain/src/types";
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 const TFR_URL = "https://aviationweather.gov/api/data/tfr";
@@ -230,6 +230,112 @@ export async function fetchNearbyTFRs(lat: number, lng: number): Promise<TFRFeat
     return tfrs.sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 20);
   } catch {
     return [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ─── OpenAIP ──────────────────────────────────────────────────────────────────
+// https://www.openaip.net — worldwide real polygon airspace data (ICAO classes,
+// CTR, TMA, restricted, danger, prohibited, etc.). Requires free API key.
+
+const OPENAIP_URL = "https://api.core.openaip.net/api/airspaces";
+const OPENAIP_SEARCH_RADIUS_M = 50_000;
+const OPENAIP_TIMEOUT_MS = 10_000;
+
+// Numeric enums from OpenAIP v2 API spec
+const ICAO_CLASS_MAP: Record<number, IcaoAirspaceClass> = {
+  0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F", 6: "G",
+};
+
+const TYPE_LABEL_MAP: Record<number, string> = {
+  0: "Other", 1: "Restricted", 2: "Danger", 3: "Prohibited",
+  4: "CTR", 5: "TMZ", 6: "RMZ", 7: "TMA", 8: "TRA", 9: "TSA",
+  10: "FIR", 11: "UIR", 12: "ADIZ", 13: "ATZ", 14: "MATZ",
+  16: "MTR", 17: "Alert", 18: "Warning", 26: "CTA", 28: "Sport",
+  29: "Low Flying Zone",
+};
+
+// Altitude unit codes: 0=ft, 1=FL (×100 ft), 2=m
+function toFeet(value: number, unit: number): number {
+  if (unit === 1) return value * 100;          // flight level → feet
+  if (unit === 2) return Math.round(value * 3.28084); // metres → feet
+  return value;                                 // already feet
+}
+
+function classifyOpenAIP(icaoClass: number | undefined, type: number): AirspaceClass {
+  if (type === 1 || type === 2 || type === 3) return "restricted"; // R/D/P
+  if (icaoClass === 0 || icaoClass === 1 || icaoClass === 2) return "controlled"; // A/B/C
+  if (icaoClass === 3 || icaoClass === 4) return "advisory"; // D/E
+  return "advisory"; // everything else
+}
+
+type OpenAIPLimit = { value: number; unit: number; referenceDatum: number };
+type OpenAIPItem = {
+  _id: string;
+  name?: string;
+  icaoClass?: number;
+  type?: number;
+  country?: string;
+  geometry?: { type: string; coordinates: unknown };
+  lowerLimit?: OpenAIPLimit;
+  upperLimit?: OpenAIPLimit;
+};
+type OpenAIPResponse = { items?: OpenAIPItem[]; totalCount?: number };
+
+export async function fetchOpenAIPAirspace(lat: number, lng: number, apiKey: string): Promise<AirspacePolygon[]> {
+  const params = new URLSearchParams({
+    pos: `${lng},${lat}`,           // OpenAIP uses lng,lat order
+    dist: String(OPENAIP_SEARCH_RADIUS_M),
+    limit: "100",
+    page: "1",
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENAIP_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${OPENAIP_URL}?${params}`, {
+      signal: controller.signal,
+      headers: { "x-openaip-client-id": apiKey, Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`OpenAIP ${res.status}`);
+
+    const data = (await res.json()) as OpenAIPResponse;
+    const items = data.items ?? [];
+    const polygons: AirspacePolygon[] = [];
+
+    for (const item of items) {
+      const geom = item.geometry;
+      if (!geom || geom.type !== "Polygon") continue;
+
+      // GeoJSON coords are [lng, lat] arrays; convert to [lat, lng] for Leaflet
+      const rawRings = geom.coordinates as number[][][];
+      const outerRing = rawRings[0];
+      if (!outerRing || outerRing.length < 3) continue;
+      const polygon: Array<[number, number]> = outerRing.map(([lng, lat]) => [lat, lng]);
+
+      const typeNum = item.type ?? 0;
+      const icaoNum = item.icaoClass;
+
+      polygons.push({
+        id: item._id,
+        name: item.name ?? "Unnamed",
+        icaoClass: icaoNum !== undefined ? ICAO_CLASS_MAP[icaoNum] : undefined,
+        type: TYPE_LABEL_MAP[typeNum] ?? "Airspace",
+        classification: classifyOpenAIP(icaoNum, typeNum),
+        country: item.country,
+        polygon,
+        altitudeLowerFt: item.lowerLimit
+          ? toFeet(item.lowerLimit.value, item.lowerLimit.unit)
+          : undefined,
+        altitudeUpperFt: item.upperLimit
+          ? toFeet(item.upperLimit.value, item.upperLimit.unit)
+          : undefined,
+      });
+    }
+
+    return polygons;
   } finally {
     clearTimeout(timeout);
   }

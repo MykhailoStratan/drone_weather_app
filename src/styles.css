@@ -2514,6 +2514,9 @@ input:focus-visible {
 .airspace-legend-item.advisory   { color: var(--amber); }
 .airspace-legend-item.restricted { color: var(--sky); }
 .airspace-legend-item.tfr        { color: #a855f7; }
+.airspace-legend-item.icao-a     { color: #ff3b30; }
+.airspace-legend-item.icao-c     { color: #ff9500; }
+.airspace-legend-item.icao-d     { color: #f59e3f; }
 
 .airspace-loading {
   display: flex;

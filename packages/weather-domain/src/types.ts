@@ -74,12 +74,28 @@ export type TFRFeature = {
   distanceKm: number;
 };
 
+export type IcaoAirspaceClass = "A" | "B" | "C" | "D" | "E" | "F" | "G";
+
+export type AirspacePolygon = {
+  id: string;
+  name: string;
+  icaoClass?: IcaoAirspaceClass;
+  type: string;
+  classification: AirspaceClass;
+  country?: string;
+  polygon: Array<[number, number]>;
+  altitudeLowerFt?: number;
+  altitudeUpperFt?: number;
+};
+
 export type AirspaceResponse = {
   latitude: number;
   longitude: number;
   fetchedAt: string;
   features: AirspaceFeature[];
+  polygons: AirspacePolygon[];
   tfrs: TFRFeature[];
+  source: "openaip" | "overpass";
 };
 
 export type WeatherAlert = {
