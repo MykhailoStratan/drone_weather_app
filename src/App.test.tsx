@@ -338,7 +338,7 @@ describe("App preferences", () => {
     view.unmount();
   });
 
-  it("rounds geolocation coordinates before requesting weather", async () => {
+  it("preserves precise geolocation coordinates when requesting weather", async () => {
     const fetchMock = installFetchMock();
     Object.defineProperty(globalThis.navigator, "geolocation", {
       configurable: true,
@@ -361,7 +361,7 @@ describe("App preferences", () => {
 
     const geolocationCall = fetchMock.mock.calls
       .map(([input]) => String(input))
-      .find((url) => url.includes("/weather/overview?lat=49.25&lon=-123.12"));
+      .find((url) => url.includes("/weather/overview?lat=49.249712&lon=-123.119357"));
     expect(geolocationCall).toBeTruthy();
     view.unmount();
   });

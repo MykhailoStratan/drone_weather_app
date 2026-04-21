@@ -35,8 +35,8 @@ function readLocationFromUrl(): LocationOption | null {
 
 function writeLocationToUrl(location: LocationOption) {
   const params = new URLSearchParams();
-  params.set("lat", location.latitude.toFixed(4));
-  params.set("lon", location.longitude.toFixed(4));
+  params.set("lat", location.latitude.toFixed(6));
+  params.set("lon", location.longitude.toFixed(6));
   params.set("name", location.name);
   if (location.admin1) params.set("admin1", location.admin1);
   if (location.country) params.set("country", location.country);

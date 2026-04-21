@@ -6,7 +6,7 @@ import type { AirspaceResponse } from "../../packages/weather-domain/src/types";
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const TFR_CACHE_TTL_MS = 15 * 60 * 1000;
-const CACHE_COORD_PRECISION = 3;
+const CACHE_COORD_PRECISION = 5;
 
 function parseCoordinate(value: string | null, label: "lat" | "lng") {
   if (value === null || value.trim() === "") {
