@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import { AirspacePanel } from "./AirspacePanel";
 import type { Preferences } from "../hooks/usePreferences";
-import { findNearestSnapshotIndex } from "../lib/app-utils";
 import { formatDayLabel, formatHourLabel, temperatureDisplay, visibilityDisplay, weatherLabel, windDirectionLabel, windSpeedDisplay } from "../lib/format";
 import type { HourlyChartSeries } from "../lib/chartUtils";
 import type { AirspaceResponse, WeatherPayload, WeatherSnapshot } from "../types";
@@ -26,7 +25,6 @@ type ForecastPanelsProps = {
   hourlyCardsOpen: boolean;
   hourlyForDay: WeatherSnapshot[];
   hourlySeries: HourlyChartSeries;
-  onDaySelect: (date: string, nextHourIndex: number) => void;
   onDetailViewChange: (view: "hourly" | "weekly" | "alerts") => void;
   preferences: Preferences;
   selectedDate: string;
@@ -46,7 +44,6 @@ export function ForecastPanels({
   hourlyCardsOpen,
   hourlyForDay,
   hourlySeries,
-  onDaySelect,
   onDetailViewChange,
   preferences,
   selectedDate,
@@ -99,42 +96,6 @@ export function ForecastPanels({
         <>
           {detailView === "hourly" && (
             <>
-              <section className="timeline-panel">
-                <div className="panel-header compact">
-                  <div>
-                    <p className="section-label">Daily timeline</p>
-                    <h3>Choose a day</h3>
-                  </div>
-                </div>
-
-                <div className="day-strip">
-                  {weather.daily.map((day, index) => {
-                    const offset = index - 7;
-                    const phase = offset < 0 ? "History" : offset === 0 ? "Today" : "Forecast";
-
-                    return (
-                      <button
-                        key={day.date}
-                        type="button"
-                        className={`day-chip${day.date === selectedDate ? " active" : ""}${offset === 0 ? " today" : ""}`}
-                        onClick={() => {
-                          const nextHourlyForDay = weather.hourly.filter((entry) => entry.time.startsWith(day.date));
-                          onDaySelect(day.date, findNearestSnapshotIndex(nextHourlyForDay));
-                        }}
-                      >
-                        <span>{phase}</span>
-                        <strong>{formatDayLabel(day.date)}</strong>
-                        <em>{weatherLabel(day.weatherCode)}</em>
-                        <small>
-                          {temperatureDisplay(day.temperatureMin, preferences.temperatureUnit)}° /{" "}
-                          {temperatureDisplay(day.temperatureMax, preferences.temperatureUnit)}°
-                        </small>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
               <section className="hourly-panel visx-panel">
                 <div className="panel-header compact">
                   <div>
@@ -179,7 +140,7 @@ export function ForecastPanels({
                         </div>
                         <div className="hour-summary-row">
                           <p className="hour-temp">
-                            {temperatureDisplay(entry.temperature, preferences.temperatureUnit)}°
+                            {temperatureDisplay(entry.temperature, preferences.temperatureUnit)}&deg;
                           </p>
                           <div className="mini-wind">
                             <span
@@ -201,7 +162,7 @@ export function ForecastPanels({
                           </div>
                           <div>
                             <dt>Dir</dt>
-                            <dd>{Math.round(entry.windDirection)}°</dd>
+                            <dd>{Math.round(entry.windDirection)}&deg;</dd>
                           </div>
                           <div>
                             <dt>Rain</dt>

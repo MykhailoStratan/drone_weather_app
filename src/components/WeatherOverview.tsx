@@ -1,4 +1,4 @@
-import React, { Suspense, type ReactNode } from "react";
+import React, { Suspense, useMemo, useState, type ReactNode } from "react";
 import { BatteryThermalPanel } from "./BatteryThermalPanel";
 import { DewPointPanel } from "./DewPointPanel";
 import { DensityAltitudePanel } from "./DensityAltitudePanel";
@@ -19,17 +19,22 @@ const TemperatureCurveChart = React.lazy(() =>
 
 type WeatherOverviewProps = {
   activeHourIndex: number;
+  centerTimelineOnCurrentTime: boolean;
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
   hourlyForDay: WeatherSnapshot[];
   hourlyTemperature: Array<{ value: number }>;
   hourlyTimelineSeries: HourlyChartSeries;
   nextDayHourly: WeatherSnapshot[];
+  onDateChange: (date: string) => void;
   onHourChange: (index: number) => void;
   onNextDayHourChange: (index: number) => void;
   onPrevDayHourChange: (index: number) => void;
   preferences: Preferences;
   prevDayHourly: WeatherSnapshot[];
+  selectedDate: string;
+  selectableDateMax: string;
+  selectableDateMin: string;
   temperatureUnitLabel: string;
   visibilityUnitLabel: string;
   weather: WeatherPayload;
@@ -39,24 +44,45 @@ type WeatherOverviewProps = {
 
 export function WeatherOverview({
   activeHourIndex,
+  centerTimelineOnCurrentTime,
   currentDay,
   currentSnapshot,
   hourlyForDay,
   hourlyTemperature,
   hourlyTimelineSeries,
   nextDayHourly,
+  onDateChange,
   onHourChange,
   onNextDayHourChange,
   onPrevDayHourChange,
   preferences,
   prevDayHourly,
+  selectedDate,
+  selectableDateMax,
+  selectableDateMin,
   temperatureUnitLabel,
   visibilityUnitLabel,
   weather,
   weatherIcon,
   windUnitLabel,
 }: WeatherOverviewProps) {
-  const solarBoundary = getHourScrubberBoundary({ hourlyForDay, nextDayHourly, prevDayHourly });
+  const solarBoundary = getHourScrubberBoundary({
+    hourlyForDay,
+    nextDayHourly,
+    prevDayHourly,
+    centerOnCurrentTime: centerTimelineOnCurrentTime,
+  });
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarDays = useMemo(
+    () =>
+      weather.daily.filter(
+        (day) =>
+          (!selectableDateMin || day.date >= selectableDateMin) &&
+          (!selectableDateMax || day.date <= selectableDateMax),
+      ),
+    [selectableDateMax, selectableDateMin, weather.daily],
+  );
+  const todayDate = weather.current.time.slice(0, 10);
 
   return (
     <section className="overview-grid premium-grid primary-priority">
@@ -74,7 +100,47 @@ export function WeatherOverview({
               </div>
             </div>
           </div>
-          <span className="summary-badge">{formatDayLabel(currentDay.date)}</span>
+          <div className="summary-date-picker">
+            <button
+              type="button"
+              className="summary-badge summary-date-trigger"
+              aria-label="Choose forecast date"
+              aria-expanded={calendarOpen}
+              onClick={() => setCalendarOpen((open) => !open)}
+            >
+              {formatDayLabel(currentDay.date)}
+            </button>
+            {calendarOpen && (
+              <div className="date-popover" role="dialog" aria-label="Forecast dates">
+                <div className="date-popover-grid">
+                  {calendarDays.map((day) => {
+                    const phase = day.date === todayDate ? "Today" : day.date < todayDate ? "History" : "Forecast";
+                    const dayClassName = [
+                      "date-popover-day",
+                      day.date === selectedDate ? "active" : "",
+                      day.date === todayDate ? "today" : "",
+                    ].filter(Boolean).join(" ");
+
+                    return (
+                      <button
+                        key={day.date}
+                        type="button"
+                        className={dayClassName}
+                        onClick={() => {
+                          onDateChange(day.date);
+                          setCalendarOpen(false);
+                        }}
+                      >
+                        <span>{phase}</span>
+                        <strong>{formatDayLabel(day.date)}</strong>
+                        <small>{weatherLabel(day.weatherCode)}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="hero-stats">
@@ -100,6 +166,7 @@ export function WeatherOverview({
               prevDayHourly={prevDayHourly}
               hourCycle={preferences.hourCycle}
               activeHourIndex={activeHourIndex}
+              centerOnCurrentTime={centerTimelineOnCurrentTime}
               onHourChange={onHourChange}
               onNextDayHourChange={onNextDayHourChange}
               onPrevDayHourChange={onPrevDayHourChange}
@@ -114,12 +181,18 @@ export function WeatherOverview({
             <Suspense fallback={<div className="compact-timeline-charts-loading" />}>
               <div className="compact-timeline-charts">
                 <TemperatureCurveChart
+                  activeTime={currentSnapshot.time}
                   compact
                   points={hourlyTimelineSeries.temperature}
                   units={temperatureUnitLabel}
                 />
-                <PrecipitationOverlayChart compact points={hourlyTimelineSeries.precipitation} />
+                <PrecipitationOverlayChart
+                  activeTime={currentSnapshot.time}
+                  compact
+                  points={hourlyTimelineSeries.precipitation}
+                />
                 <CloudVisibilityChart
+                  activeTime={currentSnapshot.time}
                   compact
                   points={hourlyTimelineSeries.cloudVisibility}
                   visibilityUnits={visibilityUnitLabel}

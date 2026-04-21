@@ -63,5 +63,7 @@ describe("fetchTimelineBundle", () => {
     expect(hourly).toContain("wind_direction_120m");
     expect(hourly).not.toContain("wind_gusts_80m");
     expect(hourly).not.toContain("wind_gusts_120m");
+    expect((requestUrl as URL).searchParams.get("past_days")).toBe("6");
+    expect((requestUrl as URL).searchParams.get("forecast_days")).toBe("8");
   });
 });

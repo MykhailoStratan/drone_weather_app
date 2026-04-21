@@ -152,10 +152,12 @@ function tooltipAnchorProps(anchorX: number, chartWidth: number) {
 }
 
 export function TemperatureCurveChart({
+  activeTime,
   compact = false,
   points,
   units,
 }: {
+  activeTime?: string;
   compact?: boolean;
   points: HourlyDatum[];
   units: string;
@@ -178,12 +180,16 @@ export function TemperatureCurveChart({
   });
   const [min, max] = summarizeRange(points.map((point) => point.value));
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
+  const activePoint = activeTime ? points.find((point) => point.time === activeTime) : null;
+  const subtitle = compact && activePoint
+    ? `${activePoint.label}: ${roundLabel(activePoint.value)} ${units}`
+    : `${min} to ${max} ${units}`;
 
   return (
     <ChartShell
       eyebrow="Hourly arc"
       title={compact ? "Temperature" : "Temperature curve"}
-      subtitle={`${min} to ${max} ${units}`}
+      subtitle={subtitle}
       compact={compact}
       tooltip={
         hoveredPoint ? (
@@ -230,6 +236,15 @@ export function TemperatureCurveChart({
           strokeWidth={3}
           curve={curveMonotoneX}
         />
+        {activePoint && (
+          <HoverFocus
+            x={x(activePoint.key) ?? 0}
+            y={y(activePoint.value)}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#30d9b8"
+          />
+        )}
         {hoveredPoint && (
           <HoverFocus
             x={x(hoveredPoint.key) ?? 0}
@@ -270,9 +285,11 @@ export function TemperatureCurveChart({
 }
 
 export function PrecipitationOverlayChart({
+  activeTime,
   compact = false,
   points,
 }: {
+  activeTime?: string;
   compact?: boolean;
   points: PrecipDatum[];
 }) {
@@ -294,8 +311,11 @@ export function PrecipitationOverlayChart({
   const maxAmount = Math.max(...points.map((point) => point.value), 0);
   const maxProbability = Math.max(...points.map((point) => point.probability), 0);
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
+  const activePoint = activeTime ? points.find((point) => point.time === activeTime) : null;
   const subtitle =
-    maxAmount < 0.1
+    compact && activePoint
+      ? `${activePoint.label}: ${activePoint.value.toFixed(1)} mm, ${Math.round(activePoint.probability)}%`
+      : maxAmount < 0.1
       ? `Dry conditions, ${Math.round(maxProbability)}% chance`
       : `${maxAmount.toFixed(1)} mm peak, ${Math.round(maxProbability)}% chance`;
 
@@ -342,6 +362,15 @@ export function PrecipitationOverlayChart({
           strokeWidth={2.5}
           curve={curveMonotoneX}
         />
+        {activePoint && (
+          <HoverFocus
+            x={(x(activePoint.key) ?? 0) + x.bandwidth() / 2}
+            y={Math.min(precipitationScale(activePoint.value), probabilityScale(activePoint.probability))}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#30d9b8"
+          />
+        )}
         {hoveredPoint && (
           <HoverFocus
             x={(x(hoveredPoint.key) ?? 0) + x.bandwidth() / 2}
@@ -724,10 +753,12 @@ export function PressureTrendChart({
 }
 
 export function CloudVisibilityChart({
+  activeTime,
   compact = false,
   points,
   visibilityUnits,
 }: {
+  activeTime?: string;
   compact?: boolean;
   points: DualDatum[];
   visibilityUnits: string;
@@ -748,12 +779,17 @@ export function CloudVisibilityChart({
   });
   const visibilityMax = Math.max(...points.map((point) => point.secondaryValue), 0);
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
+  const activePoint = activeTime ? points.find((point) => point.time === activeTime) : null;
 
   return (
     <ChartShell
       eyebrow="Sky clarity"
       title="Cloud cover + visibility"
-      subtitle={`${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`}
+      subtitle={
+        compact && activePoint
+          ? `${activePoint.label}: ${Math.round(activePoint.value)}%, ${activePoint.secondaryValue.toFixed(1)} ${visibilityUnits}`
+          : `${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`
+      }
       compact={compact}
       tooltip={
         hoveredPoint ? (
@@ -792,6 +828,15 @@ export function CloudVisibilityChart({
           strokeWidth={2.5}
           curve={curveMonotoneX}
         />
+        {activePoint && (
+          <HoverFocus
+            x={x(activePoint.key) ?? 0}
+            y={Math.min(cloudScale(activePoint.value), visibilityScale(activePoint.secondaryValue))}
+            top={marginTop}
+            bottom={height - marginBottom}
+            color="#30d9b8"
+          />
+        )}
         {hoveredPoint && (
           <HoverFocus
             x={x(hoveredPoint.key) ?? 0}

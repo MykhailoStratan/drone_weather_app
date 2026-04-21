@@ -355,8 +355,8 @@ export async function fetchTimelineBundle(
   location: Pick<LocationOption, "latitude" | "longitude"> & Partial<LocationOption>,
 ): Promise<ProviderTimelineBundle> {
   const data = await fetchForecastData(location, {
-    forecastDays: 7,
-    pastDays: 7,
+    forecastDays: 8,
+    pastDays: 6,
     includeHourly: true,
     includeDaily: true,
     requestLabel: "timeline",
