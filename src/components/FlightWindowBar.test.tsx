@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HourScrubber } from "./FlightWindowBar";
+import { getHourScrubberVisibleSnapshots, HourScrubber } from "./FlightWindowBar";
 import type { WeatherSnapshot } from "../types";
 
 function makeSnapshot(time: string): WeatherSnapshot {
@@ -49,5 +49,30 @@ describe("HourScrubber", () => {
     expect(view.container.querySelector(".hour-scrubber-tick-now")?.textContent).toBe("12:00 PM");
     expect(view.container.querySelectorAll(".hour-scrubber-seg.prev-day").length).toBeGreaterThan(0);
     expect(view.container.querySelectorAll(".hour-scrubber-seg.next-day").length).toBe(0);
+  });
+
+  it("returns the same 24-hour visible snapshot window used by the timeline", () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-04-15T12:00:00").getTime());
+
+    const prevDayHourly = Array.from({ length: 24 }, (_, index) =>
+      makeSnapshot(`2026-04-14T${String(index).padStart(2, "0")}:00`),
+    );
+    const hourlyForDay = Array.from({ length: 24 }, (_, index) =>
+      makeSnapshot(`2026-04-15T${String(index).padStart(2, "0")}:00`),
+    );
+    const nextDayHourly = Array.from({ length: 24 }, (_, index) =>
+      makeSnapshot(`2026-04-16T${String(index).padStart(2, "0")}:00`),
+    );
+
+    const visibleSnapshots = getHourScrubberVisibleSnapshots({
+      hourlyForDay,
+      nextDayHourly,
+      prevDayHourly,
+    });
+
+    expect(visibleSnapshots).toHaveLength(24);
+    expect(visibleSnapshots[0].time).toBe("2026-04-15T01:00");
+    expect(visibleSnapshots[11].time).toBe("2026-04-15T12:00");
+    expect(visibleSnapshots[23].time).toBe("2026-04-16T00:00");
   });
 });

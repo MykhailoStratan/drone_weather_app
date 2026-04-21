@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ForecastPanels } from "./components/ForecastPanels";
+import { getHourScrubberVisibleSnapshots } from "./components/FlightWindowBar";
 import { LocationBar } from "./components/LocationBar";
 import { WeatherOverview } from "./components/WeatherOverview";
 import { buildHourlySeries, buildWeeklyRangeSeries } from "./lib/chartUtils";
@@ -186,6 +187,19 @@ function App() {
     preferences.hourCycle,
     visibilityFactor,
   );
+  const hourlyTimelineWindow = useMemo(
+    () => getHourScrubberVisibleSnapshots({ hourlyForDay, nextDayHourly, prevDayHourly }),
+    [hourlyForDay, nextDayHourly, prevDayHourly],
+  );
+  const hourlyTimelineSeries = buildHourlySeries(
+    hourlyTimelineWindow.map((entry) => ({
+      ...entry,
+      temperature: temperatureDisplay(entry.temperature, preferences.temperatureUnit),
+      windSpeed: windSpeedDisplay(entry.windSpeed, preferences.windUnit),
+    })),
+    preferences.hourCycle,
+    visibilityFactor,
+  );
   const weeklyRange = buildWeeklyRangeSeries(
     (weather?.daily ?? []).slice(7, 14).map((day) => ({
       ...day,
@@ -286,6 +300,7 @@ function App() {
             currentSnapshot={resolvedCurrentSnapshot}
             hourlyForDay={hourlyForDay}
             hourlyTemperature={hourlySeries.temperature}
+            hourlyTimelineSeries={hourlyTimelineSeries}
             nextDayHourly={nextDayHourly}
             onHourChange={setSelectedHourIndex}
             onNextDayHourChange={(nextIndex) => {
@@ -315,7 +330,6 @@ function App() {
             activeLocation={activeLocation}
             airspace={airspace}
             airspaceLoading={airspaceLoading}
-            currentDay={resolvedCurrentDay}
             detailView={detailView}
             detailsLoading={detailsLoading}
             hasAlerts={hasAlerts}
