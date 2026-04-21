@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AirspaceFeature, AirspaceResponse, TFRFeature } from "../types";
 
 function patchLeafletIcons(L: typeof import("leaflet")) {
@@ -43,6 +43,23 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
 };
 
 const TFR_COLOR = { fill: "rgba(168, 85, 247, 0.12)", stroke: "#a855f7" };
+const AIRSPACE_CLASS_ORDER: AirspaceFeature["classification"][] = [
+  "controlled",
+  "advisory",
+  "restricted",
+  "danger",
+  "military",
+];
+
+function defaultClassVisibility(): Record<AirspaceFeature["classification"], boolean> {
+  return {
+    controlled: true,
+    advisory: true,
+    restricted: true,
+    danger: true,
+    military: true,
+  };
+}
 
 function bearingLabel(deg: number): string {
   const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
@@ -380,20 +397,27 @@ export function AirspacePanel({
 }) {
   const features = airspace?.features ?? [];
   const tfrs = airspace?.tfrs ?? [];
-  const openAipFeatures = features.filter((feature) => feature.source === "openaip");
+  const [visibleClasses, setVisibleClasses] = useState(defaultClassVisibility);
+  const [showTfrs, setShowTfrs] = useState(true);
+  const visibleFeatures = useMemo(
+    () => features.filter((feature) => visibleClasses[feature.classification]),
+    [features, visibleClasses],
+  );
+  const visibleTfrs = showTfrs ? tfrs : [];
+  const openAipFeatures = visibleFeatures.filter((feature) => feature.source === "openaip");
   const hasOpenAipSource =
     airspace?.dataSources.some((source) => source.toLowerCase().includes("openaip")) ?? false;
 
-  const insideFeatures = features.filter(featureIsInside);
+  const insideFeatures = visibleFeatures.filter(featureIsInside);
   const highestRisk = insideFeatures.find((f) => f.classification === "restricted")
     ?? insideFeatures.find((f) => f.classification === "danger")
     ?? insideFeatures.find((f) => f.classification === "military")
     ?? insideFeatures.find((f) => f.classification === "controlled")
     ?? insideFeatures.find((f) => f.classification === "advisory");
-  const hasControlledNearby = features.some(
+  const hasControlledNearby = visibleFeatures.some(
     (f) => f.classification === "controlled" && f.distanceKm < f.zoneRadiusKm + 5,
   );
-  const activeTFRs = tfrs.filter((tfr) => tfr.distanceKm < tfr.radiusNm * 1.852 + 10);
+  const activeTFRs = visibleTfrs.filter((tfr) => tfr.distanceKm < tfr.radiusNm * 1.852 + 10);
 
   let statusClass = "good";
   let statusText = "Uncontrolled airspace";
@@ -425,6 +449,7 @@ export function AirspacePanel({
   const mapLng = airspace?.longitude ?? longitude;
 
   const presentClassifications = new Set(features.map((f) => f.classification));
+  const visibleClassifications = new Set(visibleFeatures.map((f) => f.classification));
 
   return (
     <div className="airspace-panel">
@@ -434,7 +459,7 @@ export function AirspacePanel({
       </div>
 
       {mapLat !== undefined && mapLng !== undefined ? (
-        <AirspaceMap latitude={mapLat} longitude={mapLng} features={features} tfrs={tfrs} />
+        <AirspaceMap latitude={mapLat} longitude={mapLng} features={visibleFeatures} tfrs={visibleTfrs} />
       ) : (
         <div className="airspace-loading">
           <div className="spinner spinner-sm" />
@@ -443,23 +468,53 @@ export function AirspacePanel({
       )}
 
       {mapLat !== undefined && (
+        <div className="airspace-filter-bar" aria-label="Airspace class filters">
+          {AIRSPACE_CLASS_ORDER.filter((classification) => presentClassifications.has(classification)).map((classification) => (
+            <label key={classification} className={`airspace-class-toggle ${classification}`}>
+              <input
+                type="checkbox"
+                checked={visibleClasses[classification]}
+                onChange={() => {
+                  setVisibleClasses((current) => ({
+                    ...current,
+                    [classification]: !current[classification],
+                  }));
+                }}
+              />
+              <span>{classificationLabel(classification)}</span>
+            </label>
+          ))}
+          {tfrs.length > 0 && (
+            <label className="airspace-class-toggle tfr">
+              <input
+                type="checkbox"
+                checked={showTfrs}
+                onChange={() => setShowTfrs((current) => !current)}
+              />
+              <span>TFR</span>
+            </label>
+          )}
+        </div>
+      )}
+
+      {mapLat !== undefined && (
         <div className="airspace-legend">
-          {presentClassifications.has("controlled") && (
+          {visibleClassifications.has("controlled") && (
             <span className="airspace-legend-item controlled">Controlled</span>
           )}
-          {presentClassifications.has("advisory") && (
+          {visibleClassifications.has("advisory") && (
             <span className="airspace-legend-item advisory">Advisory</span>
           )}
-          {presentClassifications.has("restricted") && (
+          {visibleClassifications.has("restricted") && (
             <span className="airspace-legend-item restricted">Restricted</span>
           )}
-          {presentClassifications.has("danger") && (
+          {visibleClassifications.has("danger") && (
             <span className="airspace-legend-item danger">Danger</span>
           )}
-          {presentClassifications.has("military") && (
+          {visibleClassifications.has("military") && (
             <span className="airspace-legend-item military">Military</span>
           )}
-          {tfrs.length > 0 && <span className="airspace-legend-item tfr">TFR</span>}
+          {visibleTfrs.length > 0 && <span className="airspace-legend-item tfr">TFR</span>}
           {openAipFeatures.length > 0 && (
             <span className="airspace-legend-item openaip">OpenAIP</span>
           )}
@@ -475,13 +530,13 @@ export function AirspacePanel({
         </p>
       )}
 
-      {airspace && features.length === 0 && tfrs.length === 0 && (
+      {airspace && visibleFeatures.length === 0 && visibleTfrs.length === 0 && (
         <p className="airspace-empty">No restrictions found within 30 km.</p>
       )}
 
-      {features.length > 0 && (
+      {visibleFeatures.length > 0 && (
         <ul className="airspace-feature-list">
-          {features.slice(0, 6).map((feature) => (
+          {visibleFeatures.slice(0, 6).map((feature) => (
             <li key={feature.id} className="airspace-feature-row">
               <div className={`airspace-dot ${feature.classification}`} />
               <div className="airspace-feature-info">
