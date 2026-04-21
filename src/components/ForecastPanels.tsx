@@ -3,20 +3,13 @@ import { AirspacePanel } from "./AirspacePanel";
 import type { Preferences } from "../hooks/usePreferences";
 import { findNearestSnapshotIndex } from "../lib/app-utils";
 import { formatDayLabel, formatHourLabel, temperatureDisplay, visibilityDisplay, weatherLabel, windDirectionLabel, windSpeedDisplay } from "../lib/format";
-import type { AirspaceResponse, DailyWeather, WeatherPayload, WeatherSnapshot } from "../types";
+import type { HourlyChartSeries } from "../lib/chartUtils";
+import type { AirspaceResponse, WeatherPayload, WeatherSnapshot } from "../types";
 
 const AlertTimelineChart = React.lazy(() =>
   import("./WeatherCharts").then((m) => ({ default: m.AlertTimelineChart })));
-const CloudVisibilityChart = React.lazy(() =>
-  import("./WeatherCharts").then((m) => ({ default: m.CloudVisibilityChart })));
-const DaylightBandChart = React.lazy(() =>
-  import("./WeatherCharts").then((m) => ({ default: m.DaylightBandChart })));
-const PrecipitationOverlayChart = React.lazy(() =>
-  import("./WeatherCharts").then((m) => ({ default: m.PrecipitationOverlayChart })));
 const PressureTrendChart = React.lazy(() =>
   import("./WeatherCharts").then((m) => ({ default: m.PressureTrendChart })));
-const TemperatureCurveChart = React.lazy(() =>
-  import("./WeatherCharts").then((m) => ({ default: m.TemperatureCurveChart })));
 const WeeklyRangeChart = React.lazy(() =>
   import("./WeatherCharts").then((m) => ({ default: m.WeeklyRangeChart })));
 const WindDirectionChart = React.lazy(() =>
@@ -26,20 +19,13 @@ type ForecastPanelsProps = {
   activeLocation: { latitude: number; longitude: number } | null;
   airspace: AirspaceResponse | null;
   airspaceLoading: boolean;
-  currentDay: DailyWeather;
   detailView: "hourly" | "weekly" | "alerts";
   detailsLoading: boolean;
   hasAlerts: boolean;
   hasTimeline: boolean;
   hourlyCardsOpen: boolean;
   hourlyForDay: WeatherSnapshot[];
-  hourlySeries: {
-    temperature: Array<{ key: string; time: string; label: string; shortLabel: string; isDay: boolean; value: number }>;
-    precipitation: Array<{ key: string; time: string; label: string; shortLabel: string; value: number; probability: number }>;
-    wind: Array<{ key: string; time: string; label: string; shortLabel: string; value: number; direction: number }>;
-    pressure: Array<{ key: string; time: string; label: string; shortLabel: string; value: number }>;
-    cloudVisibility: Array<{ key: string; time: string; label: string; shortLabel: string; value: number; secondaryValue: number }>;
-  };
+  hourlySeries: HourlyChartSeries;
   onDaySelect: (date: string, nextHourIndex: number) => void;
   onDetailViewChange: (view: "hourly" | "weekly" | "alerts") => void;
   preferences: Preferences;
@@ -53,7 +39,6 @@ export function ForecastPanels({
   activeLocation,
   airspace,
   airspaceLoading,
-  currentDay,
   detailView,
   detailsLoading,
   hasAlerts,
@@ -167,19 +152,11 @@ export function ForecastPanels({
 
                 <Suspense fallback={<div className="charts-loading-placeholder" />}>
                   <div className="hourly-chart-grid visx-grid">
-                    <TemperatureCurveChart points={hourlySeries.temperature} units={temperatureUnitLabel} />
-                    <PrecipitationOverlayChart points={hourlySeries.precipitation} />
                     <WindDirectionChart points={hourlySeries.wind} units={windUnitLabel} />
                   </div>
 
                   <div className="secondary-chart-grid">
                     <PressureTrendChart points={hourlySeries.pressure} />
-                    <CloudVisibilityChart points={hourlySeries.cloudVisibility} visibilityUnits={visibilityUnitLabel} />
-                    <DaylightBandChart
-                      sunrise={currentDay.sunrise}
-                      sunset={currentDay.sunset}
-                      hourCycle={preferences.hourCycle}
-                    />
                   </div>
                 </Suspense>
               </section>

@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type TouchEvent } from "react";
+import { useState, type CSSProperties, type MouseEvent, type ReactNode, type TouchEvent } from "react";
 import { curveMonotoneX } from "@visx/curve";
 import { LinearGradient } from "@visx/gradient";
 import { Group } from "@visx/group";
@@ -42,6 +42,7 @@ type ChartShellProps = {
   subtitle: string;
   footer?: ReactNode;
   tooltip?: ReactNode;
+  compact?: boolean;
   children: ReactNode;
 };
 
@@ -69,21 +70,39 @@ type HoverRectProps = {
   onLeave: () => void;
 };
 
+function nearestIndexFromClientX<T>(
+  currentTarget: SVGElement,
+  clientX: number,
+  points: T[],
+  getX: (point: T) => number,
+): number | null {
+  if (!points.length) return null;
+  const svgEl = currentTarget.closest("svg");
+  if (!svgEl) return null;
+  const { left, width: renderedWidth } = svgEl.getBoundingClientRect();
+  const viewBoxWidth = parseFloat(svgEl.getAttribute("viewBox")?.split(" ")[2] ?? "420");
+  const localX = (clientX - left) * (viewBoxWidth / renderedWidth);
+  return points.reduce((closest, point, index) => {
+    return Math.abs(getX(point) - localX) < Math.abs(getX(points[closest]) - localX) ? index : closest;
+  }, 0);
+}
+
 function nearestIndexFromTouch<T>(
-  event: TouchEvent<SVGRectElement>,
+  event: TouchEvent<SVGElement>,
   points: T[],
   getX: (point: T) => number,
 ): number | null {
   const touch = event.touches[0];
-  if (!touch || !points.length) return null;
-  const svgEl = (event.currentTarget as SVGElement).closest("svg");
-  if (!svgEl) return null;
-  const { left, width: renderedWidth } = svgEl.getBoundingClientRect();
-  const viewBoxWidth = parseFloat(svgEl.getAttribute("viewBox")?.split(" ")[2] ?? "420");
-  const localX = (touch.clientX - left) * (viewBoxWidth / renderedWidth);
-  return points.reduce((closest, point, index) => {
-    return Math.abs(getX(point) - localX) < Math.abs(getX(points[closest]) - localX) ? index : closest;
-  }, 0);
+  if (!touch) return null;
+  return nearestIndexFromClientX(event.currentTarget, touch.clientX, points, getX);
+}
+
+function nearestIndexFromMouse<T>(
+  event: MouseEvent<SVGElement>,
+  points: T[],
+  getX: (point: T) => number,
+): number | null {
+  return nearestIndexFromClientX(event.currentTarget, event.clientX, points, getX);
 }
 
 const baseDimensions: ChartDimensions = {
@@ -95,6 +114,15 @@ const baseDimensions: ChartDimensions = {
   marginLeft: 16,
 };
 
+const compactDimensions: ChartDimensions = {
+  width: 420,
+  height: 72,
+  marginTop: 8,
+  marginRight: 0,
+  marginBottom: 14,
+  marginLeft: 0,
+};
+
 function HoverRect({ rectKey, x, y, width, height, onHover, onLeave }: HoverRectProps) {
   return (
     <rect
@@ -104,6 +132,7 @@ function HoverRect({ rectKey, x, y, width, height, onHover, onLeave }: HoverRect
       width={width}
       height={height}
       fill="rgba(0, 0, 0, 0.001)"
+      pointerEvents="all"
       onMouseEnter={onHover}
       onMouseMove={onHover}
       onMouseLeave={onLeave}
@@ -111,15 +140,28 @@ function HoverRect({ rectKey, x, y, width, height, onHover, onLeave }: HoverRect
   );
 }
 
+function tooltipAnchorProps(anchorX: number, chartWidth: number) {
+  const safeLeft = Math.max(36, Math.min(chartWidth - 36, anchorX));
+  if (safeLeft < 88) {
+    return { left: `${safeLeft}px`, top: "0.55rem" } as const;
+  }
+  if (safeLeft > chartWidth - 88) {
+    return { right: `${Math.max(8, chartWidth - safeLeft)}px`, top: "0.55rem" } as const;
+  }
+  return { left: `${safeLeft}px`, top: "0.55rem", transform: "translateX(-50%)" } as const;
+}
+
 export function TemperatureCurveChart({
+  compact = false,
   points,
   units,
 }: {
+  compact?: boolean;
   points: HourlyDatum[];
   units: string;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
+  const { width, height, marginTop, marginRight, marginBottom, marginLeft } = compact ? compactDimensions : baseDimensions;
   const innerHeight = height - marginTop - marginBottom;
   const x = scalePoint({
     domain: points.map((point) => point.key),
@@ -140,13 +182,15 @@ export function TemperatureCurveChart({
   return (
     <ChartShell
       eyebrow="Hourly arc"
-      title="Temperature curve"
+      title={compact ? "Temperature" : "Temperature curve"}
       subtitle={`${min} to ${max} ${units}`}
+      compact={compact}
       tooltip={
         hoveredPoint ? (
           <ChartTooltip
             title={hoveredPoint.label}
             lines={[`${roundLabel(hoveredPoint.value)} ${units}`, hoveredPoint.isDay ? "Daylight conditions" : "Night conditions"]}
+            style={tooltipAnchorProps((x(hoveredPoint.key) ?? 0), width)}
           />
         ) : null
       }
@@ -213,7 +257,9 @@ export function TemperatureCurveChart({
         })}
         <rect
           x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={innerHeight}
-          fill="transparent" style={{ touchAction: "none" }}
+          fill="transparent" pointerEvents="all" style={{ touchAction: "none" }}
+          onMouseMove={(e) => { const i = nearestIndexFromMouse(e, points, (p) => (band(p.key) ?? 0) + band.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onMouseLeave={() => setHoveredIndex(null)}
           onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (band(p.key) ?? 0) + band.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
           onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (band(p.key) ?? 0) + band.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
           onTouchEnd={() => setHoveredIndex(null)}
@@ -224,12 +270,14 @@ export function TemperatureCurveChart({
 }
 
 export function PrecipitationOverlayChart({
+  compact = false,
   points,
 }: {
+  compact?: boolean;
   points: PrecipDatum[];
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
+  const { width, height, marginTop, marginRight, marginBottom, marginLeft } = compact ? compactDimensions : baseDimensions;
   const x = scaleBand({
     domain: points.map((point) => point.key),
     range: [marginLeft, width - marginRight],
@@ -254,13 +302,15 @@ export function PrecipitationOverlayChart({
   return (
     <ChartShell
       eyebrow="Hourly rain"
-      title="Precipitation + probability"
+      title={compact ? "Rain" : "Precipitation + probability"}
       subtitle={subtitle}
+      compact={compact}
       tooltip={
         hoveredPoint ? (
           <ChartTooltip
             title={hoveredPoint.label}
             lines={[`${hoveredPoint.value.toFixed(1)} mm precipitation`, `${Math.round(hoveredPoint.probability)}% probability`]}
+            style={tooltipAnchorProps((x(hoveredPoint.key) ?? 0) + x.bandwidth() / 2, width)}
           />
         ) : null
       }
@@ -315,7 +365,9 @@ export function PrecipitationOverlayChart({
         ))}
         <rect
           x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
+          fill="transparent" pointerEvents="all" style={{ touchAction: "none" }}
+          onMouseMove={(e) => { const i = nearestIndexFromMouse(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onMouseLeave={() => setHoveredIndex(null)}
           onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
           onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
           onTouchEnd={() => setHoveredIndex(null)}
@@ -356,6 +408,7 @@ export function WindDirectionChart({
           <ChartTooltip
             title={hoveredPoint.label}
             lines={[`${roundLabel(hoveredPoint.value)} ${units} wind`, `${Math.round(hoveredPoint.direction)} deg heading`]}
+            style={tooltipAnchorProps((x(hoveredPoint.key) ?? 0) + x.bandwidth() / 2, width)}
           />
         ) : null
       }
@@ -422,7 +475,9 @@ export function WindDirectionChart({
         ))}
         <rect
           x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
+          fill="transparent" pointerEvents="all" style={{ touchAction: "none" }}
+          onMouseMove={(e) => { const i = nearestIndexFromMouse(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
+          onMouseLeave={() => setHoveredIndex(null)}
           onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
           onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => (x(p.key) ?? 0) + x.bandwidth() / 2); if (i !== null) setHoveredIndex(i); }}
           onTouchEnd={() => setHoveredIndex(null)}
@@ -468,6 +523,7 @@ export function WeeklyRangeChart({
           <ChartTooltip
             title={hoveredPoint.shortLabel}
             lines={[`Low ${roundLabel(hoveredPoint.min)} ${units}`, `High ${roundLabel(hoveredPoint.max)} ${units}`]}
+            style={tooltipAnchorProps(x(hoveredPoint.key) ?? 0, width)}
           />
         ) : null
       }
@@ -512,7 +568,9 @@ export function WeeklyRangeChart({
         })}
         <rect
           x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
+          fill="transparent" pointerEvents="all" style={{ touchAction: "none" }}
+          onMouseMove={(e) => { const i = nearestIndexFromMouse(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onMouseLeave={() => setHoveredIndex(null)}
           onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
           onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
           onTouchEnd={() => setHoveredIndex(null)}
@@ -540,6 +598,8 @@ export function DaylightBandChart({
   });
   const sunriseHour = extractHourValue(sunrise);
   const sunsetHour = extractHourValue(sunset);
+  const daylightStartX = scale(sunriseHour);
+  const daylightWidth = Math.max(8, scale(sunsetHour) - daylightStartX);
 
   return (
     <ChartShell
@@ -550,9 +610,9 @@ export function DaylightBandChart({
       <svg viewBox={`0 0 ${width} ${height}`} className="visx-chart visx-chart-daylight" role="img" aria-label="Sunrise and sunset daylight band">
         <rect x={margin} y={26} width={width - margin * 2} height={24} rx={12} fill="rgba(109, 134, 255, 0.18)" />
         <rect
-          x={scale(sunriseHour)}
+          x={daylightStartX}
           y={26}
-          width={Math.max(8, scale(sunsetHour) - scale(sunriseHour))}
+          width={daylightWidth}
           height={24}
           rx={12}
           fill="rgba(255, 213, 108, 0.9)"
@@ -592,7 +652,13 @@ export function PressureTrendChart({
       title="Trend through the day"
       subtitle={`${min} to ${max} hPa`}
       tooltip={
-        hoveredPoint ? <ChartTooltip title={hoveredPoint.label} lines={[`${roundLabel(hoveredPoint.value)} hPa`]} /> : null
+        hoveredPoint ? (
+          <ChartTooltip
+            title={hoveredPoint.label}
+            lines={[`${roundLabel(hoveredPoint.value)} hPa`]}
+            style={tooltipAnchorProps(x(hoveredPoint.key) ?? 0, width)}
+          />
+        ) : null
       }
       footer={<AxisFooter labels={selectTickLabels(points.map((point) => point.shortLabel))} />}
     >
@@ -645,7 +711,9 @@ export function PressureTrendChart({
         })}
         <rect
           x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
+          fill="transparent" pointerEvents="all" style={{ touchAction: "none" }}
+          onMouseMove={(e) => { const i = nearestIndexFromMouse(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onMouseLeave={() => setHoveredIndex(null)}
           onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
           onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
           onTouchEnd={() => setHoveredIndex(null)}
@@ -656,14 +724,16 @@ export function PressureTrendChart({
 }
 
 export function CloudVisibilityChart({
+  compact = false,
   points,
   visibilityUnits,
 }: {
+  compact?: boolean;
   points: DualDatum[];
   visibilityUnits: string;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const { width, height, marginTop, marginRight, marginBottom, marginLeft } = baseDimensions;
+  const { width, height, marginTop, marginRight, marginBottom, marginLeft } = compact ? compactDimensions : baseDimensions;
   const x = scalePoint({
     domain: points.map((point) => point.key),
     range: [marginLeft, width - marginRight],
@@ -684,11 +754,13 @@ export function CloudVisibilityChart({
       eyebrow="Sky clarity"
       title="Cloud cover + visibility"
       subtitle={`${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`}
+      compact={compact}
       tooltip={
         hoveredPoint ? (
           <ChartTooltip
             title={hoveredPoint.label}
             lines={[`${Math.round(hoveredPoint.value)}% cloud cover`, `${hoveredPoint.secondaryValue.toFixed(1)} ${visibilityUnits} visibility`]}
+            style={tooltipAnchorProps(x(hoveredPoint.key) ?? 0, width)}
           />
         ) : null
       }
@@ -750,7 +822,9 @@ export function CloudVisibilityChart({
         })}
         <rect
           x={marginLeft} y={marginTop} width={width - marginLeft - marginRight} height={height - marginTop - marginBottom}
-          fill="transparent" style={{ touchAction: "none" }}
+          fill="transparent" pointerEvents="all" style={{ touchAction: "none" }}
+          onMouseMove={(e) => { const i = nearestIndexFromMouse(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
+          onMouseLeave={() => setHoveredIndex(null)}
           onTouchStart={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
           onTouchMove={(e) => { const i = nearestIndexFromTouch(e, points, (p) => x(p.key) ?? 0); if (i !== null) setHoveredIndex(i); }}
           onTouchEnd={() => setHoveredIndex(null)}
@@ -821,9 +895,9 @@ export function AlertTimelineChart({ alerts, hourCycle }: AlertTimelineChartProp
   );
 }
 
-function ChartShell({ eyebrow, title, subtitle, footer, tooltip, children }: ChartShellProps) {
+function ChartShell({ eyebrow, title, subtitle, footer, tooltip, compact = false, children }: ChartShellProps) {
   return (
-    <article className="chart-card visx-card">
+    <article className={compact ? "chart-card visx-card compact-timeline-chart" : "chart-card visx-card"}>
       <div className="chart-card-header">
         <div>
           <p className="section-label">{eyebrow}</p>
@@ -840,9 +914,17 @@ function ChartShell({ eyebrow, title, subtitle, footer, tooltip, children }: Cha
   );
 }
 
-function ChartTooltip({ title, lines }: { title: string; lines: string[] }) {
+function ChartTooltip({
+  title,
+  lines,
+  style,
+}: {
+  title: string;
+  lines: string[];
+  style?: CSSProperties;
+}) {
   return (
-    <div className="chart-tooltip">
+    <div className="chart-tooltip" style={style}>
       <strong>{title}</strong>
       {lines.map((line) => (
         <span key={line}>{line}</span>

@@ -10,6 +10,16 @@ type HourWindow = {
   reasons: string[];
 };
 
+type TimelineSnapshotEntry = {
+  absIndex: number;
+  snapshot: WeatherSnapshot;
+};
+
+export type HourScrubberBoundary = {
+  leftTime: string | null;
+  rightTime: string | null;
+};
+
 const TONE_RANK: Record<WindowTone, number> = { good: 0, caution: 1, risk: 2 };
 
 // Fixed window: 11 past hours + now + 12 future hours = 24 total slots
@@ -52,6 +62,89 @@ function classifyHour(snap: WeatherSnapshot): HourWindow {
   if (snap.cloudCover >= 90) { worst = escalate(worst, "caution"); }
 
   return { time: snap.time, tone: worst, reasons };
+}
+
+function buildTimelineSnapshotEntries({
+  hourlyForDay,
+  nextDayHourly = [],
+  prevDayHourly = [],
+}: {
+  hourlyForDay: WeatherSnapshot[];
+  nextDayHourly?: WeatherSnapshot[];
+  prevDayHourly?: WeatherSnapshot[];
+}): TimelineSnapshotEntry[] {
+  return [
+    ...prevDayHourly.map((snapshot, index) => ({
+      absIndex: index - prevDayHourly.length,
+      snapshot,
+    })),
+    ...hourlyForDay.map((snapshot, index) => ({
+      absIndex: index,
+      snapshot,
+    })),
+    ...nextDayHourly.map((snapshot, index) => ({
+      absIndex: hourlyForDay.length + index,
+      snapshot,
+    })),
+  ];
+}
+
+function findTimelineSlotStart(entries: TimelineSnapshotEntry[]) {
+  const nowMs = Date.now();
+  const nowEntry = entries.reduce((closest, entry) =>
+    Math.abs(new Date(entry.snapshot.time).getTime() - nowMs) <
+    Math.abs(new Date(closest.snapshot.time).getTime() - nowMs)
+      ? entry
+      : closest,
+  );
+
+  return nowEntry.absIndex - PAST_SLOTS;
+}
+
+export function getHourScrubberBoundary({
+  hourlyForDay,
+  nextDayHourly = [],
+  prevDayHourly = [],
+}: {
+  hourlyForDay: WeatherSnapshot[];
+  nextDayHourly?: WeatherSnapshot[];
+  prevDayHourly?: WeatherSnapshot[];
+}): HourScrubberBoundary {
+  if (hourlyForDay.length === 0) {
+    return { leftTime: null, rightTime: null };
+  }
+
+  const allEntries = buildTimelineSnapshotEntries({ hourlyForDay, nextDayHourly, prevDayHourly });
+  const slotStart = findTimelineSlotStart(allEntries);
+  const leftAbsIndex = slotStart;
+  const rightAbsIndex = slotStart + TOTAL_SLOTS - 1;
+
+  return {
+    leftTime: allEntries.find((entry) => entry.absIndex === leftAbsIndex)?.snapshot.time ?? null,
+    rightTime: allEntries.find((entry) => entry.absIndex === rightAbsIndex)?.snapshot.time ?? null,
+  };
+}
+
+export function getHourScrubberVisibleSnapshots({
+  hourlyForDay,
+  nextDayHourly = [],
+  prevDayHourly = [],
+}: {
+  hourlyForDay: WeatherSnapshot[];
+  nextDayHourly?: WeatherSnapshot[];
+  prevDayHourly?: WeatherSnapshot[];
+}): WeatherSnapshot[] {
+  if (hourlyForDay.length === 0) {
+    return [];
+  }
+
+  const allEntries = buildTimelineSnapshotEntries({ hourlyForDay, nextDayHourly, prevDayHourly });
+  const slotStart = findTimelineSlotStart(allEntries);
+  const slotEnd = slotStart + TOTAL_SLOTS - 1;
+
+  return allEntries
+    .filter((entry) => entry.absIndex >= slotStart && entry.absIndex <= slotEnd)
+    .map((entry) => entry.snapshot);
 }
 
 export function HourScrubber({

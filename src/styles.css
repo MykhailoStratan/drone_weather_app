@@ -1010,6 +1010,90 @@ input:focus-visible {
   font-weight: 600;
 }
 
+.compact-solar-window {
+  margin-top: -0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(255, 213, 108, 0.06), transparent), var(--bg-surface);
+  border: 1px solid var(--rule);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.compact-solar-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.compact-solar-header strong {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.compact-solar-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(109, 134, 255, 0.16);
+  overflow: visible;
+}
+
+.compact-solar-daylight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(245, 183, 58, 0.65), rgba(255, 213, 108, 0.95));
+  box-shadow: 0 0 14px rgba(245, 183, 58, 0.14);
+}
+
+.compact-solar-marker {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-surface);
+  border: 2px solid var(--amber);
+  box-shadow: 0 0 0 2px rgba(245, 183, 58, 0.12);
+}
+
+.compact-solar-marker.sunset {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 2px var(--sky-soft);
+}
+
+.compact-solar-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.compact-timeline-charts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.compact-timeline-charts-loading {
+  min-height: 96px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--rule);
+}
+
 /* Wind compass ----------------------------------------------- */
 .wind-spotlight {
   display: flex;
@@ -1875,6 +1959,73 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   min-height: 280px;
+}
+
+.compact-timeline-chart {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(137, 211, 255, 0.035), transparent), var(--bg-surface);
+  box-sizing: border-box;
+}
+
+.compact-timeline-chart .chart-card-header {
+  display: flex;
+  min-height: 0;
+}
+
+.compact-timeline-chart .chart-card-header strong {
+  margin-top: 0.1rem;
+  font-size: 0.66rem;
+  line-height: 1.15;
+}
+
+.chart-card.compact-timeline-chart h4 {
+  margin-top: 0.08rem;
+  font-size: 0.78rem;
+}
+
+.compact-timeline-chart .section-label {
+  font-size: 0.56rem;
+}
+
+.compact-timeline-chart .chart-shell {
+  width: 100%;
+  min-width: 0;
+  margin-top: 0.35rem;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 0;
+  box-sizing: border-box;
+}
+
+.compact-timeline-chart .visx-chart {
+  width: 100%;
+  height: auto;
+  min-width: 0;
+}
+
+.compact-timeline-chart .chart-ticks {
+  width: 100%;
+  box-sizing: border-box;
+  padding-top: 0.22rem;
+  font-size: 0.58rem;
+  gap: 0.25rem;
+}
+
+.compact-timeline-chart .chart-tooltip {
+  padding: 0.38rem 0.48rem;
+}
+
+.compact-timeline-chart .chart-tooltip strong {
+  font-size: 0.7rem;
+}
+
+.compact-timeline-chart .chart-tooltip span {
+  font-size: 0.58rem;
 }
 
 .chart-card-header strong {

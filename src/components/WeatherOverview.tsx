@@ -1,13 +1,21 @@
-import type { ReactNode } from "react";
+import React, { Suspense, type ReactNode } from "react";
 import { BatteryThermalPanel } from "./BatteryThermalPanel";
 import { DewPointPanel } from "./DewPointPanel";
 import { DensityAltitudePanel } from "./DensityAltitudePanel";
 import { FlightReadinessPanel } from "./FlightReadinessPanel";
-import { HourScrubber } from "./FlightWindowBar";
+import { getHourScrubberBoundary, HourScrubber } from "./FlightWindowBar";
 import { IconCloud, IconEye, IconGauge, IconRain, IconSunrise, IconSunset } from "./Icons";
 import type { Preferences } from "../hooks/usePreferences";
 import { formatDayLabel, formatTime, temperatureDisplay, visibilityDisplay, weatherLabel, windDirectionLabel, windSpeedDisplay } from "../lib/format";
+import type { HourlyChartSeries } from "../lib/chartUtils";
 import type { DailyWeather, WeatherPayload, WeatherSnapshot } from "../types";
+
+const CloudVisibilityChart = React.lazy(() =>
+  import("./WeatherCharts").then((m) => ({ default: m.CloudVisibilityChart })));
+const PrecipitationOverlayChart = React.lazy(() =>
+  import("./WeatherCharts").then((m) => ({ default: m.PrecipitationOverlayChart })));
+const TemperatureCurveChart = React.lazy(() =>
+  import("./WeatherCharts").then((m) => ({ default: m.TemperatureCurveChart })));
 
 type WeatherOverviewProps = {
   activeHourIndex: number;
@@ -15,6 +23,7 @@ type WeatherOverviewProps = {
   currentSnapshot: WeatherSnapshot;
   hourlyForDay: WeatherSnapshot[];
   hourlyTemperature: Array<{ value: number }>;
+  hourlyTimelineSeries: HourlyChartSeries;
   nextDayHourly: WeatherSnapshot[];
   onHourChange: (index: number) => void;
   onNextDayHourChange: (index: number) => void;
@@ -34,6 +43,7 @@ export function WeatherOverview({
   currentSnapshot,
   hourlyForDay,
   hourlyTemperature,
+  hourlyTimelineSeries,
   nextDayHourly,
   onHourChange,
   onNextDayHourChange,
@@ -46,6 +56,8 @@ export function WeatherOverview({
   weatherIcon,
   windUnitLabel,
 }: WeatherOverviewProps) {
+  const solarBoundary = getHourScrubberBoundary({ hourlyForDay, nextDayHourly, prevDayHourly });
+
   return (
     <section className="overview-grid premium-grid primary-priority">
       <article className="primary-panel hero-conditions">
@@ -92,6 +104,28 @@ export function WeatherOverview({
               onNextDayHourChange={onNextDayHourChange}
               onPrevDayHourChange={onPrevDayHourChange}
             />
+            <CompactSolarWindow
+              sunrise={currentDay.sunrise}
+              sunset={currentDay.sunset}
+              hourCycle={preferences.hourCycle}
+              leftTime={solarBoundary.leftTime}
+              rightTime={solarBoundary.rightTime}
+            />
+            <Suspense fallback={<div className="compact-timeline-charts-loading" />}>
+              <div className="compact-timeline-charts">
+                <TemperatureCurveChart
+                  compact
+                  points={hourlyTimelineSeries.temperature}
+                  units={temperatureUnitLabel}
+                />
+                <PrecipitationOverlayChart compact points={hourlyTimelineSeries.precipitation} />
+                <CloudVisibilityChart
+                  compact
+                  points={hourlyTimelineSeries.cloudVisibility}
+                  visibilityUnits={visibilityUnitLabel}
+                />
+              </div>
+            </Suspense>
           </div>
 
           <div className="hero-side-stack">
@@ -325,4 +359,62 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
       <strong>{value}</strong>
     </div>
   );
+}
+
+function CompactSolarWindow({
+  sunrise,
+  sunset,
+  hourCycle,
+  leftTime,
+  rightTime,
+}: {
+  sunrise: string;
+  sunset: string;
+  hourCycle: "12h" | "24h";
+  leftTime: string | null;
+  rightTime: string | null;
+}) {
+  const rangeStartMs = leftTime ? new Date(leftTime).getTime() : new Date(`${currentDate(sunrise)}T00:00:00`).getTime();
+  const rangeEndMs = rightTime ? new Date(rightTime).getTime() : rangeStartMs + 24 * 60 * 60 * 1000;
+  const rangeMs = Math.max(1, rangeEndMs - rangeStartMs);
+  const sunrisePct = percentInRange(new Date(sunrise).getTime(), rangeStartMs, rangeMs);
+  const sunsetPct = percentInRange(new Date(sunset).getTime(), rangeStartMs, rangeMs);
+  const daylightLeftPct = Math.max(0, Math.min(sunrisePct, sunsetPct));
+  const daylightRightPct = Math.min(100, Math.max(sunrisePct, sunsetPct));
+
+  return (
+    <div className="compact-solar-window" aria-label="Solar window">
+      <div className="compact-solar-header">
+        <span className="section-label">Solar window</span>
+        <strong>
+          {formatTime(sunrise, hourCycle)} - {formatTime(sunset, hourCycle)}
+        </strong>
+      </div>
+      <div className="compact-solar-track" aria-hidden="true">
+        <span
+          className="compact-solar-daylight"
+          style={{
+            left: `${daylightLeftPct}%`,
+            width: `${Math.max(2, daylightRightPct - daylightLeftPct)}%`,
+          }}
+        />
+        <span className="compact-solar-marker sunrise" style={{ left: `${sunrisePct}%` }} />
+        <span className="compact-solar-marker sunset" style={{ left: `${sunsetPct}%` }} />
+      </div>
+      <div className="compact-solar-labels">
+        <span>{leftTime ? formatTime(leftTime, hourCycle) : "Start"}</span>
+        <span>Sunrise</span>
+        <span>Sunset</span>
+        <span>{rightTime ? formatTime(rightTime, hourCycle) : "End"}</span>
+      </div>
+    </div>
+  );
+}
+
+function currentDate(value: string) {
+  return value.slice(0, 10);
+}
+
+function percentInRange(valueMs: number, rangeStartMs: number, rangeMs: number) {
+  return Math.max(0, Math.min(100, ((valueMs - rangeStartMs) / rangeMs) * 100));
 }
