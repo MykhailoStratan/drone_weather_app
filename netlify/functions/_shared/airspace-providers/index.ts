@@ -50,13 +50,27 @@ async function safely<T>(label: string, task: Promise<T>): Promise<T | null> {
   }
 }
 
+function readOpenAipClientId(): string {
+  const netlifyEnv = (globalThis as {
+    Netlify?: { env?: { get?: (name: string) => string | undefined } };
+  }).Netlify?.env;
+  const keys = ["OPENAIP_CLIENT_ID", "OPENAIP_API_KEY", "OPENAIP_TOKEN"];
+
+  for (const key of keys) {
+    const value = netlifyEnv?.get?.(key) ?? process.env[key];
+    if (value?.trim()) return value.trim();
+  }
+
+  return "";
+}
+
 export async function fetchAirspaceBundle(
   lat: number,
   lng: number,
   countryHint?: string,
 ): Promise<AirspaceBundle> {
   const country = detectCountry(lat, lng, countryHint);
-  const openAipKey = process.env.OPENAIP_CLIENT_ID ?? "";
+  const openAipKey = readOpenAipClientId();
   const openAipTask = openAipKey
     ? safely("OpenAIP", fetchOpenAipAirspace(lat, lng, openAipKey))
     : Promise.resolve(null);

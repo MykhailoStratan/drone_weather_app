@@ -121,7 +121,7 @@ export async function fetchOpenAipAirspace(
   apiKey: string,
 ): Promise<AirspaceFeature[]> {
   const params = new URLSearchParams({
-    pos: `${lng},${lat}`,
+    pos: `${lat},${lng}`,
     dist: String(SEARCH_RADIUS_M),
     limit: "100",
     page: "1",
