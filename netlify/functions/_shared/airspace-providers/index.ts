@@ -7,6 +7,7 @@ import { detectCountry } from "./geo";
 import { fetchFaaAirspace, fetchFaaTfrs } from "./faa";
 import { fetchCanadaAirspace } from "./canada";
 import { fetchJapanAirspace } from "./japan";
+import { fetchOpenAipAirspace } from "./openaip";
 import { fetchOverpassAirspace } from "./overpass";
 
 export { detectCountry };
@@ -49,55 +50,85 @@ async function safely<T>(label: string, task: Promise<T>): Promise<T | null> {
   }
 }
 
+function readOpenAipClientId(): string {
+  const netlifyEnv = (globalThis as {
+    Netlify?: { env?: { get?: (name: string) => string | undefined } };
+  }).Netlify?.env;
+  const keys = ["OPENAIP_CLIENT_ID", "OPENAIP_API_KEY", "OPENAIP_TOKEN"];
+
+  for (const key of keys) {
+    const value = netlifyEnv?.get?.(key) ?? process.env[key];
+    if (value?.trim()) return value.trim();
+  }
+
+  return "";
+}
+
 export async function fetchAirspaceBundle(
   lat: number,
   lng: number,
   countryHint?: string,
 ): Promise<AirspaceBundle> {
   const country = detectCountry(lat, lng, countryHint);
+  const openAipKey = readOpenAipClientId();
+  const openAipTask = openAipKey
+    ? safely("OpenAIP", fetchOpenAipAirspace(lat, lng, openAipKey))
+    : Promise.resolve(null);
 
   if (country === "US") {
-    const [faa, tfrs, fallback] = await Promise.all([
+    const [faa, tfrs, openAip, fallback] = await Promise.all([
       safely("FAA", fetchFaaAirspace(lat, lng)),
       safely("TFR", fetchFaaTfrs(lat, lng)),
+      openAipTask,
       safely("Overpass (US fallback)", fetchOverpassAirspace(lat, lng)),
     ]);
+    const openAipSource = openAip?.length ? ["OpenAIP"] : [];
     return {
       country,
-      dataSources: ["FAA ArcGIS (Class & Special Use)", "aviationweather.gov TFR", "OSM Overpass"],
-      features: mergeFeatures(faa ?? [], fallback ?? []),
+      dataSources: ["FAA ArcGIS (Class & Special Use)", ...openAipSource, "aviationweather.gov TFR", "OSM Overpass"],
+      features: mergeFeatures([...(faa ?? []), ...(openAip ?? [])], fallback ?? []),
       tfrs: tfrs ?? [],
     };
   }
 
   if (country === "CA") {
-    const [tc, fallback] = await Promise.all([
+    const [tc, openAip, fallback] = await Promise.all([
       safely("Transport Canada", fetchCanadaAirspace(lat, lng)),
+      openAipTask,
       safely("Overpass (CA fallback)", fetchOverpassAirspace(lat, lng)),
     ]);
+    const openAipSource = openAip?.length ? ["OpenAIP"] : [];
     return {
       country,
-      dataSources: ["Transport Canada airports (geo.ca)", "OSM Overpass"],
-      features: mergeFeatures(tc ?? [], fallback ?? []),
+      dataSources: ["Transport Canada airports (geo.ca)", ...openAipSource, "OSM Overpass"],
+      features: mergeFeatures([...(tc ?? []), ...(openAip ?? [])], fallback ?? []),
       tfrs: [],
     };
   }
 
   if (country === "JP") {
-    const jp = await safely("Japan", fetchJapanAirspace(lat, lng));
+    const [jp, openAip] = await Promise.all([
+      safely("Japan", fetchJapanAirspace(lat, lng)),
+      openAipTask,
+    ]);
+    const openAipSource = openAip?.length ? ["OpenAIP"] : [];
     return {
       country,
-      dataSources: ["OSM Overpass (Japan) + Civil Aeronautics Act 9 km rule"],
-      features: jp ?? [],
+      dataSources: ["OSM Overpass (Japan) + Civil Aeronautics Act 9 km rule", ...openAipSource],
+      features: mergeFeatures(openAip ?? [], jp ?? []),
       tfrs: [],
     };
   }
 
-  const fallback = await safely("Overpass (default)", fetchOverpassAirspace(lat, lng));
+  const [openAip, fallback] = await Promise.all([
+    openAipTask,
+    safely("Overpass (default)", fetchOverpassAirspace(lat, lng)),
+  ]);
+  const openAipSource = openAip?.length ? ["OpenAIP"] : [];
   return {
     country,
-    dataSources: ["OSM Overpass (worldwide fallback)"],
-    features: fallback ?? [],
+    dataSources: [...openAipSource, "OSM Overpass (worldwide fallback)"],
+    features: mergeFeatures(openAip ?? [], fallback ?? []),
     tfrs: [],
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AirspaceFeature, AirspaceResponse, TFRFeature } from "../types";
 
 function patchLeafletIcons(L: typeof import("leaflet")) {
@@ -28,10 +28,13 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
   military: "M",
   restricted: "R",
   danger: "D",
+  class_a: "A",
   class_b: "B",
   class_c: "C",
   class_d: "D",
   class_e: "E",
+  class_f: "F",
+  class_g: "G",
   ctr: "C",
   cya: "A",
   cyr: "R",
@@ -43,6 +46,135 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
 };
 
 const TFR_COLOR = { fill: "rgba(168, 85, 247, 0.12)", stroke: "#a855f7" };
+const DEFAULT_ALTITUDE_LIMIT_FT = 250_000;
+const ALTITUDE_LIMIT_STEP_FT = 10_000;
+const AIRSPACE_FILTER_ORDER = [
+  "class_a",
+  "class_b",
+  "class_c",
+  "class_d",
+  "class_e",
+  "class_f",
+  "class_g",
+  "ctr",
+  "restricted",
+  "danger",
+  "military",
+  "airport",
+  "helipad",
+  "advisory",
+] as const;
+
+type AirspaceFilterKey = (typeof AIRSPACE_FILTER_ORDER)[number];
+
+const AIRSPACE_FILTER_LABELS: Record<AirspaceFilterKey, string> = {
+  class_a: "Class A",
+  class_b: "Class B",
+  class_c: "Class C",
+  class_d: "Class D",
+  class_e: "Class E",
+  class_f: "Class F",
+  class_g: "Class G",
+  ctr: "CTR",
+  restricted: "Restricted",
+  danger: "Danger",
+  military: "Military",
+  airport: "Airports",
+  helipad: "Helipads",
+  advisory: "Advisory",
+};
+
+const ICAO_FILTER_KEYS: Record<NonNullable<AirspaceFeature["icaoClass"]>, AirspaceFilterKey> = {
+  A: "class_a",
+  B: "class_b",
+  C: "class_c",
+  D: "class_d",
+  E: "class_e",
+  F: "class_f",
+  G: "class_g",
+};
+
+const FEATURE_FILTER_KEYS: Partial<Record<AirspaceFeature["featureType"], AirspaceFilterKey>> = {
+  class_a: "class_a",
+  class_b: "class_b",
+  class_c: "class_c",
+  class_d: "class_d",
+  class_e: "class_e",
+  class_f: "class_f",
+  class_g: "class_g",
+  ctr: "ctr",
+  restricted: "restricted",
+  cyr: "restricted",
+  prohibited: "restricted",
+  danger: "danger",
+  cyd: "danger",
+  military: "military",
+  moa: "military",
+  warning: "military",
+  airport: "airport",
+  aerodrome: "airport",
+  helipad: "helipad",
+  cya: "advisory",
+  alert: "advisory",
+};
+
+const FILTER_TONE_BY_KEY: Record<AirspaceFilterKey, AirspaceFeature["classification"] | "airport" | "tfr"> = {
+  class_a: "controlled",
+  class_b: "controlled",
+  class_c: "controlled",
+  class_d: "controlled",
+  class_e: "advisory",
+  class_f: "advisory",
+  class_g: "advisory",
+  ctr: "controlled",
+  restricted: "restricted",
+  danger: "danger",
+  military: "military",
+  airport: "airport",
+  helipad: "advisory",
+  advisory: "advisory",
+};
+
+const CLASS_FEATURE_TYPES = new Set<AirspaceFeature["featureType"]>([
+  "class_a",
+  "class_b",
+  "class_c",
+  "class_d",
+  "class_e",
+  "class_f",
+  "class_g",
+]);
+
+function filterKeyForFeature(feature: AirspaceFeature): AirspaceFilterKey {
+  if (feature.icaoClass) return ICAO_FILTER_KEYS[feature.icaoClass];
+  const featureKey = FEATURE_FILTER_KEYS[feature.featureType];
+  if (featureKey) return featureKey;
+  if (feature.classification === "controlled") return "ctr";
+  return feature.classification;
+}
+
+function isHighAltitudeFeature(feature: AirspaceFeature): boolean {
+  return (feature.altitudeLowerFt ?? 0) >= DEFAULT_ALTITUDE_LIMIT_FT;
+}
+
+function defaultFilterVisibility(): Record<AirspaceFilterKey, boolean> {
+  return {
+    class_a: true,
+    class_b: true,
+    class_c: true,
+    class_d: true,
+    class_e: true,
+    class_f: true,
+    class_g: true,
+    ctr: true,
+    restricted: true,
+    danger: true,
+    military: true,
+    airport: true,
+    helipad: true,
+    advisory: true,
+  };
+}
 
 function bearingLabel(deg: number): string {
   const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
@@ -61,10 +193,13 @@ function featureTypeLabel(type: AirspaceFeature["featureType"]): string {
     military: "Military Airfield",
     restricted: "Restricted Area",
     danger: "Danger Area",
+    class_a: "Class A Airspace",
     class_b: "Class B Airspace",
     class_c: "Class C Airspace",
     class_d: "Class D Airspace",
     class_e: "Class E Airspace",
+    class_f: "Class F Airspace",
+    class_g: "Class G Airspace",
     ctr: "Control Zone (CTR)",
     cya: "Class F Advisory (CYA)",
     cyr: "Restricted Area (CYR)",
@@ -82,6 +217,12 @@ function altitudeLabel(lower?: number, upper?: number): string {
   const low = lower !== undefined ? `${lower.toLocaleString()} ft` : "SFC";
   const high = upper !== undefined ? `${upper.toLocaleString()} ft` : "UNL";
   return `${low} - ${high}`;
+}
+
+function altitudeLimitLabel(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ft`;
+  if (value >= 1000) return `${Math.round(value / 1000)}k ft`;
+  return `${value.toLocaleString()} ft`;
 }
 
 function formatTFRTime(iso?: string): string {
@@ -129,7 +270,9 @@ function buildFeaturePopupContent(feature: AirspaceFeature) {
 
   const type = document.createElement("span");
   type.style.opacity = "0.7";
-  type.textContent = featureTypeLabel(feature.featureType);
+  type.textContent = feature.icaoClass
+    ? `${featureTypeLabel(feature.featureType)} · Class ${feature.icaoClass}`
+    : featureTypeLabel(feature.featureType);
   wrapper.appendChild(type);
   wrapper.appendChild(document.createElement("br"));
 
@@ -380,17 +523,41 @@ export function AirspacePanel({
 }) {
   const features = airspace?.features ?? [];
   const tfrs = airspace?.tfrs ?? [];
+  const [visibleFilters, setVisibleFilters] = useState(defaultFilterVisibility);
+  const [showTfrs, setShowTfrs] = useState(true);
+  const [altitudeLimitFt, setAltitudeLimitFt] = useState(DEFAULT_ALTITUDE_LIMIT_FT);
+  const hasHighAltitudeFeatures = features.some(isHighAltitudeFeature);
+  const maxAltitudeLimitFt = useMemo(() => {
+    const maxLowerAltitude = features.reduce(
+      (max, feature) => Math.max(max, feature.altitudeLowerFt ?? 0),
+      DEFAULT_ALTITUDE_LIMIT_FT,
+    );
+    return Math.max(DEFAULT_ALTITUDE_LIMIT_FT, Math.ceil(maxLowerAltitude / ALTITUDE_LIMIT_STEP_FT) * ALTITUDE_LIMIT_STEP_FT);
+  }, [features]);
+  const visibleFeatures = useMemo(
+    () =>
+      features.filter(
+        (feature) =>
+          visibleFilters[filterKeyForFeature(feature)] &&
+          ((feature.altitudeLowerFt ?? 0) <= altitudeLimitFt),
+      ),
+    [altitudeLimitFt, features, visibleFilters],
+  );
+  const visibleTfrs = showTfrs ? tfrs : [];
+  const openAipFeatures = visibleFeatures.filter((feature) => feature.source === "openaip");
+  const hasOpenAipSource =
+    airspace?.dataSources.some((source) => source.toLowerCase().includes("openaip")) ?? false;
 
-  const insideFeatures = features.filter(featureIsInside);
+  const insideFeatures = visibleFeatures.filter(featureIsInside);
   const highestRisk = insideFeatures.find((f) => f.classification === "restricted")
     ?? insideFeatures.find((f) => f.classification === "danger")
     ?? insideFeatures.find((f) => f.classification === "military")
     ?? insideFeatures.find((f) => f.classification === "controlled")
     ?? insideFeatures.find((f) => f.classification === "advisory");
-  const hasControlledNearby = features.some(
+  const hasControlledNearby = visibleFeatures.some(
     (f) => f.classification === "controlled" && f.distanceKm < f.zoneRadiusKm + 5,
   );
-  const activeTFRs = tfrs.filter((tfr) => tfr.distanceKm < tfr.radiusNm * 1.852 + 10);
+  const activeTFRs = visibleTfrs.filter((tfr) => tfr.distanceKm < tfr.radiusNm * 1.852 + 10);
 
   let statusClass = "good";
   let statusText = "Uncontrolled airspace";
@@ -421,7 +588,8 @@ export function AirspacePanel({
   const mapLat = airspace?.latitude ?? latitude;
   const mapLng = airspace?.longitude ?? longitude;
 
-  const presentClassifications = new Set(features.map((f) => f.classification));
+  const presentFilters = new Set(features.map(filterKeyForFeature));
+  const visibleClassifications = new Set(visibleFeatures.map((f) => f.classification));
 
   return (
     <div className="airspace-panel">
@@ -431,7 +599,7 @@ export function AirspacePanel({
       </div>
 
       {mapLat !== undefined && mapLng !== undefined ? (
-        <AirspaceMap latitude={mapLat} longitude={mapLng} features={features} tfrs={tfrs} />
+        <AirspaceMap latitude={mapLat} longitude={mapLng} features={visibleFeatures} tfrs={visibleTfrs} />
       ) : (
         <div className="airspace-loading">
           <div className="spinner spinner-sm" />
@@ -440,40 +608,98 @@ export function AirspacePanel({
       )}
 
       {mapLat !== undefined && (
-        <div className="airspace-legend">
-          {presentClassifications.has("controlled") && (
-            <span className="airspace-legend-item controlled">Controlled</span>
+        <div className="airspace-filter-bar" aria-label="Airspace class filters">
+          {AIRSPACE_FILTER_ORDER.filter((filterKey) => presentFilters.has(filterKey)).map((filterKey) => (
+            <label key={filterKey} className={`airspace-class-toggle ${FILTER_TONE_BY_KEY[filterKey]}`}>
+              <input
+                type="checkbox"
+                checked={visibleFilters[filterKey]}
+                onChange={() => {
+                  setVisibleFilters((current) => ({
+                    ...current,
+                    [filterKey]: !current[filterKey],
+                  }));
+                }}
+              />
+              <span>{AIRSPACE_FILTER_LABELS[filterKey]}</span>
+            </label>
+          ))}
+          {tfrs.length > 0 && (
+            <label className="airspace-class-toggle tfr">
+              <input
+                type="checkbox"
+                checked={showTfrs}
+                onChange={() => setShowTfrs((current) => !current)}
+              />
+              <span>TFR</span>
+            </label>
           )}
-          {presentClassifications.has("advisory") && (
-            <span className="airspace-legend-item advisory">Advisory</span>
+          {hasHighAltitudeFeatures && (
+            <label className="airspace-altitude-slider">
+              <span>Hide floors above</span>
+              <input
+                type="range"
+                min={ALTITUDE_LIMIT_STEP_FT}
+                max={maxAltitudeLimitFt}
+                step={ALTITUDE_LIMIT_STEP_FT}
+                value={altitudeLimitFt}
+                onChange={(event) => setAltitudeLimitFt(Number(event.target.value))}
+              />
+              <strong>{altitudeLimitLabel(altitudeLimitFt)}</strong>
+            </label>
           )}
-          {presentClassifications.has("restricted") && (
-            <span className="airspace-legend-item restricted">Restricted</span>
-          )}
-          {presentClassifications.has("danger") && (
-            <span className="airspace-legend-item danger">Danger</span>
-          )}
-          {presentClassifications.has("military") && (
-            <span className="airspace-legend-item military">Military</span>
-          )}
-          {tfrs.length > 0 && <span className="airspace-legend-item tfr">TFR</span>}
         </div>
       )}
 
-      {airspace && features.length === 0 && tfrs.length === 0 && (
+      {mapLat !== undefined && (
+        <div className="airspace-legend">
+          {visibleClassifications.has("controlled") && (
+            <span className="airspace-legend-item controlled">Controlled</span>
+          )}
+          {visibleClassifications.has("advisory") && (
+            <span className="airspace-legend-item advisory">Advisory</span>
+          )}
+          {visibleClassifications.has("restricted") && (
+            <span className="airspace-legend-item restricted">Restricted</span>
+          )}
+          {visibleClassifications.has("danger") && (
+            <span className="airspace-legend-item danger">Danger</span>
+          )}
+          {visibleClassifications.has("military") && (
+            <span className="airspace-legend-item military">Military</span>
+          )}
+          {visibleTfrs.length > 0 && <span className="airspace-legend-item tfr">TFR</span>}
+          {openAipFeatures.length > 0 && (
+            <span className="airspace-legend-item openaip">OpenAIP</span>
+          )}
+        </div>
+      )}
+
+      {hasOpenAipSource && (
+        <p className="airspace-source-status">
+          OpenAIP:{" "}
+          {openAipFeatures.length > 0
+            ? `${openAipFeatures.length} mapped airspace ${openAipFeatures.length === 1 ? "feature" : "features"}`
+            : "no mapped airspace features returned for this location"}
+        </p>
+      )}
+
+      {airspace && visibleFeatures.length === 0 && visibleTfrs.length === 0 && (
         <p className="airspace-empty">No restrictions found within 30 km.</p>
       )}
 
-      {features.length > 0 && (
+      {visibleFeatures.length > 0 && (
         <ul className="airspace-feature-list">
-          {features.slice(0, 6).map((feature) => (
+          {visibleFeatures.slice(0, 6).map((feature) => (
             <li key={feature.id} className="airspace-feature-row">
               <div className={`airspace-dot ${feature.classification}`} />
               <div className="airspace-feature-info">
                 <strong>{feature.name}</strong>
                 <span className="airspace-icao">
                   {featureTypeLabel(feature.featureType)}
+                  {feature.icaoClass && !CLASS_FEATURE_TYPES.has(feature.featureType) ? ` · Class ${feature.icaoClass}` : ""}
                   {feature.icao ? ` · ${feature.icao}` : ""}
+                  {feature.source === "openaip" ? " · OpenAIP" : ""}
                 </span>
                 {(feature.altitudeLowerFt !== undefined || feature.altitudeUpperFt !== undefined) && (
                   <span className="airspace-altitude">

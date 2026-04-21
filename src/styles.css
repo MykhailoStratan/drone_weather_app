@@ -2875,6 +2875,78 @@ input:focus-visible {
 .airspace-airport-dot.military   { color: #818cf8;       background: rgba(129, 140, 248, 0.15); }
 .airspace-airport-dot.tfr        { color: #a855f7;       background: rgba(168, 85, 247, 0.15); }
 
+.airspace-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.airspace-class-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 28px;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+
+.airspace-class-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: currentColor;
+}
+
+.airspace-class-toggle:has(input:checked) {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: var(--text-primary);
+}
+
+.airspace-class-toggle.controlled { color: var(--danger); }
+.airspace-class-toggle.advisory   { color: var(--amber); }
+.airspace-class-toggle.restricted { color: #a855f7; }
+.airspace-class-toggle.danger     { color: var(--sky); }
+.airspace-class-toggle.military   { color: #818cf8; }
+.airspace-class-toggle.airport    { color: #14b8a6; }
+.airspace-class-toggle.tfr        { color: #a855f7; }
+
+.airspace-altitude-slider {
+  display: grid;
+  grid-template-columns: auto minmax(140px, 1fr) 4.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 28px;
+  min-width: min(100%, 320px);
+  padding: 0.25rem 0.7rem;
+  border: 1px solid color-mix(in srgb, #94a3b8 42%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.airspace-altitude-slider input {
+  width: 100%;
+  accent-color: #94a3b8;
+}
+
+.airspace-altitude-slider strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
 .airspace-legend {
   display: flex;
   gap: 1.25rem;
@@ -2908,6 +2980,21 @@ input:focus-visible {
 .airspace-legend-item.danger     { color: var(--sky); }
 .airspace-legend-item.military   { color: #818cf8; }
 .airspace-legend-item.tfr        { color: #a855f7; }
+.airspace-legend-item.openaip    { color: #14b8a6; }
+.airspace-legend-item.icao-a     { color: #ff3b30; }
+.airspace-legend-item.icao-c     { color: #ff9500; }
+.airspace-legend-item.icao-d     { color: #f59e3f; }
+
+.airspace-source-status {
+  margin: 0;
+  padding: 0.55rem 1.25rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
 .airspace-loading {
   display: flex;

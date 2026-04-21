@@ -53,10 +53,13 @@ export type AirspaceFeatureType =
   | "military"
   | "restricted"
   | "danger"
+  | "class_a"
   | "class_b"
   | "class_c"
   | "class_d"
   | "class_e"
+  | "class_f"
+  | "class_g"
   | "ctr"
   | "cya"
   | "cyr"
@@ -71,7 +74,8 @@ export type AirspaceGeometry =
   | { type: "Polygon"; coordinates: [number, number][][] }
   | { type: "MultiPolygon"; coordinates: [number, number][][][] };
 
-export type AirspaceSource = "faa" | "transport-canada" | "japan-caa" | "osm";
+export type AirspaceSource = "faa" | "transport-canada" | "japan-caa" | "openaip" | "osm";
+export type IcaoAirspaceClass = "A" | "B" | "C" | "D" | "E" | "F" | "G";
 
 export type AirspaceFeature = {
   id: string;
@@ -81,6 +85,7 @@ export type AirspaceFeature = {
   longitude: number;
   geometry?: AirspaceGeometry;
   icao?: string;
+  icaoClass?: IcaoAirspaceClass;
   classification: AirspaceClass;
   zoneRadiusKm: number;
   distanceKm: number;

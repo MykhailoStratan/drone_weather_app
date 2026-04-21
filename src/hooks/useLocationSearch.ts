@@ -5,7 +5,7 @@ import { searchLocations } from "../lib/weather";
 import type { LocationOption } from "../types";
 
 function roundCoord(value: number) {
-  return Math.round(value * 100) / 100;
+  return Math.round(value * 1_000_000) / 1_000_000;
 }
 
 function createCurrentLocation(latitude: number, longitude: number): LocationOption {
