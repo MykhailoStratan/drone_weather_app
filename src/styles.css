@@ -2918,6 +2918,7 @@ input:focus-visible {
 .airspace-class-toggle.military   { color: #818cf8; }
 .airspace-class-toggle.airport    { color: #14b8a6; }
 .airspace-class-toggle.tfr        { color: #a855f7; }
+.airspace-class-toggle.high-altitude { color: #94a3b8; }
 
 .airspace-legend {
   display: flex;

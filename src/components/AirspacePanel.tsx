@@ -46,6 +46,7 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
 };
 
 const TFR_COLOR = { fill: "rgba(168, 85, 247, 0.12)", stroke: "#a855f7" };
+const HIGH_ALTITUDE_LOWER_FT = 250_000;
 const AIRSPACE_FILTER_ORDER = [
   "class_a",
   "class_b",
@@ -149,6 +150,10 @@ function filterKeyForFeature(feature: AirspaceFeature): AirspaceFilterKey {
   if (featureKey) return featureKey;
   if (feature.classification === "controlled") return "ctr";
   return feature.classification;
+}
+
+function isHighAltitudeFeature(feature: AirspaceFeature): boolean {
+  return (feature.altitudeLowerFt ?? 0) >= HIGH_ALTITUDE_LOWER_FT;
 }
 
 function defaultFilterVisibility(): Record<AirspaceFilterKey, boolean> {
@@ -513,9 +518,14 @@ export function AirspacePanel({
   const tfrs = airspace?.tfrs ?? [];
   const [visibleFilters, setVisibleFilters] = useState(defaultFilterVisibility);
   const [showTfrs, setShowTfrs] = useState(true);
+  const [showHighAltitude, setShowHighAltitude] = useState(false);
+  const hasHighAltitudeFeatures = features.some(isHighAltitudeFeature);
   const visibleFeatures = useMemo(
-    () => features.filter((feature) => visibleFilters[filterKeyForFeature(feature)]),
-    [features, visibleFilters],
+    () =>
+      features.filter(
+        (feature) => visibleFilters[filterKeyForFeature(feature)] && (showHighAltitude || !isHighAltitudeFeature(feature)),
+      ),
+    [features, showHighAltitude, visibleFilters],
   );
   const visibleTfrs = showTfrs ? tfrs : [];
   const openAipFeatures = visibleFeatures.filter((feature) => feature.source === "openaip");
@@ -606,6 +616,16 @@ export function AirspacePanel({
                 onChange={() => setShowTfrs((current) => !current)}
               />
               <span>TFR</span>
+            </label>
+          )}
+          {hasHighAltitudeFeatures && (
+            <label className="airspace-class-toggle high-altitude">
+              <input
+                type="checkbox"
+                checked={showHighAltitude}
+                onChange={() => setShowHighAltitude((current) => !current)}
+              />
+              <span>250k+ ft</span>
             </label>
           )}
         </div>
