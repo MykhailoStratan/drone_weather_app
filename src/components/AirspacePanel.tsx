@@ -46,7 +46,8 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
 };
 
 const TFR_COLOR = { fill: "rgba(168, 85, 247, 0.12)", stroke: "#a855f7" };
-const HIGH_ALTITUDE_LOWER_FT = 250_000;
+const DEFAULT_ALTITUDE_LIMIT_FT = 250_000;
+const ALTITUDE_LIMIT_STEP_FT = 10_000;
 const AIRSPACE_FILTER_ORDER = [
   "class_a",
   "class_b",
@@ -153,7 +154,7 @@ function filterKeyForFeature(feature: AirspaceFeature): AirspaceFilterKey {
 }
 
 function isHighAltitudeFeature(feature: AirspaceFeature): boolean {
-  return (feature.altitudeLowerFt ?? 0) >= HIGH_ALTITUDE_LOWER_FT;
+  return (feature.altitudeLowerFt ?? 0) >= DEFAULT_ALTITUDE_LIMIT_FT;
 }
 
 function defaultFilterVisibility(): Record<AirspaceFilterKey, boolean> {
@@ -216,6 +217,12 @@ function altitudeLabel(lower?: number, upper?: number): string {
   const low = lower !== undefined ? `${lower.toLocaleString()} ft` : "SFC";
   const high = upper !== undefined ? `${upper.toLocaleString()} ft` : "UNL";
   return `${low} - ${high}`;
+}
+
+function altitudeLimitLabel(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ft`;
+  if (value >= 1000) return `${Math.round(value / 1000)}k ft`;
+  return `${value.toLocaleString()} ft`;
 }
 
 function formatTFRTime(iso?: string): string {
@@ -518,14 +525,23 @@ export function AirspacePanel({
   const tfrs = airspace?.tfrs ?? [];
   const [visibleFilters, setVisibleFilters] = useState(defaultFilterVisibility);
   const [showTfrs, setShowTfrs] = useState(true);
-  const [showHighAltitude, setShowHighAltitude] = useState(false);
+  const [altitudeLimitFt, setAltitudeLimitFt] = useState(DEFAULT_ALTITUDE_LIMIT_FT);
   const hasHighAltitudeFeatures = features.some(isHighAltitudeFeature);
+  const maxAltitudeLimitFt = useMemo(() => {
+    const maxLowerAltitude = features.reduce(
+      (max, feature) => Math.max(max, feature.altitudeLowerFt ?? 0),
+      DEFAULT_ALTITUDE_LIMIT_FT,
+    );
+    return Math.max(DEFAULT_ALTITUDE_LIMIT_FT, Math.ceil(maxLowerAltitude / ALTITUDE_LIMIT_STEP_FT) * ALTITUDE_LIMIT_STEP_FT);
+  }, [features]);
   const visibleFeatures = useMemo(
     () =>
       features.filter(
-        (feature) => visibleFilters[filterKeyForFeature(feature)] && (showHighAltitude || !isHighAltitudeFeature(feature)),
+        (feature) =>
+          visibleFilters[filterKeyForFeature(feature)] &&
+          ((feature.altitudeLowerFt ?? 0) < altitudeLimitFt),
       ),
-    [features, showHighAltitude, visibleFilters],
+    [altitudeLimitFt, features, visibleFilters],
   );
   const visibleTfrs = showTfrs ? tfrs : [];
   const openAipFeatures = visibleFeatures.filter((feature) => feature.source === "openaip");
@@ -619,13 +635,17 @@ export function AirspacePanel({
             </label>
           )}
           {hasHighAltitudeFeatures && (
-            <label className="airspace-class-toggle high-altitude">
+            <label className="airspace-altitude-slider">
+              <span>Hide floors above</span>
               <input
-                type="checkbox"
-                checked={showHighAltitude}
-                onChange={() => setShowHighAltitude((current) => !current)}
+                type="range"
+                min={ALTITUDE_LIMIT_STEP_FT}
+                max={maxAltitudeLimitFt}
+                step={ALTITUDE_LIMIT_STEP_FT}
+                value={altitudeLimitFt}
+                onChange={(event) => setAltitudeLimitFt(Number(event.target.value))}
               />
-              <span>250k+ ft</span>
+              <strong>{altitudeLimitLabel(altitudeLimitFt)}</strong>
             </label>
           )}
         </div>
