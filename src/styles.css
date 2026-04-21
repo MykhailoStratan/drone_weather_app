@@ -2870,7 +2870,9 @@ input:focus-visible {
 
 .airspace-airport-dot.controlled { color: var(--danger); background: var(--danger-soft); }
 .airspace-airport-dot.advisory   { color: var(--amber);  background: var(--amber-soft); }
-.airspace-airport-dot.restricted { color: var(--sky);    background: var(--sky-soft); }
+.airspace-airport-dot.restricted { color: #a855f7;       background: rgba(168, 85, 247, 0.15); }
+.airspace-airport-dot.danger     { color: var(--sky);    background: var(--sky-soft); }
+.airspace-airport-dot.military   { color: #818cf8;       background: rgba(129, 140, 248, 0.15); }
 .airspace-airport-dot.tfr        { color: #a855f7;       background: rgba(168, 85, 247, 0.15); }
 
 .airspace-legend {
@@ -2902,7 +2904,9 @@ input:focus-visible {
 
 .airspace-legend-item.controlled { color: var(--danger); }
 .airspace-legend-item.advisory   { color: var(--amber); }
-.airspace-legend-item.restricted { color: var(--sky); }
+.airspace-legend-item.restricted { color: #a855f7; }
+.airspace-legend-item.danger     { color: var(--sky); }
+.airspace-legend-item.military   { color: #818cf8; }
 .airspace-legend-item.tfr        { color: #a855f7; }
 
 .airspace-loading {
@@ -2953,7 +2957,9 @@ input:focus-visible {
 
 .airspace-dot.controlled { color: var(--danger); background: var(--danger-soft); }
 .airspace-dot.advisory   { color: var(--amber);  background: var(--amber-soft); }
-.airspace-dot.restricted { color: var(--sky);    background: var(--sky-soft); }
+.airspace-dot.restricted { color: #a855f7;       background: rgba(168, 85, 247, 0.15); }
+.airspace-dot.danger     { color: var(--sky);    background: var(--sky-soft); }
+.airspace-dot.military   { color: #818cf8;       background: rgba(129, 140, 248, 0.15); }
 .airspace-dot.tfr        { color: #a855f7;       background: rgba(168, 85, 247, 0.15); }
 
 .airspace-feature-info {
