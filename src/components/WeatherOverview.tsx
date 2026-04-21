@@ -94,60 +94,76 @@ export function WeatherOverview({
             />
           </div>
 
-          <div className="wind-spotlight">
-            <p className="section-label">Wind direction</p>
-            <div className="wind-visual">
-              <div className="wind-arrow-ring">
-                <span
-                  className="wind-arrow"
-                  style={{ transform: `rotate(${currentSnapshot.windDirection}deg)` }}
-                  aria-hidden="true"
-                />
+          <div className="hero-side-stack">
+            <div className="wind-readiness-card">
+              <div className="wind-spotlight">
+                <p className="section-label">Wind direction</p>
+                <div className="wind-visual">
+                  <div className="wind-arrow-ring">
+                    <span
+                      className="wind-arrow"
+                      style={{ transform: `rotate(${currentSnapshot.windDirection}deg)` }}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div className="wind-copy">
+                    <strong>
+                      {windDirectionLabel(currentSnapshot.windDirection)} - {Math.round(currentSnapshot.windDirection)}°
+                    </strong>
+                    <p>
+                      {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} sustained
+                      <br />
+                      gusts to {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="wind-copy">
-                <strong>
-                  {windDirectionLabel(currentSnapshot.windDirection)} - {Math.round(currentSnapshot.windDirection)}°
-                </strong>
-                <p>
-                  {windSpeedDisplay(currentSnapshot.windSpeed, preferences.windUnit)} {windUnitLabel} sustained
-                  <br />
-                  gusts to {windSpeedDisplay(currentSnapshot.windGusts, preferences.windUnit)} {windUnitLabel}
-                </p>
-              </div>
-            </div>
-          </div>
 
-          {currentSnapshot.windSpeed80m !== undefined && (
-            <div className="wind-aloft-card">
-              <p className="section-label">Wind aloft</p>
-              <div className="wind-aloft-levels">
-                <WindAloftLevel
-                  label="10 m"
-                  speed={currentSnapshot.windSpeed}
-                  gusts={currentSnapshot.windGusts}
-                  direction={currentSnapshot.windDirection}
-                  unit={preferences.windUnit}
-                  unitLabel={windUnitLabel}
-                />
-                <WindAloftLevel
-                  label="80 m"
-                  speed={currentSnapshot.windSpeed80m}
-                  gusts={currentSnapshot.windGusts80m}
-                  direction={currentSnapshot.windDirection80m}
-                  unit={preferences.windUnit}
-                  unitLabel={windUnitLabel}
-                />
-                <WindAloftLevel
-                  label="120 m"
-                  speed={currentSnapshot.windSpeed120m}
-                  gusts={currentSnapshot.windGusts120m}
-                  direction={currentSnapshot.windDirection120m}
-                  unit={preferences.windUnit}
-                  unitLabel={windUnitLabel}
-                />
-              </div>
+              <div className="wind-readiness-divider" aria-hidden="true" />
+
+              <FlightReadinessPanel
+                currentDay={currentDay}
+                currentSnapshot={currentSnapshot}
+                temperatureUnit={preferences.temperatureUnit}
+                windUnit={preferences.windUnit}
+                windUnitLabel={windUnitLabel}
+                visibilityUnit={preferences.visibilityUnit}
+                visibilityUnitLabel={visibilityUnitLabel}
+              />
             </div>
-          )}
+
+            {currentSnapshot.windSpeed80m !== undefined && (
+              <div className="wind-aloft-card">
+                <p className="section-label">Wind aloft</p>
+                <div className="wind-aloft-levels">
+                  <WindAloftLevel
+                    label="10 m"
+                    speed={currentSnapshot.windSpeed}
+                    gusts={currentSnapshot.windGusts}
+                    direction={currentSnapshot.windDirection}
+                    unit={preferences.windUnit}
+                    unitLabel={windUnitLabel}
+                  />
+                  <WindAloftLevel
+                    label="80 m"
+                    speed={currentSnapshot.windSpeed80m}
+                    gusts={currentSnapshot.windGusts80m}
+                    direction={currentSnapshot.windDirection80m}
+                    unit={preferences.windUnit}
+                    unitLabel={windUnitLabel}
+                  />
+                  <WindAloftLevel
+                    label="120 m"
+                    speed={currentSnapshot.windSpeed120m}
+                    gusts={currentSnapshot.windGusts120m}
+                    direction={currentSnapshot.windDirection120m}
+                    unit={preferences.windUnit}
+                    unitLabel={windUnitLabel}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="hero-mini-grid">
@@ -165,19 +181,6 @@ export function WeatherOverview({
       </article>
 
       <article className="stat-panel support-panel">
-        <div className="support-panel-section">
-          <p className="section-label">Flight readiness</p>
-          <FlightReadinessPanel
-            currentDay={currentDay}
-            currentSnapshot={currentSnapshot}
-            temperatureUnit={preferences.temperatureUnit}
-            windUnit={preferences.windUnit}
-            windUnitLabel={windUnitLabel}
-            visibilityUnit={preferences.visibilityUnit}
-            visibilityUnitLabel={visibilityUnitLabel}
-          />
-        </div>
-
         <div className="support-panel-grid">
           <section className="support-panel-section">
             <div className="support-panel-header">
