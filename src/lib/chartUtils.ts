@@ -71,6 +71,8 @@ export function buildHourlySeries(
   };
 }
 
+export type HourlyChartSeries = ReturnType<typeof buildHourlySeries>;
+
 export function buildWeeklyRangeSeries(daily: DailyWeather[]) {
   return daily.map((day) => ({
     key: day.date,

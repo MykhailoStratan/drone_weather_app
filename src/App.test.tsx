@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
@@ -76,61 +76,43 @@ const alertsPayload = {
   alerts: [],
 };
 
-const gnssPayload = {
-  ...weatherPayload,
-  fetchedAt: "2026-04-15T12:00:00.000Z",
-  estimatedVisibleSatellites: 21,
-  estimatedUsableSatellites: 15,
-  gnssScore: 84,
-  summary: "Strong GNSS visibility for this location.",
-  spaceWeatherPenalty: 1,
-};
-
 function createResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
 }
 
 function installFetchMock(options?: {
-  overview?: Response | ((url: string) => Response | Promise<Response>);
-  timeline?: Response | ((url: string) => Response | Promise<Response>);
-  alerts?: Response | ((url: string) => Response | Promise<Response>);
-  gnss?: Response | ((url: string) => Response | Promise<Response>);
-  locations?: Response | ((url: string) => Response | Promise<Response>);
+  overview?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
+  timeline?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
+  alerts?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
+  locations?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
 }) {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
 
     if (url.includes("/weather/overview")) {
       if (typeof options?.overview === "function") {
-        return options.overview(url);
+        return options.overview(url, init);
       }
       return options?.overview ?? createResponse(overviewPayload);
     }
 
     if (url.includes("/weather/timeline")) {
       if (typeof options?.timeline === "function") {
-        return options.timeline(url);
+        return options.timeline(url, init);
       }
       return options?.timeline ?? createResponse(timelinePayload);
     }
 
     if (url.includes("/weather/alerts")) {
       if (typeof options?.alerts === "function") {
-        return options.alerts(url);
+        return options.alerts(url, init);
       }
       return options?.alerts ?? createResponse(alertsPayload);
     }
 
-    if (url.includes("/gnss/estimate")) {
-      if (typeof options?.gnss === "function") {
-        return options.gnss(url);
-      }
-      return options?.gnss ?? createResponse(gnssPayload);
-    }
-
     if (url.includes("/locations")) {
       if (typeof options?.locations === "function") {
-        return options.locations(url);
+        return options.locations(url, init);
       }
       return options?.locations ?? createResponse([]);
     }
@@ -191,6 +173,104 @@ describe("App preferences", () => {
     fireEvent.change(slider, { target: { value: "0" } });
 
     expect(document.querySelector(".temperature-value")?.textContent).toBe("3");
+    view.unmount();
+  });
+
+  it("shows wind aloft right-side details only when gust data exists", async () => {
+    installFetchMock({
+      overview: createResponse({
+        ...overviewPayload,
+        current: {
+          ...overviewPayload.current,
+          windSpeed80m: 14,
+          windDirection80m: 135,
+          windSpeed120m: 18,
+        },
+      }),
+      timeline: createResponse({ error: "timeline unavailable" }, 503),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+
+    const levels = Array.from(document.querySelectorAll(".wind-aloft-level"));
+    expect(levels).toHaveLength(3);
+    expect(document.querySelectorAll(".wind-aloft-gusts")).toHaveLength(1);
+    expect(levels[0]?.querySelector(".wind-aloft-gusts")?.textContent).toContain("8");
+    expect(document.querySelectorAll(".wind-aloft-dir")).toHaveLength(1);
+    expect(levels[1]?.querySelector(".wind-aloft-gusts")).toBeNull();
+    expect(levels[1]?.querySelector(".wind-aloft-dir")).toBeNull();
+    expect(levels[2]?.querySelector(".wind-aloft-dir")).toBeNull();
+    expect(levels[2]?.querySelector(".wind-aloft-gusts")).toBeNull();
+    view.unmount();
+  });
+
+  it("bases flight readiness on weather factors only", async () => {
+    installFetchMock({
+      overview: createResponse({
+        ...overviewPayload,
+        today: {
+          ...overviewPayload.today,
+          windGustsMax: 34,
+          precipitationProbabilityMax: 76,
+        },
+      }),
+      timeline: createResponse({
+        ...timelinePayload,
+        hourly: timelinePayload.hourly.map((entry) => ({
+          ...entry,
+          temperature: -2,
+          visibility: 2500,
+          windGusts: 34,
+        })),
+        daily: timelinePayload.daily.map((day) => ({
+          ...day,
+          windGustsMax: 34,
+          precipitationProbabilityMax: 76,
+        })),
+      }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    expect(view.getByRole("heading", { name: "Not recommended", level: 3 })).toBeTruthy();
+    expect(view.getByText("Temperature")).toBeTruthy();
+    expect(view.getByText("Extreme")).toBeTruthy();
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("gusts are reaching 34");
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("visibility is down to 2.5 km");
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("76% rain potential");
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("temperature is -2");
+    expect(view.queryByText("GNSS")).toBeNull();
+    expect(view.queryByText(/usable \/ visible/i)).toBeNull();
+    view.unmount();
+  });
+
+  it("updates flight readiness wind data when the selected hour changes", async () => {
+    installFetchMock({
+      timeline: createResponse({
+        ...timelinePayload,
+        hourly: timelinePayload.hourly.map((entry, index) => ({
+          ...entry,
+          windGusts: index === 0 ? 42 : 10,
+          windSpeed: index === 0 ? 28 : 6,
+        })),
+      }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    expect(view.getByText("10 km/h gusts")).toBeTruthy();
+    expect(view.getByText("Visibility, wind, rain, and temperature are all within a comfortable range for a routine flight check.")).toBeTruthy();
+
+    const slider = await view.findByRole("slider", { name: "Select forecast hour" });
+    fireEvent.change(slider, { target: { value: "0" } });
+
+    expect(view.getByText("42 km/h gusts")).toBeTruthy();
+    expect(view.getByText("High")).toBeTruthy();
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("gusts are reaching 42");
     view.unmount();
   });
 

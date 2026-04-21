@@ -101,17 +101,23 @@ export async function fetchGnssEstimate(request: GnssEstimateRequest): Promise<G
   });
 
   if (!response.ok) {
-    throw new Error("GNSS estimate is unavailable right now.");
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? "GNSS estimate is unavailable right now.");
   }
 
   return (await response.json()) as GnssEstimateResponse;
 }
 
-export async function fetchAirspace(location: Pick<LocationOption, "latitude" | "longitude">): Promise<AirspaceResponse> {
+export async function fetchAirspace(
+  location: Pick<LocationOption, "latitude" | "longitude"> & Partial<Pick<LocationOption, "country">>,
+): Promise<AirspaceResponse> {
   const params = new URLSearchParams({
     lat: String(location.latitude),
     lng: String(location.longitude),
   });
+  if (location.country) {
+    params.set("country", location.country);
+  }
   const response = await fetch(`${API_BASE}/airspace?${params}`);
   if (!response.ok) {
     throw new Error("Airspace data is unavailable right now.");

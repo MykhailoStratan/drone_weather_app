@@ -1,14 +1,10 @@
-import { visibilityDisplay, windSpeedDisplay } from "../lib/format";
-import type { GnssEnvironmentPreset } from "../lib/weather";
-import type { DailyWeather, GnssEstimateResponse, WeatherSnapshot } from "../types";
+import { temperatureDisplay, visibilityDisplay, windSpeedDisplay } from "../lib/format";
+import type { DailyWeather, WeatherSnapshot } from "../types";
 
 type FlightReadinessPanelProps = {
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
-  environmentPreset: GnssEnvironmentPreset;
-  onEnvironmentChange: (value: GnssEnvironmentPreset) => void;
-  gnssEstimate: GnssEstimateResponse | null;
-  loading: boolean;
+  temperatureUnit: "c" | "f";
   windUnit: "kmh" | "mph";
   windUnitLabel: string;
   visibilityUnit: "km" | "mi";
@@ -18,19 +14,14 @@ type FlightReadinessPanelProps = {
 export function FlightReadinessPanel({
   currentDay,
   currentSnapshot,
-  environmentPreset,
-  onEnvironmentChange,
-  gnssEstimate,
-  loading,
+  temperatureUnit,
   windUnit,
   windUnitLabel,
   visibilityUnit,
   visibilityUnitLabel,
 }: FlightReadinessPanelProps) {
-  const overallScore = gnssEstimate?.gnssScore ?? 0;
-  const overallLabel = gnssEstimate ? scoreLabel(overallScore) : "Loading GNSS";
-  const tone = scoreTone(overallScore);
-  const windTone = currentDay.windGustsMax >= 28 ? "risk" : currentDay.windGustsMax >= 18 ? "caution" : "good";
+  const windGust = currentSnapshot.windGusts;
+  const windTone = windGust >= 28 ? "risk" : windGust >= 18 ? "caution" : "good";
   const visibilityKm = currentSnapshot.visibility / 1000;
   const visibilityTone = visibilityKm < 6 ? (visibilityKm < 3 ? "risk" : "caution") : "good";
   const rainTone =
@@ -39,6 +30,22 @@ export function FlightReadinessPanel({
         ? "risk"
         : "caution"
       : "good";
+  const temperatureTone =
+    currentSnapshot.temperature <= 0 || currentSnapshot.temperature >= 35
+      ? "risk"
+      : currentSnapshot.temperature <= 5 || currentSnapshot.temperature >= 30
+        ? "caution"
+        : "good";
+  const overallScore = Math.round(
+    (toneScore(windTone) + toneScore(visibilityTone) + toneScore(rainTone) + toneScore(temperatureTone)) / 4,
+  );
+  const tone = scoreTone(overallScore);
+  const overallLabel = scoreLabel(overallScore);
+  const summary = buildSummary({
+    currentDay,
+    currentSnapshot,
+    visibilityKm,
+  });
 
   return (
     <div className="readiness-panel">
@@ -48,43 +55,16 @@ export function FlightReadinessPanel({
           <h3>{overallLabel}</h3>
         </div>
         <div className={`readiness-score ${tone}`}>
-          <strong>{loading && !gnssEstimate ? "--" : gnssEstimate?.gnssScore ?? "--"}</strong>
+          <strong>{overallScore}</strong>
           <span>/100</span>
         </div>
       </div>
 
-      <div className="environment-row">
-        <label className="preference-label" htmlFor="environment-preset">
-          Flight environment
-        </label>
-        <select
-          id="environment-preset"
-          className="environment-select"
-          value={environmentPreset}
-          onChange={(event) => onEnvironmentChange(event.target.value as GnssEnvironmentPreset)}
-        >
-          <option value="open">Open field</option>
-          <option value="suburban">Suburban</option>
-          <option value="urban">Urban canyon</option>
-          <option value="trees">Trees / hills</option>
-        </select>
-      </div>
-
       <div className="readiness-chip-grid">
         <ReadinessChip
-          label="GNSS"
-          value={loading && !gnssEstimate ? "Loading" : `${gnssEstimate?.gnssScore ?? "--"}`}
-          status={
-            loading && !gnssEstimate
-              ? "Fetching constellation data"
-              : `${gnssEstimate?.estimatedUsableSatellites ?? 0} usable / ${gnssEstimate?.estimatedVisibleSatellites ?? 0} visible`
-          }
-          tone={tone}
-        />
-        <ReadinessChip
           label="Wind"
-          value={currentDay.windGustsMax >= 40 ? "High" : currentDay.windGustsMax >= 28 ? "Caution" : currentDay.windGustsMax >= 18 ? "Moderate" : "Low"}
-          status={`${windSpeedDisplay(currentDay.windGustsMax, windUnit)} ${windUnitLabel} gusts`}
+          value={windGust >= 40 ? "High" : windGust >= 28 ? "Caution" : windGust >= 18 ? "Moderate" : "Low"}
+          status={`${windSpeedDisplay(windGust, windUnit)} ${windUnitLabel} gusts`}
           tone={windTone}
         />
         <ReadinessChip
@@ -99,13 +79,21 @@ export function FlightReadinessPanel({
           status={`${Math.round(currentDay.precipitationProbabilityMax)}% chance`}
           tone={rainTone}
         />
+        <ReadinessChip
+          label="Temperature"
+          value={
+            currentSnapshot.temperature <= 0 || currentSnapshot.temperature >= 35
+              ? "Extreme"
+              : currentSnapshot.temperature <= 5 || currentSnapshot.temperature >= 30
+                ? "Watch"
+                : "Stable"
+          }
+          status={`${temperatureDisplay(currentSnapshot.temperature, temperatureUnit)}°${temperatureUnit.toUpperCase()}`}
+          tone={temperatureTone}
+        />
       </div>
 
-      <p className="readiness-summary">
-        {loading && !gnssEstimate
-          ? "Loading satellite geometry and space-weather conditions for this location."
-          : gnssEstimate?.summary ?? "GNSS estimate is unavailable right now."}
-      </p>
+      <p className="readiness-summary">{summary}</p>
     </div>
   );
 }
@@ -151,4 +139,45 @@ function scoreTone(score: number) {
     return "caution" as const;
   }
   return "risk" as const;
+}
+
+function toneScore(tone: "good" | "caution" | "risk") {
+  if (tone === "good") {
+    return 90;
+  }
+  if (tone === "caution") {
+    return 62;
+  }
+  return 32;
+}
+
+function buildSummary({
+  currentDay,
+  currentSnapshot,
+  visibilityKm,
+}: {
+  currentDay: DailyWeather;
+  currentSnapshot: WeatherSnapshot;
+  visibilityKm: number;
+}) {
+  const concerns: string[] = [];
+
+  if (currentSnapshot.windGusts >= 28) {
+    concerns.push(`gusts are reaching ${Math.round(currentSnapshot.windGusts)}`);
+  }
+  if (visibilityKm < 6) {
+    concerns.push(`visibility is down to ${visibilityKm.toFixed(1)} km`);
+  }
+  if (currentDay.precipitationProbabilityMax >= 40) {
+    concerns.push(`${Math.round(currentDay.precipitationProbabilityMax)}% rain potential`);
+  }
+  if (currentSnapshot.temperature <= 5 || currentSnapshot.temperature >= 30) {
+    concerns.push(`temperature is ${Math.round(currentSnapshot.temperature)}°C`);
+  }
+
+  if (concerns.length === 0) {
+    return "Visibility, wind, rain, and temperature are all within a comfortable range for a routine flight check.";
+  }
+
+  return `Most limiting factors right now: ${concerns.join(", ")}.`;
 }

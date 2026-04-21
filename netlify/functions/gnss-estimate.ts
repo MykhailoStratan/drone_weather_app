@@ -32,8 +32,18 @@ export default async (req: Request) => {
     }
 
     const response = await fetchGnssEstimate(payload);
-    setCached(cacheKey, response, CACHE_TTLS.gnssEstimate);
-    console.info(`[weather-api] gnss cache=${cached.state} refreshed ${cacheKey}`);
+    if (response.dataStatus === "available") {
+      setCached(cacheKey, response, CACHE_TTLS.gnssEstimate);
+      console.info(`[weather-api] gnss cache=${cached.state} refreshed ${cacheKey}`);
+      return Response.json(response);
+    }
+
+    if (cached.state === "stale" && cached.value.dataStatus === "available") {
+      console.info(`[weather-api] gnss cache=stale fallback ${cacheKey}`);
+      return Response.json(cached.value);
+    }
+
+    console.info(`[weather-api] gnss cache=${cached.state} unavailable ${cacheKey}`);
     return Response.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : "GNSS estimate is unavailable right now.";
