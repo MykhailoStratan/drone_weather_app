@@ -239,51 +239,53 @@ export function WeatherOverview({
               />
             </div>
 
-            {currentSnapshot.windSpeed80m !== undefined && (
-              <div className="wind-aloft-card">
-                <p className="section-label">Wind aloft</p>
-                <div className="wind-aloft-levels">
-                  <WindAloftLevel
-                    label="10 m"
-                    speed={currentSnapshot.windSpeed}
-                    gusts={currentSnapshot.windGusts}
-                    direction={currentSnapshot.windDirection}
-                    unit={preferences.windUnit}
-                    unitLabel={windUnitLabel}
-                  />
-                  <WindAloftLevel
-                    label="80 m"
-                    speed={currentSnapshot.windSpeed80m}
-                    gusts={currentSnapshot.windGusts80m}
-                    direction={currentSnapshot.windDirection80m}
-                    unit={preferences.windUnit}
-                    unitLabel={windUnitLabel}
-                  />
-                  <WindAloftLevel
-                    label="120 m"
-                    speed={currentSnapshot.windSpeed120m}
-                    gusts={currentSnapshot.windGusts120m}
-                    direction={currentSnapshot.windDirection120m}
-                    unit={preferences.windUnit}
-                    unitLabel={windUnitLabel}
-                  />
+            <div className={`wind-compact-row${currentSnapshot.windSpeed80m === undefined ? " no-aloft" : ""}`}>
+              {currentSnapshot.windSpeed80m !== undefined && (
+                <div className="wind-aloft-card">
+                  <p className="section-label">Wind aloft</p>
+                  <div className="wind-aloft-levels">
+                    <WindAloftLevel
+                      label="10 m"
+                      speed={currentSnapshot.windSpeed}
+                      gusts={currentSnapshot.windGusts}
+                      direction={currentSnapshot.windDirection}
+                      unit={preferences.windUnit}
+                      unitLabel={windUnitLabel}
+                    />
+                    <WindAloftLevel
+                      label="80 m"
+                      speed={currentSnapshot.windSpeed80m}
+                      gusts={currentSnapshot.windGusts80m}
+                      direction={currentSnapshot.windDirection80m}
+                      unit={preferences.windUnit}
+                      unitLabel={windUnitLabel}
+                    />
+                    <WindAloftLevel
+                      label="120 m"
+                      speed={currentSnapshot.windSpeed120m}
+                      gusts={currentSnapshot.windGusts120m}
+                      direction={currentSnapshot.windDirection120m}
+                      unit={preferences.windUnit}
+                      unitLabel={windUnitLabel}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
 
-        <div className="hero-mini-grid">
-          <Metric icon={<IconSunrise />} label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
-          <Metric icon={<IconSunset />} label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
-          <Metric icon={<IconRain />} label="Rain chance" value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
-          <Metric icon={<IconCloud />} label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
-          <Metric
-            icon={<IconEye />}
-            label="Visibility"
-            value={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
-          />
-          <Metric icon={<IconGauge />} label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
+              <div className="hero-mini-grid wind-detail-grid">
+                <Metric icon={<IconSunrise />} label="Sunrise" value={formatTime(currentDay.sunrise, preferences.hourCycle)} />
+                <Metric icon={<IconSunset />} label="Sunset" value={formatTime(currentDay.sunset, preferences.hourCycle)} />
+                <Metric icon={<IconRain />} label="Rain chance" value={`${Math.round(currentSnapshot.precipitationProbability)}%`} />
+                <Metric icon={<IconCloud />} label="Cloud cover" value={`${Math.round(currentSnapshot.cloudCover)}%`} />
+                <Metric
+                  icon={<IconEye />}
+                  label="Visibility"
+                  value={`${visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} ${visibilityUnitLabel}`}
+                />
+                <Metric icon={<IconGauge />} label="Pressure" value={`${Math.round(currentSnapshot.pressure)} hPa`} />
+              </div>
+            </div>
+          </div>
         </div>
       </article>
 

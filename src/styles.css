@@ -1246,6 +1246,22 @@ input:focus-visible {
   gap: 0.6rem;
 }
 
+.wind-compact-row {
+  display: contents;
+}
+
+.wind-compact-row.no-aloft {
+  grid-template-columns: 1fr;
+}
+
+.wind-compact-row .wind-aloft-card {
+  min-width: 0;
+}
+
+.wind-compact-row .wind-aloft-level {
+  min-width: 0;
+}
+
 .wind-aloft-levels {
   display: flex;
   flex-direction: column;
@@ -1383,6 +1399,11 @@ input:focus-visible {
   z-index: 1;
 }
 
+.wind-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
 .metric-card {
   padding: 0.75rem;
   border-radius: var(--radius-md);
@@ -1392,6 +1413,12 @@ input:focus-visible {
   flex-direction: column;
   gap: 0.2rem;
   transition: border-color 140ms ease, background 140ms ease;
+}
+
+.wind-detail-grid .metric-card {
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  gap: 0.12rem;
 }
 
 .metric-card:hover {
@@ -1423,6 +1450,10 @@ input:focus-visible {
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.005em;
+}
+
+.wind-detail-grid .metric-card strong {
+  font-size: 0.82rem;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -2596,6 +2627,23 @@ input:focus-visible {
   }
 
   .hero-mini-grid      { grid-template-columns: repeat(2, 1fr); }
+  .wind-compact-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .wind-compact-row .wind-aloft-card {
+    padding: 0.85rem;
+  }
+
+  .wind-compact-row .wind-aloft-level {
+    grid-template-columns: 2.75rem minmax(3.25rem, 1fr) auto auto;
+    gap: 0.35rem;
+    padding: 0.28rem 0;
+  }
+
   .readiness-chip-grid { grid-template-columns: repeat(2, 1fr); }
   .environment-options { grid-template-columns: 1fr; }
   .detail-switcher     { width: 100%; }
@@ -2608,6 +2656,7 @@ input:focus-visible {
   }
 
   .hero-mini-grid { grid-template-columns: 1fr; }
+  .wind-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero-condition-row,
   .hour-summary-row,
   .range-header { flex-wrap: wrap; }
@@ -2659,6 +2708,12 @@ input:focus-visible {
   .location-bar,
   .location-bar-panel {
     border-radius: var(--radius-lg);
+  }
+}
+
+@media (max-width: 560px) {
+  .wind-compact-row {
+    grid-template-columns: 1fr;
   }
 }
 
