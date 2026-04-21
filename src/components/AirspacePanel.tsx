@@ -539,7 +539,7 @@ export function AirspacePanel({
       features.filter(
         (feature) =>
           visibleFilters[filterKeyForFeature(feature)] &&
-          ((feature.altitudeLowerFt ?? 0) < altitudeLimitFt),
+          ((feature.altitudeLowerFt ?? 0) <= altitudeLimitFt),
       ),
     [altitudeLimitFt, features, visibleFilters],
   );
