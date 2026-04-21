@@ -17,6 +17,18 @@ const PAST_SLOTS = 11;
 const FUTURE_SLOTS = 12;
 const TOTAL_SLOTS = PAST_SLOTS + 1 + FUTURE_SLOTS; // 24
 
+const visuallyHiddenInputStyle = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  padding: 0,
+  margin: "-1px",
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+} as const;
+
 function escalate(current: WindowTone, next: WindowTone): WindowTone {
   return TONE_RANK[next] > TONE_RANK[current] ? next : current;
 }
@@ -64,20 +76,49 @@ export function HourScrubber({
   if (hourlyForDay.length === 0) return null;
 
   const windows: HourWindow[] = hourlyForDay.map(classifyHour);
+  const nextDayWindows = nextDayHourly.map(classifyHour);
+  const prevDayWindows = prevDayHourly.map(classifyHour);
+
+  type TimelineEntry = {
+    absIndex: number;
+    window: HourWindow;
+    isNextDay: boolean;
+    isPrevDay: boolean;
+  };
+
+  const timelineEntries: TimelineEntry[] = [
+    ...prevDayWindows.map((window, index) => ({
+      absIndex: index - prevDayWindows.length,
+      window,
+      isNextDay: false,
+      isPrevDay: true,
+    })),
+    ...windows.map((window, index) => ({
+      absIndex: index,
+      window,
+      isNextDay: false,
+      isPrevDay: false,
+    })),
+    ...nextDayWindows.map((window, index) => ({
+      absIndex: windows.length + index,
+      window,
+      isNextDay: true,
+      isPrevDay: false,
+    })),
+  ];
 
   const nowMs = Date.now();
-  const nowIndex = hourlyForDay.reduce((closest, snap, i) =>
-    Math.abs(new Date(snap.time).getTime() - nowMs) <
-    Math.abs(new Date(hourlyForDay[closest].time).getTime() - nowMs)
-      ? i : closest,
-    0,
+  const nowEntry = timelineEntries.reduce((closest, entry) =>
+    Math.abs(new Date(entry.window.time).getTime() - nowMs) <
+    Math.abs(new Date(closest.window.time).getTime() - nowMs)
+      ? entry
+      : closest,
   );
+  const nowAbsIndex = nowEntry.absIndex;
 
   // Build fixed 24-slot display centred on nowIndex
   // Slot 0 = nowIndex - PAST_SLOTS, slot PAST_SLOTS = nowIndex, slot 23 = nowIndex + FUTURE_SLOTS
-  const slotStart = nowIndex - PAST_SLOTS;
-  const nextDayWindows = nextDayHourly.map(classifyHour);
-  const prevDayWindows = prevDayHourly.map(classifyHour);
+  const slotStart = nowAbsIndex - PAST_SLOTS;
 
   type Slot = { absIndex: number; window: HourWindow | null; isNextDay: boolean; isPrevDay: boolean };
   const slots: Slot[] = Array.from({ length: TOTAL_SLOTS }, (_, i) => {
@@ -190,29 +231,37 @@ export function HourScrubber({
   const leftWin = slots[0].window;
   const rightWin = slots[TOTAL_SLOTS - 1].window;
   const leftLabel = leftWin ? formatHourLabel(leftWin.time, hourCycle) : "—";
-  const nowLabel = formatHourLabel(windows[nowIndex].time, hourCycle);
+  const nowLabel = formatHourLabel(nowEntry.window.time, hourCycle);
   const rightLabel = rightWin ? formatHourLabel(rightWin.time, hourCycle) : "—";
 
   return (
     <div className="hour-scrubber">
       <div className="hour-scrubber-header">
         <div>
-          <span className="section-label">Hour scrubber</span>
+          <span className="section-label">Hourly Timeline</span>
           <strong>{activeLabel}</strong>
         </div>
         <span className="hour-scrubber-summary">{summary}</span>
       </div>
 
+      <input
+        type="range"
+        min={0}
+        max={Math.max(0, windows.length - 1)}
+        step={1}
+        value={Math.max(0, Math.min(activeHourIndex, windows.length - 1))}
+        aria-label="Select forecast hour"
+        aria-valuetext={activeLabel}
+        onChange={(event) => {
+          onHourChange(Number(event.target.value));
+        }}
+        onKeyDown={handleKeyDown}
+        style={visuallyHiddenInputStyle}
+      />
+
       <div
         className="hour-scrubber-track-wrap"
-        role="slider"
-        aria-valuenow={activeHourIndex}
-        aria-valuemin={0}
-        aria-valuemax={windows.length - 1}
-        aria-valuetext={activeLabel}
-        aria-label="Select forecast hour"
-        tabIndex={0}
-        onKeyDown={handleKeyDown}
+        aria-hidden="true"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -221,7 +270,7 @@ export function HourScrubber({
       >
         <div className="hour-scrubber-bar" ref={barRef}>
           {slots.map((slot, localI) => {
-            const isNow = localI === PAST_SLOTS;
+            const isNow = slot.absIndex === nowAbsIndex;
             const isSelected = slot.absIndex === activeHourIndex;
             const tone = slot.window?.tone ?? "empty";
             const title = slot.window

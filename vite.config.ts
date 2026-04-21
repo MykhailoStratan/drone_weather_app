@@ -6,5 +6,11 @@ export default defineConfig({
   plugins: [react(), netlify()],
   test: {
     environment: "jsdom",
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.claude/**",
+      "**/.codex/**",
+    ],
   },
 });
