@@ -169,10 +169,62 @@ describe("App preferences", () => {
 
     const slider = await view.findByRole("slider", { name: "Select forecast hour" });
     expect(document.querySelector(".temperature-value")?.textContent).toBe("9");
+    expect(await view.findByText("12:00 PM: 9 C")).toBeTruthy();
 
-    fireEvent.change(slider, { target: { value: "0" } });
+    fireEvent.change(slider, { target: { value: "1" } });
 
-    expect(document.querySelector(".temperature-value")?.textContent).toBe("3");
+    expect(document.querySelector(".temperature-value")?.textContent).toBe("4");
+    expect(await view.findByText("1:00 AM: 4 C")).toBeTruthy();
+    view.unmount();
+  });
+
+  it("selects forecast days from the hero date calendar", async () => {
+    installFetchMock({
+      timeline: createResponse({
+        ...timelinePayload,
+        hourly: [
+          ...timelinePayload.hourly,
+          ...Array.from({ length: 24 }, (_, index) => ({
+            ...timelinePayload.hourly[0],
+            time: `2026-04-16T${String(index).padStart(2, "0")}:00`,
+            temperature: index === 11 ? 14 : 8 + index / 3,
+            windSpeed: 9,
+            windGusts: 12,
+          })),
+        ],
+        daily: timelinePayload.daily.map((day) =>
+          day.date === "2026-04-16"
+            ? {
+                ...day,
+                temperatureMax: 16,
+                temperatureMin: 8,
+              }
+            : day,
+        ),
+      }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+
+    const datePicker = await view.findByRole("button", { name: "Choose forecast date" });
+    fireEvent.click(datePicker);
+
+    expect(await view.findByRole("dialog", { name: "Forecast dates" })).toBeTruthy();
+    expect(view.getByRole("button", { name: /History Thu, Apr 9/i })).toBeTruthy();
+    expect(view.getByRole("button", { name: /Forecast Wed, Apr 22/i })).toBeTruthy();
+
+    fireEvent.click(view.getByRole("button", { name: /Forecast Thu, Apr 16/i }));
+
+    expect(document.querySelector(".hero-supporting-copy")?.textContent).toContain("Thu, Apr 16");
+    expect(document.querySelector(".temperature-value")?.textContent).toBe("14");
+    expect(document.querySelector(".hour-scrubber-tick-now")?.textContent).toBe("11:00 AM");
+
+    fireEvent.click(await view.findByRole("button", { name: "Choose forecast date" }));
+    const todayButton = view.getByRole("button", { name: /Today Wed, Apr 15/i });
+    expect(todayButton.className).toContain("today");
+    expect(todayButton.className).not.toContain("active");
     view.unmount();
   });
 
@@ -236,7 +288,7 @@ describe("App preferences", () => {
 
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
     expect(view.getByRole("heading", { name: "Not recommended", level: 3 })).toBeTruthy();
-    expect(view.getByText("Temperature")).toBeTruthy();
+    expect(view.getAllByText("Temperature").length).toBeGreaterThan(0);
     expect(view.getByText("Extreme")).toBeTruthy();
     expect(document.querySelector(".readiness-summary")?.textContent).toContain("gusts are reaching 34");
     expect(document.querySelector(".readiness-summary")?.textContent).toContain("visibility is down to 2.5 km");

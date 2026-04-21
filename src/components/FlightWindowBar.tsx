@@ -105,13 +105,22 @@ export function getHourScrubberBoundary({
   hourlyForDay,
   nextDayHourly = [],
   prevDayHourly = [],
+  centerOnCurrentTime = true,
 }: {
   hourlyForDay: WeatherSnapshot[];
   nextDayHourly?: WeatherSnapshot[];
   prevDayHourly?: WeatherSnapshot[];
+  centerOnCurrentTime?: boolean;
 }): HourScrubberBoundary {
   if (hourlyForDay.length === 0) {
     return { leftTime: null, rightTime: null };
+  }
+
+  if (!centerOnCurrentTime) {
+    return {
+      leftTime: hourlyForDay[0]?.time ?? null,
+      rightTime: hourlyForDay[Math.min(hourlyForDay.length, TOTAL_SLOTS) - 1]?.time ?? null,
+    };
   }
 
   const allEntries = buildTimelineSnapshotEntries({ hourlyForDay, nextDayHourly, prevDayHourly });
@@ -129,13 +138,19 @@ export function getHourScrubberVisibleSnapshots({
   hourlyForDay,
   nextDayHourly = [],
   prevDayHourly = [],
+  centerOnCurrentTime = true,
 }: {
   hourlyForDay: WeatherSnapshot[];
   nextDayHourly?: WeatherSnapshot[];
   prevDayHourly?: WeatherSnapshot[];
+  centerOnCurrentTime?: boolean;
 }): WeatherSnapshot[] {
   if (hourlyForDay.length === 0) {
     return [];
+  }
+
+  if (!centerOnCurrentTime) {
+    return hourlyForDay.slice(0, TOTAL_SLOTS);
   }
 
   const allEntries = buildTimelineSnapshotEntries({ hourlyForDay, nextDayHourly, prevDayHourly });
@@ -156,6 +171,7 @@ export function HourScrubber({
   onHourChange,
   onNextDayHourChange,
   onPrevDayHourChange,
+  centerOnCurrentTime = true,
 }: {
   hourlyForDay: WeatherSnapshot[];
   nextDayHourly?: WeatherSnapshot[];
@@ -165,6 +181,7 @@ export function HourScrubber({
   onHourChange: (index: number) => void;
   onNextDayHourChange?: (index: number) => void;
   onPrevDayHourChange?: (index: number) => void;
+  centerOnCurrentTime?: boolean;
 }) {
   if (hourlyForDay.length === 0) return null;
 
@@ -200,24 +217,27 @@ export function HourScrubber({
     })),
   ];
 
-  const nowMs = Date.now();
-  const nowEntry = timelineEntries.reduce((closest, entry) =>
-    Math.abs(new Date(entry.window.time).getTime() - nowMs) <
-    Math.abs(new Date(closest.window.time).getTime() - nowMs)
-      ? entry
-      : closest,
-  );
-  const nowAbsIndex = nowEntry.absIndex;
+  const nowEntry = centerOnCurrentTime
+    ? timelineEntries.reduce((closest, entry) =>
+        Math.abs(new Date(entry.window.time).getTime() - Date.now()) <
+        Math.abs(new Date(closest.window.time).getTime() - Date.now())
+          ? entry
+          : closest,
+      )
+    : null;
+  const nowAbsIndex = nowEntry?.absIndex ?? null;
 
-  // Build fixed 24-slot display centred on nowIndex
-  // Slot 0 = nowIndex - PAST_SLOTS, slot PAST_SLOTS = nowIndex, slot 23 = nowIndex + FUTURE_SLOTS
-  const slotStart = nowAbsIndex - PAST_SLOTS;
+  // Current day: center on now and allow cross-day clicks. Other dates: show the selected day from 00:00 to 23:00.
+  const slotStart = centerOnCurrentTime && nowAbsIndex !== null ? nowAbsIndex - PAST_SLOTS : 0;
 
   type Slot = { absIndex: number; window: HourWindow | null; isNextDay: boolean; isPrevDay: boolean };
   const slots: Slot[] = Array.from({ length: TOTAL_SLOTS }, (_, i) => {
     const absI = slotStart + i;
     if (absI >= 0 && absI < windows.length) {
       return { absIndex: absI, window: windows[absI], isNextDay: false, isPrevDay: false };
+    }
+    if (!centerOnCurrentTime) {
+      return { absIndex: absI, window: null, isNextDay: false, isPrevDay: false };
     }
     if (absI < 0) {
       // Underflow into previous day: absI=-1 → last hour of prev day, absI=-2 → second-last, etc.
@@ -267,10 +287,10 @@ export function HourScrubber({
     const abs = slotStart + local;
     if (abs >= 0 && abs < windows.length) {
       onHourChange(abs);
-    } else if (abs >= windows.length) {
+    } else if (centerOnCurrentTime && abs >= windows.length) {
       const nextI = abs - windows.length;
       if (nextI < nextDayWindows.length) onNextDayHourChange?.(nextI);
-    } else {
+    } else if (centerOnCurrentTime) {
       // abs < 0 → previous day
       const prevI = prevDayWindows.length + abs;
       if (prevI >= 0) onPrevDayHourChange?.(prevI);
@@ -308,14 +328,14 @@ export function HourScrubber({
       e.preventDefault();
       if (activeHourIndex < windows.length - 1) {
         onHourChange(activeHourIndex + 1);
-      } else if (nextDayWindows.length > 0) {
+      } else if (centerOnCurrentTime && nextDayWindows.length > 0) {
         onNextDayHourChange?.(0);
       }
     } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
       e.preventDefault();
       if (activeHourIndex > 0) {
         onHourChange(activeHourIndex - 1);
-      } else if (prevDayWindows.length > 0) {
+      } else if (centerOnCurrentTime && prevDayWindows.length > 0) {
         onPrevDayHourChange?.(prevDayWindows.length - 1);
       }
     }
@@ -324,7 +344,12 @@ export function HourScrubber({
   const leftWin = slots[0].window;
   const rightWin = slots[TOTAL_SLOTS - 1].window;
   const leftLabel = leftWin ? formatHourLabel(leftWin.time, hourCycle) : "—";
-  const nowLabel = formatHourLabel(nowEntry.window.time, hourCycle);
+  const middleWin = slots[PAST_SLOTS].window;
+  const middleLabel = centerOnCurrentTime && nowEntry
+    ? formatHourLabel(nowEntry.window.time, hourCycle)
+    : middleWin
+      ? formatHourLabel(middleWin.time, hourCycle)
+      : "â€”";
   const rightLabel = rightWin ? formatHourLabel(rightWin.time, hourCycle) : "—";
 
   return (
@@ -363,7 +388,7 @@ export function HourScrubber({
       >
         <div className="hour-scrubber-bar" ref={barRef}>
           {slots.map((slot, localI) => {
-            const isNow = slot.absIndex === nowAbsIndex;
+            const isNow = centerOnCurrentTime && slot.absIndex === nowAbsIndex;
             const isSelected = slot.absIndex === activeHourIndex;
             const tone = slot.window?.tone ?? "empty";
             const title = slot.window
@@ -392,7 +417,7 @@ export function HourScrubber({
 
       <div className="hour-scrubber-ticks" aria-hidden="true">
         <span>{leftLabel}</span>
-        <span className="hour-scrubber-tick-now">{nowLabel}</span>
+        <span className="hour-scrubber-tick-now">{middleLabel}</span>
         <span>{rightLabel}</span>
       </div>
     </div>

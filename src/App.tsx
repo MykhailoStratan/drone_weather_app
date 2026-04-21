@@ -57,11 +57,13 @@ const starterLocation: LocationOption = {
 const LAST_LOCATION_KEY = "skycanvas.lastLocation";
 
 type DetailView = "hourly" | "weekly" | "alerts";
+type TimelineDisplayMode = "current-window" | "full-day";
 
 function App() {
   const [selectedHourIndex, setSelectedHourIndex] = useState(-1);
   const [detailView, setDetailView] = useState<DetailView>("hourly");
   const [hourlyCardsOpen, setHourlyCardsOpen] = useState(false);
+  const [timelineDisplayMode, setTimelineDisplayMode] = useState<TimelineDisplayMode>("current-window");
   const { preferences, preferencesOpen, setPreferencesOpen, updatePreferences } = usePreferences();
   const {
     activeLocation,
@@ -139,6 +141,7 @@ function App() {
       setQuery(activeLocation.name);
       setSelectedHourIndex(-1);
       setDetailView("hourly");
+      setTimelineDisplayMode("current-window");
     }
   }, [activeLocation]);
 
@@ -178,6 +181,7 @@ function App() {
   const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
   const visibilityUnitLabel = preferences.visibilityUnit === "mi" ? "mi" : "km";
   const visibilityFactor = preferences.visibilityUnit === "mi" ? 0.000621371 : 0.001;
+  const centerTimelineOnCurrentTime = timelineDisplayMode === "current-window";
   const hourlySeries = buildHourlySeries(
     hourlyForDay.map((entry) => ({
       ...entry,
@@ -188,8 +192,14 @@ function App() {
     visibilityFactor,
   );
   const hourlyTimelineWindow = useMemo(
-    () => getHourScrubberVisibleSnapshots({ hourlyForDay, nextDayHourly, prevDayHourly }),
-    [hourlyForDay, nextDayHourly, prevDayHourly],
+    () =>
+      getHourScrubberVisibleSnapshots({
+        hourlyForDay,
+        nextDayHourly,
+        prevDayHourly,
+        centerOnCurrentTime: centerTimelineOnCurrentTime,
+      }),
+    [centerTimelineOnCurrentTime, hourlyForDay, nextDayHourly, prevDayHourly],
   );
   const hourlyTimelineSeries = buildHourlySeries(
     hourlyTimelineWindow.map((entry) => ({
@@ -217,6 +227,9 @@ function App() {
       : loadError
         ? "Forecast unavailable"
         : "Loading forecast";
+  const availableForecastDates = weather?.daily.map((day) => day.date) ?? [];
+  const forecastDateMin = availableForecastDates[0] ?? selectedDate;
+  const forecastDateMax = availableForecastDates[availableForecastDates.length - 1] ?? selectedDate;
   const resolvedWeather = weather as WeatherPayload;
   const resolvedCurrentDay = currentDay as WeatherPayload["daily"][number];
   const resolvedCurrentSnapshot = currentSnapshot as WeatherPayload["current"];
@@ -235,6 +248,20 @@ function App() {
       return findNearestSnapshotIndex(hourlyForDay);
     });
   }, [hourlyForDay]);
+
+  function selectDate(date: string, mode: TimelineDisplayMode) {
+    if (!date || !weather?.daily.some((day) => day.date === date)) return;
+
+    const nextHourlyForDay = weather.hourly.filter((entry) => entry.time.startsWith(date));
+    const nextMode = date === weather.current.time.slice(0, 10) ? "current-window" : mode;
+    setSelectedDate(date);
+    setTimelineDisplayMode(nextMode);
+    setSelectedHourIndex(
+      nextMode === "current-window"
+        ? findNearestSnapshotIndex(nextHourlyForDay)
+        : Math.min(11, Math.max(0, nextHourlyForDay.length - 1)),
+    );
+  }
 
   return (
     <main className="app-shell">
@@ -301,24 +328,29 @@ function App() {
             hourlyForDay={hourlyForDay}
             hourlyTemperature={hourlySeries.temperature}
             hourlyTimelineSeries={hourlyTimelineSeries}
+            centerTimelineOnCurrentTime={centerTimelineOnCurrentTime}
             nextDayHourly={nextDayHourly}
+            onDateChange={(date) => selectDate(date, "full-day")}
             onHourChange={setSelectedHourIndex}
             onNextDayHourChange={(nextIndex) => {
               const nextDate = nextDayHourly[0]?.time.slice(0, 10);
               if (nextDate) {
-                setSelectedDate(nextDate);
+                selectDate(nextDate, "current-window");
                 setSelectedHourIndex(nextIndex);
               }
             }}
             onPrevDayHourChange={(prevIndex) => {
               const prevDate = prevDayHourly[0]?.time.slice(0, 10);
               if (prevDate) {
-                setSelectedDate(prevDate);
+                selectDate(prevDate, "current-window");
                 setSelectedHourIndex(prevIndex);
               }
             }}
             preferences={preferences}
             prevDayHourly={prevDayHourly}
+            selectedDate={selectedDate}
+            selectableDateMax={forecastDateMax}
+            selectableDateMin={forecastDateMin}
             temperatureUnitLabel={temperatureUnitLabel}
             visibilityUnitLabel={visibilityUnitLabel}
             weather={resolvedWeather}
@@ -337,10 +369,6 @@ function App() {
             hourlyCardsOpen={hourlyCardsOpen}
             hourlyForDay={hourlyForDay}
             hourlySeries={hourlySeries}
-            onDaySelect={(date, nextHourIndex) => {
-              setSelectedDate(date);
-              setSelectedHourIndex(nextHourIndex);
-            }}
             onDetailViewChange={setDetailView}
             preferences={preferences}
             selectedDate={selectedDate}

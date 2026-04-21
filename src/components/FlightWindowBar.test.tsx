@@ -75,4 +75,35 @@ describe("HourScrubber", () => {
     expect(visibleSnapshots[11].time).toBe("2026-04-15T12:00");
     expect(visibleSnapshots[23].time).toBe("2026-04-16T00:00");
   });
+
+  it("shows the whole selected day when current-time centering is disabled", () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-04-15T12:00:00").getTime());
+
+    const hourlyForDay = Array.from({ length: 24 }, (_, index) =>
+      makeSnapshot(`2026-04-16T${String(index).padStart(2, "0")}:00`),
+    );
+
+    const visibleSnapshots = getHourScrubberVisibleSnapshots({
+      hourlyForDay,
+      centerOnCurrentTime: false,
+    });
+
+    expect(visibleSnapshots).toHaveLength(24);
+    expect(visibleSnapshots[0].time).toBe("2026-04-16T00:00");
+    expect(visibleSnapshots[11].time).toBe("2026-04-16T11:00");
+    expect(visibleSnapshots[23].time).toBe("2026-04-16T23:00");
+
+    const view = render(
+      <HourScrubber
+        hourlyForDay={hourlyForDay}
+        hourCycle="12h"
+        activeHourIndex={11}
+        centerOnCurrentTime={false}
+        onHourChange={() => {}}
+      />,
+    );
+
+    expect(view.container.querySelector(".hour-scrubber-tick-now")?.textContent).toBe("11:00 AM");
+    expect(view.container.querySelectorAll(".hour-scrubber-seg.now").length).toBe(0);
+  });
 });

@@ -739,7 +739,8 @@ input:focus-visible {
   background-image:
     radial-gradient(ellipse 80% 60% at 20% 0%, rgba(245, 183, 58, 0.05), transparent 55%);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  isolation: isolate;
 }
 
 .hero-conditions::before,
@@ -748,6 +749,7 @@ input:focus-visible {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
+  z-index: 0;
 }
 
 .hero-conditions::before {
@@ -775,7 +777,7 @@ input:focus-visible {
   gap: 1rem;
   margin-bottom: 1.35rem;
   position: relative;
-  z-index: 1;
+  z-index: 4;
 }
 
 .hero-heading {
@@ -831,6 +833,98 @@ input:focus-visible {
   letter-spacing: 0.08em;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+.summary-date-picker {
+  position: relative;
+  z-index: 30;
+}
+
+.summary-date-trigger {
+  cursor: pointer;
+  text-transform: none;
+}
+
+.summary-date-trigger:hover,
+.summary-date-trigger:focus-visible,
+.summary-date-trigger[aria-expanded="true"] {
+  border-color: var(--amber-edge);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.date-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: min(20rem, calc(100vw - 2rem));
+  padding: 0.55rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-deep);
+  border: 1px solid var(--rule-strong);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+  z-index: 40;
+}
+
+.date-popover-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.date-popover-day {
+  min-width: 0;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--rule);
+  background: var(--bg-raise);
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.date-popover-day:hover,
+.date-popover-day.active {
+  border-color: var(--amber-edge);
+  background: var(--amber-soft);
+  color: var(--text-primary);
+}
+
+.date-popover-day.today:not(.active) {
+  border-color: var(--teal-edge);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.date-popover-day.today:not(.active) span,
+.date-popover-day.today:not(.active) small {
+  color: var(--teal);
+}
+
+.date-popover-day span,
+.date-popover-day small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date-popover-day span {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.date-popover-day strong {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.78rem;
+}
+
+.date-popover-day small {
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
 }
 
 /* Hero stats -------------------------------------------------- */

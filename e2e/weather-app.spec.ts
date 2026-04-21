@@ -105,6 +105,9 @@ const alertsPayload = {
 const airspacePayload = {
   latitude: 49.2497,
   longitude: -123.1193,
+  fetchedAt: "2026-04-15T19:00:00.000Z",
+  country: "CA",
+  dataSources: ["Mock airspace"],
   features: [
     {
       id: "cyvr-controlled",
@@ -112,6 +115,7 @@ const airspacePayload = {
       icao: "CYVR",
       classification: "controlled",
       featureType: "airport",
+      source: "mock",
       latitude: 49.1947,
       longitude: -123.1792,
       distanceKm: 7.8,
@@ -125,19 +129,19 @@ const airspacePayload = {
 };
 
 async function mockWeatherApis(page: Page) {
-  await page.route("**/api/v1/weather/overview?**", async (route) => {
+  await page.route("**/api/v1/weather/overview**", async (route) => {
     await route.fulfill({ json: overviewPayload });
   });
-  await page.route("**/api/v1/weather/timeline?**", async (route) => {
+  await page.route("**/api/v1/weather/timeline**", async (route) => {
     await route.fulfill({ json: timelinePayload });
   });
-  await page.route("**/api/v1/weather/alerts?**", async (route) => {
+  await page.route("**/api/v1/weather/alerts**", async (route) => {
     await route.fulfill({ json: alertsPayload });
   });
-  await page.route("**/api/v1/airspace?**", async (route) => {
+  await page.route("**/api/v1/airspace**", async (route) => {
     await route.fulfill({ json: airspacePayload });
   });
-  await page.route("**/api/v1/locations?**", async (route) => {
+  await page.route("**/api/v1/locations**", async (route) => {
     await route.fulfill({
       json: [
         {
@@ -225,4 +229,59 @@ test("clicking the visible tomorrow hour updates the page using tomorrow snapsho
   await expect(page.locator(".readiness-summary")).toContainText("gusts are reaching 36");
   await expect(page.locator(".readiness-summary")).toContainText("visibility is down to 4.0 km");
   await expect(page.locator(".readiness-summary")).toContainText("76% rain potential");
+});
+
+test("opens the date picker and exposes the available 14-day range", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  await page.getByRole("button", { name: "Choose forecast date" }).click();
+
+  const picker = page.getByRole("dialog", { name: "Forecast dates" });
+  await expect(picker).toBeVisible();
+  await expect(picker.getByRole("button", { name: /History Thu, Apr 9/i })).toBeVisible();
+  await expect(picker.getByRole("button", { name: /Today Wed, Apr 15/i })).toBeVisible();
+  await expect(picker.getByRole("button", { name: /Forecast Wed, Apr 22/i })).toBeVisible();
+});
+
+test("choosing a future date from the date picker switches to full-day timeline mode", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  await page.getByRole("button", { name: "Choose forecast date" }).click();
+  await page.getByRole("button", { name: /Forecast Thu, Apr 16/i }).click();
+
+  await expect(page.locator(".summary-badge")).toContainText("Apr 16");
+  await expect(page.locator(".hour-scrubber-ticks span").first()).toContainText("12:00 AM");
+  await expect(page.locator(".hour-scrubber-tick-now")).toContainText("11:00 AM");
+  await expect(page.locator(".hour-scrubber-ticks span").last()).toContainText("11:00 PM");
+  await expect(page.locator(".temperature-value")).toContainText("15");
+  await expect(page.getByText("11:00 AM: 15 C")).toBeVisible();
+  await expect(page.locator(".hour-scrubber-seg.prev-day")).toHaveCount(0);
+});
+
+test("keeps today highlighted in green when another date is selected", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  await page.getByRole("button", { name: "Choose forecast date" }).click();
+  await page.getByRole("button", { name: /Forecast Thu, Apr 16/i }).click();
+  await page.getByRole("button", { name: "Choose forecast date" }).click();
+
+  const todayButton = page.getByRole("button", { name: /Today Wed, Apr 15/i });
+  await expect(todayButton).toHaveClass(/today/);
+  await expect(todayButton).not.toHaveClass(/active/);
+  await expect(todayButton).toHaveCSS("color", "rgb(48, 217, 184)");
+});
+
+test("choosing today from the date picker restores the current-hour centered timeline", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  await page.getByRole("button", { name: "Choose forecast date" }).click();
+  await page.getByRole("button", { name: /Forecast Thu, Apr 16/i }).click();
+  await expect(page.locator(".hour-scrubber-tick-now")).toContainText("11:00 AM");
+
+  await page.getByRole("button", { name: "Choose forecast date" }).click();
+  await page.getByRole("button", { name: /Today Wed, Apr 15/i }).click();
+
+  await expect(page.locator(".summary-badge")).toContainText("Apr 15");
+  await expect(page.locator(".hour-scrubber-tick-now")).toContainText("12:00 PM");
+  await expect(page.locator(".hour-scrubber-seg.next-day").first()).toBeVisible();
 });
