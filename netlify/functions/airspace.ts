@@ -34,7 +34,7 @@ function parseCoordinate(value: string | null, label: "lat" | "lng") {
 }
 
 function cacheKey(lat: number, lng: number, country: string) {
-  return `airspace:v3:${country}:${lat.toFixed(CACHE_COORD_PRECISION)}:${lng.toFixed(CACHE_COORD_PRECISION)}`;
+  return `airspace:v4:${country}:${lat.toFixed(CACHE_COORD_PRECISION)}:${lng.toFixed(CACHE_COORD_PRECISION)}`;
 }
 
 export default async (req: Request) => {

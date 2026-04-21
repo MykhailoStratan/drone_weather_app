@@ -46,7 +46,8 @@ describe("fetchOpenAipAirspace", () => {
     expect(features[0]).toMatchObject({
       id: "airspace-1",
       name: "Vancouver CTR",
-      featureType: "ctr",
+      featureType: "class_d",
+      icaoClass: "D",
       classification: "controlled",
       altitudeUpperFt: 2500,
       source: "openaip",

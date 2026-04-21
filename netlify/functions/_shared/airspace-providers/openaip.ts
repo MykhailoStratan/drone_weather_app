@@ -3,6 +3,7 @@ import type {
   AirspaceFeature,
   AirspaceFeatureType,
   AirspaceGeometry,
+  IcaoAirspaceClass,
 } from "../../../../packages/weather-domain/src/types";
 import {
   bearingDeg,
@@ -40,10 +41,23 @@ type OpenAIPResponse = {
 };
 
 const ICAO_CLASS_LABELS: Record<number, AirspaceFeatureType> = {
+  0: "class_a",
   1: "class_b",
   2: "class_c",
   3: "class_d",
   4: "class_e",
+  5: "class_f",
+  6: "class_g",
+};
+
+const ICAO_CLASS_VALUES: Record<number, IcaoAirspaceClass> = {
+  0: "A",
+  1: "B",
+  2: "C",
+  3: "D",
+  4: "E",
+  5: "F",
+  6: "G",
 };
 
 function toFeet(value: number, unit: number | undefined): number {
@@ -66,13 +80,14 @@ function classifyOpenAip(icaoClass: number | undefined, type: number): AirspaceC
 }
 
 function featureTypeFor(icaoClass: number | undefined, type: number): AirspaceFeatureType {
+  if (icaoClass !== undefined && ICAO_CLASS_LABELS[icaoClass]) return ICAO_CLASS_LABELS[icaoClass];
   if (type === 1) return "restricted";
   if (type === 2) return "danger";
   if (type === 3) return "prohibited";
   if (type === 4) return "ctr";
   if (type === 17) return "alert";
   if (type === 18) return "warning";
-  return icaoClass !== undefined ? ICAO_CLASS_LABELS[icaoClass] ?? "restricted" : "restricted";
+  return "restricted";
 }
 
 function isLngLat(value: unknown): value is [number, number] {
@@ -159,6 +174,7 @@ export async function fetchOpenAipAirspace(
         latitude: centroid.lat,
         longitude: centroid.lng,
         geometry,
+        icaoClass: item.icaoClass !== undefined ? ICAO_CLASS_VALUES[item.icaoClass] : undefined,
         classification,
         zoneRadiusKm: polygonApproxRadiusKm(geometry),
         distanceKm: distanceKmToGeometry(lat, lng, geometry),

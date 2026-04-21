@@ -28,10 +28,13 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
   military: "M",
   restricted: "R",
   danger: "D",
+  class_a: "A",
   class_b: "B",
   class_c: "C",
   class_d: "D",
   class_e: "E",
+  class_f: "F",
+  class_g: "G",
   ctr: "C",
   cya: "A",
   cyr: "R",
@@ -43,21 +46,127 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
 };
 
 const TFR_COLOR = { fill: "rgba(168, 85, 247, 0.12)", stroke: "#a855f7" };
-const AIRSPACE_CLASS_ORDER: AirspaceFeature["classification"][] = [
-  "controlled",
-  "advisory",
+const AIRSPACE_FILTER_ORDER = [
+  "class_a",
+  "class_b",
+  "class_c",
+  "class_d",
+  "class_e",
+  "class_f",
+  "class_g",
+  "ctr",
   "restricted",
   "danger",
   "military",
-];
+  "airport",
+  "helipad",
+  "advisory",
+] as const;
 
-function defaultClassVisibility(): Record<AirspaceFeature["classification"], boolean> {
+type AirspaceFilterKey = (typeof AIRSPACE_FILTER_ORDER)[number];
+
+const AIRSPACE_FILTER_LABELS: Record<AirspaceFilterKey, string> = {
+  class_a: "Class A",
+  class_b: "Class B",
+  class_c: "Class C",
+  class_d: "Class D",
+  class_e: "Class E",
+  class_f: "Class F",
+  class_g: "Class G",
+  ctr: "CTR",
+  restricted: "Restricted",
+  danger: "Danger",
+  military: "Military",
+  airport: "Airports",
+  helipad: "Helipads",
+  advisory: "Advisory",
+};
+
+const ICAO_FILTER_KEYS: Record<NonNullable<AirspaceFeature["icaoClass"]>, AirspaceFilterKey> = {
+  A: "class_a",
+  B: "class_b",
+  C: "class_c",
+  D: "class_d",
+  E: "class_e",
+  F: "class_f",
+  G: "class_g",
+};
+
+const FEATURE_FILTER_KEYS: Partial<Record<AirspaceFeature["featureType"], AirspaceFilterKey>> = {
+  class_a: "class_a",
+  class_b: "class_b",
+  class_c: "class_c",
+  class_d: "class_d",
+  class_e: "class_e",
+  class_f: "class_f",
+  class_g: "class_g",
+  ctr: "ctr",
+  restricted: "restricted",
+  cyr: "restricted",
+  prohibited: "restricted",
+  danger: "danger",
+  cyd: "danger",
+  military: "military",
+  moa: "military",
+  warning: "military",
+  airport: "airport",
+  aerodrome: "airport",
+  helipad: "helipad",
+  cya: "advisory",
+  alert: "advisory",
+};
+
+const FILTER_TONE_BY_KEY: Record<AirspaceFilterKey, AirspaceFeature["classification"] | "airport" | "tfr"> = {
+  class_a: "controlled",
+  class_b: "controlled",
+  class_c: "controlled",
+  class_d: "controlled",
+  class_e: "advisory",
+  class_f: "advisory",
+  class_g: "advisory",
+  ctr: "controlled",
+  restricted: "restricted",
+  danger: "danger",
+  military: "military",
+  airport: "airport",
+  helipad: "advisory",
+  advisory: "advisory",
+};
+
+const CLASS_FEATURE_TYPES = new Set<AirspaceFeature["featureType"]>([
+  "class_a",
+  "class_b",
+  "class_c",
+  "class_d",
+  "class_e",
+  "class_f",
+  "class_g",
+]);
+
+function filterKeyForFeature(feature: AirspaceFeature): AirspaceFilterKey {
+  if (feature.icaoClass) return ICAO_FILTER_KEYS[feature.icaoClass];
+  const featureKey = FEATURE_FILTER_KEYS[feature.featureType];
+  if (featureKey) return featureKey;
+  if (feature.classification === "controlled") return "ctr";
+  return feature.classification;
+}
+
+function defaultFilterVisibility(): Record<AirspaceFilterKey, boolean> {
   return {
-    controlled: true,
-    advisory: true,
+    class_a: true,
+    class_b: true,
+    class_c: true,
+    class_d: true,
+    class_e: true,
+    class_f: true,
+    class_g: true,
+    ctr: true,
     restricted: true,
     danger: true,
     military: true,
+    airport: true,
+    helipad: true,
+    advisory: true,
   };
 }
 
@@ -78,10 +187,13 @@ function featureTypeLabel(type: AirspaceFeature["featureType"]): string {
     military: "Military Airfield",
     restricted: "Restricted Area",
     danger: "Danger Area",
+    class_a: "Class A Airspace",
     class_b: "Class B Airspace",
     class_c: "Class C Airspace",
     class_d: "Class D Airspace",
     class_e: "Class E Airspace",
+    class_f: "Class F Airspace",
+    class_g: "Class G Airspace",
     ctr: "Control Zone (CTR)",
     cya: "Class F Advisory (CYA)",
     cyr: "Restricted Area (CYR)",
@@ -146,7 +258,9 @@ function buildFeaturePopupContent(feature: AirspaceFeature) {
 
   const type = document.createElement("span");
   type.style.opacity = "0.7";
-  type.textContent = featureTypeLabel(feature.featureType);
+  type.textContent = feature.icaoClass
+    ? `${featureTypeLabel(feature.featureType)} · Class ${feature.icaoClass}`
+    : featureTypeLabel(feature.featureType);
   wrapper.appendChild(type);
   wrapper.appendChild(document.createElement("br"));
 
@@ -397,11 +511,11 @@ export function AirspacePanel({
 }) {
   const features = airspace?.features ?? [];
   const tfrs = airspace?.tfrs ?? [];
-  const [visibleClasses, setVisibleClasses] = useState(defaultClassVisibility);
+  const [visibleFilters, setVisibleFilters] = useState(defaultFilterVisibility);
   const [showTfrs, setShowTfrs] = useState(true);
   const visibleFeatures = useMemo(
-    () => features.filter((feature) => visibleClasses[feature.classification]),
-    [features, visibleClasses],
+    () => features.filter((feature) => visibleFilters[filterKeyForFeature(feature)]),
+    [features, visibleFilters],
   );
   const visibleTfrs = showTfrs ? tfrs : [];
   const openAipFeatures = visibleFeatures.filter((feature) => feature.source === "openaip");
@@ -448,7 +562,7 @@ export function AirspacePanel({
   const mapLat = airspace?.latitude ?? latitude;
   const mapLng = airspace?.longitude ?? longitude;
 
-  const presentClassifications = new Set(features.map((f) => f.classification));
+  const presentFilters = new Set(features.map(filterKeyForFeature));
   const visibleClassifications = new Set(visibleFeatures.map((f) => f.classification));
 
   return (
@@ -469,19 +583,19 @@ export function AirspacePanel({
 
       {mapLat !== undefined && (
         <div className="airspace-filter-bar" aria-label="Airspace class filters">
-          {AIRSPACE_CLASS_ORDER.filter((classification) => presentClassifications.has(classification)).map((classification) => (
-            <label key={classification} className={`airspace-class-toggle ${classification}`}>
+          {AIRSPACE_FILTER_ORDER.filter((filterKey) => presentFilters.has(filterKey)).map((filterKey) => (
+            <label key={filterKey} className={`airspace-class-toggle ${FILTER_TONE_BY_KEY[filterKey]}`}>
               <input
                 type="checkbox"
-                checked={visibleClasses[classification]}
+                checked={visibleFilters[filterKey]}
                 onChange={() => {
-                  setVisibleClasses((current) => ({
+                  setVisibleFilters((current) => ({
                     ...current,
-                    [classification]: !current[classification],
+                    [filterKey]: !current[filterKey],
                   }));
                 }}
               />
-              <span>{classificationLabel(classification)}</span>
+              <span>{AIRSPACE_FILTER_LABELS[filterKey]}</span>
             </label>
           ))}
           {tfrs.length > 0 && (
@@ -543,6 +657,7 @@ export function AirspacePanel({
                 <strong>{feature.name}</strong>
                 <span className="airspace-icao">
                   {featureTypeLabel(feature.featureType)}
+                  {feature.icaoClass && !CLASS_FEATURE_TYPES.has(feature.featureType) ? ` · Class ${feature.icaoClass}` : ""}
                   {feature.icao ? ` · ${feature.icao}` : ""}
                   {feature.source === "openaip" ? " · OpenAIP" : ""}
                 </span>
