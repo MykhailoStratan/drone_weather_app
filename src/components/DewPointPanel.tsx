@@ -46,7 +46,7 @@ export function DewPointPanel({
   return (
     <div className="dew-point-card">
       <div className="dew-point-header">
-        <p className="section-label">Dew point · condensation</p>
+        <p className="section-label">Dew Point · Condensation</p>
         <span className={`dew-point-badge ${risk}`}>{RISK_LABEL[risk]}</span>
       </div>
 

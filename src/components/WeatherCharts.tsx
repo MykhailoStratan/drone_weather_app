@@ -166,7 +166,7 @@ export function TemperatureCurveChart({
   if (!points.length) {
     return (
       <ChartShell
-        eyebrow="Hourly arc"
+        eyebrow="Hourly Arc"
         title={compact ? "Temperature" : "Temperature curve"}
         subtitle="Waiting for hourly data"
         compact={compact}
@@ -200,7 +200,7 @@ export function TemperatureCurveChart({
 
   return (
     <ChartShell
-      eyebrow="Hourly arc"
+      eyebrow="Hourly Arc"
       title={compact ? "Temperature" : "Temperature curve"}
       subtitle={subtitle}
       compact={compact}
@@ -310,7 +310,7 @@ export function PrecipitationOverlayChart({
   if (!points.length) {
     return (
       <ChartShell
-        eyebrow="Hourly rain"
+        eyebrow="Hourly Rain"
         title={compact ? "Rain" : "Precipitation + probability"}
         subtitle="Waiting for hourly data"
         compact={compact}
@@ -347,7 +347,7 @@ export function PrecipitationOverlayChart({
 
   return (
     <ChartShell
-      eyebrow="Hourly rain"
+      eyebrow="Hourly Rain"
       title={compact ? "Rain" : "Precipitation + probability"}
       subtitle={subtitle}
       compact={compact}
@@ -455,7 +455,7 @@ export function WindDirectionChart({
 
   return (
     <ChartShell
-      eyebrow="Wind field"
+      eyebrow="Wind Field"
       title="Speed + direction"
       subtitle={`${min} to ${max} ${units}`}
       tooltip={
@@ -570,7 +570,7 @@ export function WeeklyRangeChart({
 
   return (
     <ChartShell
-      eyebrow="Next seven days"
+      eyebrow="Next Seven Days"
       title="Min/max temperature range"
       subtitle={`${Math.round(minValue)} to ${Math.round(maxValue)} ${units}`}
       tooltip={
@@ -658,7 +658,7 @@ export function DaylightBandChart({
 
   return (
     <ChartShell
-      eyebrow="Solar window"
+      eyebrow="Solar Window"
       title="Sunrise / sunset"
       subtitle={`${formatTime(sunrise, hourCycle)} to ${formatTime(sunset, hourCycle)}`}
     >
@@ -793,7 +793,7 @@ export function CloudVisibilityChart({
   if (!points.length) {
     return (
       <ChartShell
-        eyebrow="Sky clarity"
+        eyebrow="Sky Clarity"
         title="Cloud cover + visibility"
         subtitle="Waiting for hourly data"
         compact={compact}
@@ -822,7 +822,7 @@ export function CloudVisibilityChart({
 
   return (
     <ChartShell
-      eyebrow="Sky clarity"
+      eyebrow="Sky Clarity"
       title="Cloud cover + visibility"
       subtitle={
         compact && activePoint
@@ -923,7 +923,7 @@ export function AlertTimelineChart({ alerts, hourCycle }: AlertTimelineChartProp
 
   if (!timedAlerts.length) {
     return (
-      <ChartShell eyebrow="Alert timing" title="Active severe weather window" subtitle="Timing unavailable from the upstream alert feed">
+      <ChartShell eyebrow="Alert Timing" title="Active severe weather window" subtitle="Timing unavailable from the upstream alert feed">
         <div className="chart-empty-state">Active alerts exist, but this feed did not include exact start and end times.</div>
       </ChartShell>
     );
@@ -945,7 +945,7 @@ export function AlertTimelineChart({ alerts, hourCycle }: AlertTimelineChartProp
 
   return (
     <ChartShell
-      eyebrow="Alert timing"
+      eyebrow="Alert Timing"
       title="Active severe weather window"
       subtitle={`${formatTime(min.toISOString(), hourCycle)} to ${formatTime(max.toISOString(), hourCycle)}`}
     >

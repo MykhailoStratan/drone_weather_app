@@ -80,7 +80,7 @@ export function BatteryThermalPanel({ temperatureCelsius }: { temperatureCelsius
   return (
     <div className="battery-thermal-card">
       <div className="battery-thermal-header">
-        <p className="section-label">Battery thermal performance</p>
+        <p className="section-label">Battery Thermal Performance</p>
         <span className={`battery-thermal-badge ${estimate.tone}`}>
           {estimate.efficiencyPct}% capacity
         </span>

@@ -54,15 +54,16 @@ const TABS: TabDef[] = [
     label: "Drone",
     icon: (
       <TabIcon>
-        <circle cx="6" cy="6" r="2.5" />
-        <circle cx="18" cy="6" r="2.5" />
-        <circle cx="6" cy="18" r="2.5" />
-        <circle cx="18" cy="18" r="2.5" />
-        <rect x="9" y="9" width="6" height="6" rx="1" />
-        <line x1="8" y1="8" x2="6" y2="6" />
-        <line x1="16" y1="8" x2="18" y2="6" />
-        <line x1="8" y1="16" x2="6" y2="18" />
-        <line x1="16" y1="16" x2="18" y2="18" />
+        <line x1="12" y1="12" x2="5" y2="5" />
+        <line x1="12" y1="12" x2="19" y2="5" />
+        <line x1="12" y1="12" x2="5" y2="19" />
+        <line x1="12" y1="12" x2="19" y2="19" />
+        <circle cx="5" cy="5" r="2.4" />
+        <circle cx="19" cy="5" r="2.4" />
+        <circle cx="5" cy="19" r="2.4" />
+        <circle cx="19" cy="19" r="2.4" />
+        <path d="M10 10h4v4h-4z" />
+        <path d="M3.4 5h3.2M17.4 5h3.2M3.4 19h3.2M17.4 19h3.2" />
       </TabIcon>
     ),
   },
