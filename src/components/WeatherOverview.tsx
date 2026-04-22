@@ -226,7 +226,7 @@ export function WeatherOverview({
           <div className="hero-side-stack">
             <div className="wind-readiness-card">
               <div className="wind-spotlight">
-                <p className="section-label">Wind direction</p>
+                <p className="section-label">Wind Direction</p>
                 <div className="wind-visual">
                   <div className="wind-arrow-ring">
                     <span
@@ -264,7 +264,7 @@ export function WeatherOverview({
             <div className={`wind-compact-row${currentSnapshot.windSpeed80m === undefined ? " no-aloft" : ""}`}>
               {currentSnapshot.windSpeed80m !== undefined && (
                 <div className="wind-aloft-card">
-                  <p className="section-label">Wind aloft</p>
+                  <p className="section-label">Wind Aloft</p>
                   <div className="wind-aloft-levels">
                     <WindAloftLevel
                       label="10 m"
@@ -356,23 +356,24 @@ function WindAloftLevel({
   unitLabel: string;
 }) {
   if (speed === undefined) return null;
-  const hasAdditionalInfo = gusts !== undefined;
   const shear = gusts !== undefined && speed > 0 ? Math.round(((gusts - speed) / speed) * 100) : 0;
   const shearTone = shear > 40 ? "risk" : shear > 20 ? "caution" : "good";
+  const directionLabel = direction !== undefined ? windDirectionLabel(direction) : "Variable";
   return (
     <div className="wind-aloft-level">
       <span className="wind-aloft-alt">{label}</span>
-      <span className="wind-aloft-speed">{windSpeedDisplay(speed, unit)} {unitLabel}</span>
-      {hasAdditionalInfo ? (
-        <>
-          {gusts !== undefined && (
-            <span className={`wind-aloft-gusts ${shearTone}`}>↑{windSpeedDisplay(gusts, unit)}</span>
-          )}
-          {direction !== undefined && (
-            <span className="wind-aloft-dir">{windDirectionLabel(direction)}</span>
-          )}
-        </>
-      ) : null}
+      <span
+        className="wind-aloft-vector"
+        style={direction !== undefined ? { transform: `rotate(${direction}deg)` } : undefined}
+        aria-hidden="true"
+      />
+      <span className="wind-aloft-reading">
+        <span className="wind-aloft-speed">{windSpeedDisplay(speed, unit)} {unitLabel}</span>
+        <span className="wind-aloft-dir">{directionLabel}</span>
+        {gusts !== undefined && (
+          <span className={`wind-aloft-gusts ${shearTone}`}>Gust {windSpeedDisplay(gusts, unit)}</span>
+        )}
+      </span>
     </div>
   );
 }
@@ -442,7 +443,7 @@ function CompactSolarWindow({
   return (
     <div className="compact-solar-window" aria-label="Solar window">
       <div className="compact-solar-header">
-        <span className="section-label">Solar window</span>
+        <span className="section-label">Solar Window</span>
         <strong>
           {formatTime(sunrise, hourCycle)} - {formatTime(sunset, hourCycle)}
         </strong>

@@ -206,7 +206,7 @@ describe("App preferences", () => {
     expect(document.querySelector(".temperature-value")?.textContent).toBe("4");
 
     fireEvent.click(view.getByRole("tab", { name: "Drone" }));
-    expect(view.getByText("Battery thermal performance")).toBeTruthy();
+    expect(view.getByText("Battery Thermal Performance")).toBeTruthy();
 
     fireEvent.click(view.getByRole("tab", { name: "Now" }));
     expect(await view.findByRole("slider", { name: "Select forecast hour" })).toBeTruthy();
@@ -280,7 +280,7 @@ describe("App preferences", () => {
     view.unmount();
   });
 
-  it("shows wind aloft right-side details only when gust data exists", async () => {
+  it("groups wind aloft readings and keeps gust data optional", async () => {
     installFetchMock({
       overview: createResponse({
         ...overviewPayload,
@@ -302,10 +302,10 @@ describe("App preferences", () => {
     expect(levels).toHaveLength(3);
     expect(document.querySelectorAll(".wind-aloft-gusts")).toHaveLength(1);
     expect(levels[0]?.querySelector(".wind-aloft-gusts")?.textContent).toContain("8");
-    expect(document.querySelectorAll(".wind-aloft-dir")).toHaveLength(1);
+    expect(document.querySelectorAll(".wind-aloft-dir")).toHaveLength(3);
+    expect(levels[1]?.querySelector(".wind-aloft-dir")?.textContent).toBe("SE");
     expect(levels[1]?.querySelector(".wind-aloft-gusts")).toBeNull();
-    expect(levels[1]?.querySelector(".wind-aloft-dir")).toBeNull();
-    expect(levels[2]?.querySelector(".wind-aloft-dir")).toBeNull();
+    expect(levels[2]?.querySelector(".wind-aloft-dir")?.textContent).toBe("Variable");
     expect(levels[2]?.querySelector(".wind-aloft-gusts")).toBeNull();
     view.unmount();
   });

@@ -51,7 +51,7 @@ export function FlightReadinessPanel({
     <div className="readiness-panel">
       <div className="readiness-header">
         <div>
-          <p className="section-label">Flight readiness</p>
+          <p className="section-label">Flight Readiness</p>
           <h3>{overallLabel}</h3>
         </div>
         <div className={`readiness-score ${tone}`}>

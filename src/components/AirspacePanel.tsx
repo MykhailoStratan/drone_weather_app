@@ -599,7 +599,7 @@ export function AirspacePanel({
   return (
     <div className="airspace-panel">
       <div className="airspace-panel-header">
-        <p className="section-label">Airspace · restrictions</p>
+        <p className="section-label">Airspace · Restrictions</p>
         <span className={`airspace-status-badge ${statusClass}`}>{statusText}</span>
       </div>
 

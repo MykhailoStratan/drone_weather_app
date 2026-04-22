@@ -170,8 +170,8 @@ test("loads the Now tab weather dashboard with mocked data", async ({ page }) =>
   await page.goto(locationQuery);
 
   await expect(page.getByRole("heading", { name: "Clear sky", level: 2 })).toBeVisible();
-  await expect(page.getByText("Wind direction")).toBeVisible();
-  await expect(page.getByText("Flight readiness")).toBeVisible();
+  await expect(page.getByText("Wind Direction")).toBeVisible();
+  await expect(page.getByText("Flight Readiness")).toBeVisible();
   await expect(page.getByRole("slider", { name: "Select forecast hour" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Now" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Map" })).toBeVisible();
@@ -190,9 +190,9 @@ test("supports preferences and the Map and Drone tabs", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
   await page.getByRole("tab", { name: "Drone" }).click();
-  await expect(page.getByText("Battery thermal performance")).toBeVisible();
+  await expect(page.getByText("Battery Thermal Performance")).toBeVisible();
   await expect(page.getByText("Dew point", { exact: true })).toBeVisible();
-  await expect(page.getByText("Density altitude")).toBeVisible();
+  await expect(page.getByText("Density Altitude")).toBeVisible();
 
   await page.getByRole("tab", { name: "Map" }).click();
   await expect(page.locator(".airspace-panel-header")).toContainText("Airspace");

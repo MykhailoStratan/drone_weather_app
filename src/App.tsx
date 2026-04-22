@@ -195,7 +195,7 @@ function App() {
       {message && (
         <section className="status-banner" role="status">
           <div>
-            <p className="section-label">Status update</p>
+            <p className="section-label">Status Update</p>
             <strong>{message}</strong>
           </div>
         </section>
@@ -299,7 +299,7 @@ function App() {
       ) : loadError ? (
         <section className="loading-card error-card">
           <div className="error-card-copy">
-            <p className="section-label">Overview failed</p>
+            <p className="section-label">Overview Failed</p>
             <h2>Forecast unavailable right now</h2>
             <p>{loadError.message}</p>
           </div>

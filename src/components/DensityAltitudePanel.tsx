@@ -46,7 +46,7 @@ export function DensityAltitudePanel({
   return (
     <div className="density-alt-card">
       <div className="density-alt-header">
-        <p className="section-label">Density altitude</p>
+        <p className="section-label">Density Altitude</p>
         <span className={`density-alt-badge ${t}`}>
           {densityAltM >= 0 ? "+" : ""}{Math.round(densityAltM)} m
         </span>
