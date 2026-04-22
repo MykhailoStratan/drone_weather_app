@@ -39,6 +39,8 @@ function App() {
   const {
     activeLocation,
     dataStatus,
+    detailsLoading,
+    detailsStatus,
     loadError,
     message,
     requestedLocation,
@@ -74,7 +76,7 @@ function App() {
     setLoading,
     setMessage,
   });
-  const { airspace, airspaceLoading } = useAirspace(activeLocation);
+  const { airspace, airspaceError, airspaceLoading } = useAirspace(activeLocation);
   const { currentDay, hourlyForDay, nextDayHourly, prevDayHourly } = useDailyWeatherSlice(weather, selectedDate);
 
   useEffect(() => {
@@ -251,6 +253,8 @@ function App() {
             activeTab={activeTab}
             currentDay={weatherLayout.currentDay}
             currentSnapshot={weatherLayout.currentSnapshot}
+            detailsLoading={detailsLoading}
+            detailsStatus={detailsStatus}
             hourlyForDay={hourlyForDay}
             hourlyTimelineSeries={hourlyTimelineSeries}
             centerTimelineOnCurrentTime={centerTimelineOnCurrentTime}
@@ -286,6 +290,7 @@ function App() {
                 latitude={activeLocation?.latitude}
                 longitude={activeLocation?.longitude}
                 airspace={airspace}
+                error={airspaceError}
                 loading={airspaceLoading}
               />
             </section>

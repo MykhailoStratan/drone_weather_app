@@ -1323,6 +1323,26 @@ input:focus-visible {
   border: 1px solid var(--rule);
 }
 
+.partial-forecast-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--rule);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.partial-forecast-status.warning {
+  background: var(--caution-soft);
+  border-color: var(--caution-edge);
+  color: var(--text-primary);
+}
+
 /* Wind compass ----------------------------------------------- */
 .wind-spotlight {
   display: flex;
@@ -3037,6 +3057,39 @@ input:focus-visible {
   height: 260px;
 }
 
+.airspace-map-skeleton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+
+.airspace-map-skeleton-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule) 1px, transparent 1px),
+    radial-gradient(circle at 52% 48%, var(--teal-soft), transparent 32%);
+  background-size: 38px 38px, 38px 38px, 100% 100%;
+}
+
+.airspace-map-skeleton-pulse {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-raise) 88%, transparent);
+  border: 1px solid var(--rule-strong);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
 .leaflet-container {
   background: var(--bg-deep);
   font-family: var(--font-display);
@@ -3208,6 +3261,11 @@ input:focus-visible {
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.airspace-source-status-warning {
+  color: var(--caution);
+  background: var(--caution-soft);
 }
 
 .airspace-loading {

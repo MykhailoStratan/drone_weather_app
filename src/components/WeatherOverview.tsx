@@ -7,6 +7,7 @@ import { getHourScrubberBoundary, HourScrubber } from "./FlightWindowBar";
 import { IconCloud, IconEye, IconGauge, IconRain, IconSunrise, IconSunset } from "./Icons";
 import type { AppTab } from "./TabBar";
 import type { Preferences } from "../hooks/usePreferences";
+import type { WeatherDetailStatus } from "../hooks/useWeatherData";
 import { formatDayLabel, formatTime, temperatureDisplay, visibilityDisplay, weatherLabel, windDirectionLabel, windSpeedDisplay } from "../lib/format";
 import type { HourlyChartSeries } from "../lib/chartUtils";
 import type { DailyWeather, WeatherPayload, WeatherSnapshot } from "../types";
@@ -24,6 +25,8 @@ type WeatherOverviewProps = {
   centerTimelineOnCurrentTime: boolean;
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
+  detailsLoading: boolean;
+  detailsStatus: WeatherDetailStatus;
   hourlyForDay: WeatherSnapshot[];
   hourlyTimelineSeries: HourlyChartSeries;
   nextDayHourly: WeatherSnapshot[];
@@ -46,6 +49,8 @@ export function WeatherOverview({
   centerTimelineOnCurrentTime,
   currentDay,
   currentSnapshot,
+  detailsLoading,
+  detailsStatus,
   hourlyForDay,
   hourlyTimelineSeries,
   nextDayHourly,
@@ -190,6 +195,10 @@ export function WeatherOverview({
               hourCycle={preferences.hourCycle}
               leftTime={solarBoundary.leftTime}
               rightTime={solarBoundary.rightTime}
+            />
+            <PartialForecastStatus
+              detailsLoading={detailsLoading}
+              detailsStatus={detailsStatus}
             />
             <Suspense fallback={<div className="compact-timeline-charts-loading" />}>
               <div className="compact-timeline-charts">
@@ -374,6 +383,37 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
       <span className="metric-icon">{icon}</span>
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function PartialForecastStatus({
+  detailsLoading,
+  detailsStatus,
+}: {
+  detailsLoading: boolean;
+  detailsStatus: WeatherDetailStatus;
+}) {
+  const messages = [
+    detailsStatus.timeline === "error"
+      ? (detailsStatus.timelineMessage ?? "Weather timeline is unavailable right now.")
+      : null,
+    detailsStatus.alerts === "error"
+      ? (detailsStatus.alertsMessage ?? "Weather alerts are unavailable right now.")
+      : null,
+  ].filter((message): message is string => Boolean(message));
+
+  if (!detailsLoading && messages.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={messages.length > 0 ? "partial-forecast-status warning" : "partial-forecast-status"} role="status">
+      {messages.length > 0 ? (
+        messages.map((message) => <span key={message}>{message}</span>)
+      ) : (
+        <span>Checking hourly forecast and alerts...</span>
+      )}
     </div>
   );
 }

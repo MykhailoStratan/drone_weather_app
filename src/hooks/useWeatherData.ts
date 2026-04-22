@@ -8,10 +8,33 @@ export type DataStatus = {
   source: "cached" | "live";
 };
 
+export type DetailLoadState = "idle" | "loading" | "ready" | "error";
+
+export type WeatherDetailStatus = {
+  timeline: DetailLoadState;
+  alerts: DetailLoadState;
+  timelineMessage?: string;
+  alertsMessage?: string;
+};
+
 type UseWeatherDataArgs = {
   lastLocationKey: string;
   onOverviewLoaded?: (overview: WeatherOverviewResponse, location: LocationOption) => void;
 };
+
+const idleDetailStatus: WeatherDetailStatus = {
+  timeline: "idle",
+  alerts: "idle",
+};
+
+const loadingDetailStatus: WeatherDetailStatus = {
+  timeline: "loading",
+  alerts: "loading",
+};
+
+function messageFromRejection(result: PromiseRejectedResult, fallback: string) {
+  return result.reason instanceof Error ? result.reason.message : fallback;
+}
 
 export function useWeatherData({
   lastLocationKey,
@@ -22,6 +45,7 @@ export function useWeatherData({
   const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsStatus, setDetailsStatus] = useState<WeatherDetailStatus>(idleDetailStatus);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState<{ message: string; location: LocationOption } | null>(null);
   const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
@@ -37,6 +61,7 @@ export function useWeatherData({
     setSelectedDate(cachedOverview.overview.today.date);
     setActiveLocation(cachedOverview.location);
     setDataStatus({ savedAt: cachedOverview.savedAt, source: "cached" });
+    setDetailsStatus(idleDetailStatus);
     setLoading(false);
   }
 
@@ -46,6 +71,7 @@ export function useWeatherData({
     setRequestedLocation(location);
     setLoading(true);
     setDetailsLoading(true);
+    setDetailsStatus(loadingDetailStatus);
     setMessage("");
     setLoadError(null);
 
@@ -97,19 +123,24 @@ export function useWeatherData({
         });
 
         if (timelineResult.status === "rejected") {
-          setMessage(
-            timelineResult.reason instanceof Error
-              ? timelineResult.reason.message
-              : "Some forecast details are unavailable right now.",
-          );
-        }
-
-        if (alertsResult.status === "rejected" && timelineResult.status !== "rejected") {
-          setMessage(
-            alertsResult.reason instanceof Error
-              ? alertsResult.reason.message
-              : "Weather alerts are unavailable right now.",
-          );
+          setDetailsStatus({
+            timeline: "error",
+            alerts: alertsResult.status === "fulfilled" ? "ready" : "error",
+            timelineMessage: messageFromRejection(timelineResult, "Weather timeline is unavailable right now."),
+            alertsMessage:
+              alertsResult.status === "rejected"
+                ? messageFromRejection(alertsResult, "Weather alerts are unavailable right now.")
+                : undefined,
+          });
+        } else {
+          setDetailsStatus({
+            timeline: "ready",
+            alerts: alertsResult.status === "fulfilled" ? "ready" : "error",
+            alertsMessage:
+              alertsResult.status === "rejected"
+                ? messageFromRejection(alertsResult, "Weather alerts are unavailable right now.")
+                : undefined,
+          });
         }
 
         setDetailsLoading(false);
@@ -127,6 +158,7 @@ export function useWeatherData({
       }
       setLoading(false);
       setDetailsLoading(false);
+      setDetailsStatus(idleDetailStatus);
     }
   }
 
@@ -142,6 +174,7 @@ export function useWeatherData({
     activeLocation,
     dataStatus,
     detailsLoading,
+    detailsStatus,
     loadError,
     loading,
     message,
