@@ -99,7 +99,6 @@ export function WeatherOverview({
       <article className="primary-panel hero-conditions">
         <div className="hero-topline">
           <div className="hero-heading">
-            <p className="section-label">{weather.locationLabel}</p>
             <div className="hero-condition-row">
               <span className="hero-condition-icon">{weatherIcon}</span>
               <div>
@@ -118,7 +117,16 @@ export function WeatherOverview({
               aria-expanded={calendarOpen}
               onClick={() => setCalendarOpen((open) => !open)}
             >
-              {formatDayLabel(currentDay.date)}
+              <span>{formatDayLabel(currentDay.date)}</span>
+              <svg
+                className="summary-date-caret"
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                aria-hidden="true"
+              >
+                <path d="M2 3.5 L5 6.5 L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
             {calendarOpen && (
               <div className="date-popover" role="dialog" aria-label="Forecast dates">
