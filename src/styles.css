@@ -964,6 +964,12 @@ input:focus-visible {
 .summary-date-trigger {
   cursor: pointer;
   text-transform: none;
+  gap: 0.45rem;
+}
+
+.summary-date-caret {
+  color: var(--text-secondary);
+  transition: transform 140ms ease, color 140ms ease;
 }
 
 .summary-date-trigger:hover,
@@ -972,6 +978,16 @@ input:focus-visible {
   border-color: var(--amber-edge);
   background: var(--amber-soft);
   color: var(--amber);
+}
+
+.summary-date-trigger:hover .summary-date-caret,
+.summary-date-trigger:focus-visible .summary-date-caret,
+.summary-date-trigger[aria-expanded="true"] .summary-date-caret {
+  color: var(--amber);
+}
+
+.summary-date-trigger[aria-expanded="true"] .summary-date-caret {
+  transform: rotate(180deg);
 }
 
 .date-popover {
