@@ -6,44 +6,15 @@ import { TabBar, type AppTab } from "./components/TabBar";
 import { WeatherOverview } from "./components/WeatherOverview";
 import { buildHourlySeries } from "./lib/chartUtils";
 import { formatSavedAtLabel, resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph } from "./lib/app-utils";
-import { formatDayLabel, temperatureDisplay, weatherLabel, windSpeedDisplay } from "./lib/format";
+import { temperatureDisplay, weatherLabel } from "./lib/format";
 import { readStoredLocation, readStoredOverview } from "./lib/storage";
 import { useAirspace } from "./hooks/useAirspace";
+import { useDailyWeatherSlice } from "./hooks/useDailyWeatherSlice";
 import { useLocationSearch } from "./hooks/useLocationSearch";
 import { usePreferences } from "./hooks/usePreferences";
+import { useUrlLocation } from "./hooks/useUrlLocation";
 import { useWeatherData } from "./hooks/useWeatherData";
-import type { LocationOption, WeatherPayload } from "./types";
-
-function coordsToId(lat: number, lon: number): number {
-  return Math.abs(Math.round(lat * 1000) * 10000 + Math.round(lon * 1000)) || 1;
-}
-
-function readLocationFromUrl(): LocationOption | null {
-  const params = new URLSearchParams(window.location.search);
-  const lat = parseFloat(params.get("lat") ?? "");
-  const lon = parseFloat(params.get("lon") ?? "");
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  return {
-    id: coordsToId(lat, lon),
-    name: params.get("name") ?? "Shared location",
-    admin1: params.get("admin1") ?? undefined,
-    country: params.get("country") ?? "Unknown",
-    latitude: lat,
-    longitude: lon,
-    timezone: params.get("tz") ?? undefined,
-  };
-}
-
-function writeLocationToUrl(location: LocationOption) {
-  const params = new URLSearchParams();
-  params.set("lat", location.latitude.toFixed(6));
-  params.set("lon", location.longitude.toFixed(6));
-  params.set("name", location.name);
-  if (location.admin1) params.set("admin1", location.admin1);
-  if (location.country) params.set("country", location.country);
-  if (location.timezone) params.set("tz", location.timezone);
-  window.history.replaceState(null, "", `?${params.toString()}`);
-}
+import type { LocationOption } from "./types";
 
 const starterLocation: LocationOption = {
   id: 1,
@@ -64,12 +35,11 @@ function App() {
   const [timelineDisplayMode, setTimelineDisplayMode] = useState<TimelineDisplayMode>("current-window");
   const [activeTab, setActiveTab] = useState<AppTab>("now");
   const { preferences, preferencesOpen, setPreferencesOpen, updatePreferences } = usePreferences();
+  const { readLocationFromUrl, writeLocationToUrl } = useUrlLocation();
   const {
     activeLocation,
     dataStatus,
-    detailsLoading,
     loadError,
-    loading,
     message,
     requestedLocation,
     selectedDate,
@@ -105,6 +75,7 @@ function App() {
     setMessage,
   });
   const { airspace, airspaceLoading } = useAirspace(activeLocation);
+  const { currentDay, hourlyForDay, nextDayHourly, prevDayHourly } = useDailyWeatherSlice(weather, selectedDate);
 
   useEffect(() => {
     const storedLocation = readStoredLocation(LAST_LOCATION_KEY);
@@ -143,28 +114,6 @@ function App() {
     }
   }, [activeLocation]);
 
-  const currentDay = useMemo(
-    () => weather?.daily.find((day) => day.date === selectedDate) ?? weather?.daily[0],
-    [weather?.daily, selectedDate],
-  );
-  const hourlyForDay = useMemo(
-    () => weather?.hourly.filter((entry) => entry.time.startsWith(selectedDate)) ?? [],
-    [weather?.hourly, selectedDate],
-  );
-  const nextDayHourly = useMemo(() => {
-    if (!selectedDate || !weather) return [];
-    const d = new Date(`${selectedDate}T00:00:00`);
-    d.setDate(d.getDate() + 1);
-    const nextDate = d.toISOString().slice(0, 10);
-    return weather.hourly.filter((entry) => entry.time.startsWith(nextDate));
-  }, [weather?.hourly, selectedDate]);
-  const prevDayHourly = useMemo(() => {
-    if (!selectedDate || !weather) return [];
-    const d = new Date(`${selectedDate}T00:00:00`);
-    d.setDate(d.getDate() - 1);
-    const prevDate = d.toISOString().slice(0, 10);
-    return weather.hourly.filter((entry) => entry.time.startsWith(prevDate));
-  }, [weather?.hourly, selectedDate]);
   const showSearchFeedback = query.trim().length >= 2;
   const selectedSnapshot = useMemo(
     () => resolveSelectedSnapshot(hourlyForDay, selectedHourIndex, weather?.current),
@@ -173,20 +122,8 @@ function App() {
   const currentSnapshot = selectedSnapshot.snapshot;
   const activeHourIndex = selectedSnapshot.index;
   const weatherIcon = weatherGlyph(currentSnapshot?.weatherCode ?? 0, currentSnapshot?.isDay === 1);
-  const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
-  const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
-  const visibilityUnitLabel = preferences.visibilityUnit === "mi" ? "mi" : "km";
   const visibilityFactor = preferences.visibilityUnit === "mi" ? 0.000621371 : 0.001;
   const centerTimelineOnCurrentTime = timelineDisplayMode === "current-window";
-  const hourlySeries = buildHourlySeries(
-    hourlyForDay.map((entry) => ({
-      ...entry,
-      temperature: temperatureDisplay(entry.temperature, preferences.temperatureUnit),
-      windSpeed: windSpeedDisplay(entry.windSpeed, preferences.windUnit),
-    })),
-    preferences.hourCycle,
-    visibilityFactor,
-  );
   const hourlyTimelineWindow = useMemo(
     () =>
       getHourScrubberVisibleSnapshots({
@@ -201,12 +138,14 @@ function App() {
     hourlyTimelineWindow.map((entry) => ({
       ...entry,
       temperature: temperatureDisplay(entry.temperature, preferences.temperatureUnit),
-      windSpeed: windSpeedDisplay(entry.windSpeed, preferences.windUnit),
     })),
     preferences.hourCycle,
     visibilityFactor,
   );
-  const showWeatherLayout = Boolean(weather && currentDay && currentSnapshot);
+  const weatherLayout = weather && currentDay && currentSnapshot
+    ? { weather, currentDay, currentSnapshot }
+    : null;
+  const showWeatherLayout = Boolean(weatherLayout);
   const locationBarName =
     weather?.locationLabel ??
     ([requestedLocation?.name, requestedLocation?.admin1, requestedLocation?.country].filter(Boolean).join(", ") || "Current weather");
@@ -219,9 +158,6 @@ function App() {
   const availableForecastDates = weather?.daily.map((day) => day.date) ?? [];
   const forecastDateMin = availableForecastDates[0] ?? selectedDate;
   const forecastDateMax = availableForecastDates[availableForecastDates.length - 1] ?? selectedDate;
-  const resolvedWeather = weather as WeatherPayload;
-  const resolvedCurrentDay = currentDay as WeatherPayload["daily"][number];
-  const resolvedCurrentSnapshot = currentSnapshot as WeatherPayload["current"];
 
   useEffect(() => {
     if (!hourlyForDay.length) {
@@ -308,15 +244,14 @@ function App() {
         </div>
       )}
 
-      {showWeatherLayout ? (
+      {weatherLayout ? (
         <div className="tab-content" id={`tab-panel-${activeTab}`} role="tabpanel">
           <WeatherOverview
             activeHourIndex={activeHourIndex}
             activeTab={activeTab}
-            currentDay={resolvedCurrentDay}
-            currentSnapshot={resolvedCurrentSnapshot}
+            currentDay={weatherLayout.currentDay}
+            currentSnapshot={weatherLayout.currentSnapshot}
             hourlyForDay={hourlyForDay}
-            hourlyTemperature={hourlySeries.temperature}
             hourlyTimelineSeries={hourlyTimelineSeries}
             centerTimelineOnCurrentTime={centerTimelineOnCurrentTime}
             nextDayHourly={nextDayHourly}
@@ -341,11 +276,8 @@ function App() {
             selectedDate={selectedDate}
             selectableDateMax={forecastDateMax}
             selectableDateMin={forecastDateMin}
-            temperatureUnitLabel={temperatureUnitLabel}
-            visibilityUnitLabel={visibilityUnitLabel}
-            weather={resolvedWeather}
+            weather={weatherLayout.weather}
             weatherIcon={weatherIcon}
-            windUnitLabel={windUnitLabel}
           />
 
           {activeTab === "map" && (

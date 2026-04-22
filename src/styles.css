@@ -518,8 +518,6 @@ h4 { font-size: 0.92rem; font-weight: 600; }
    Panel base
    ───────────────────────────────────────────────────────── */
 .sidebar-card,
-.timeline-panel,
-.hourly-panel,
 .loading-card,
 .primary-panel,
 .stat-panel {
@@ -2040,55 +2038,6 @@ input:focus-visible {
   border: 1px solid var(--rule);
 }
 
-/* ─────────────────────────────────────────────────────────
-   Detail tabs
-   ───────────────────────────────────────────────────────── */
-.detail-switcher-panel {
-  margin-bottom: 1rem;
-}
-
-.detail-switcher {
-  display: inline-grid;
-  grid-auto-flow: column;
-  gap: 0.2rem;
-  padding: 0.25rem;
-  border-radius: 999px;
-  background: var(--bg-surface);
-  border: 1px solid var(--rule-strong);
-}
-
-.detail-tab {
-  padding: 0.55rem 1.2rem;
-  border-radius: 999px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.detail-tab:hover {
-  color: var(--text-primary);
-}
-
-.detail-tab.active {
-  background: var(--amber-glow);
-  border-color: var(--amber-edge);
-  color: var(--amber);
-}
-
-/* ─────────────────────────────────────────────────────────
-   Timeline strip + hourly grid
-   ───────────────────────────────────────────────────────── */
-.timeline-panel,
-.hourly-panel {
-  padding: 1.25rem;
-  margin-bottom: 1rem;
-}
-
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -2206,8 +2155,7 @@ input:focus-visible {
   margin-bottom: 0.75rem;
 }
 
-.secondary-chart-grid,
-.alerts-layout {
+.secondary-chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 0.75rem;
@@ -2437,10 +2385,6 @@ input:focus-visible {
   line-height: 1.5;
 }
 
-.alerts-empty-state {
-  min-height: 150px;
-}
-
 /* ─────────────────────────────────────────────────────────
    Hourly cards
    ───────────────────────────────────────────────────────── */
@@ -2582,12 +2526,6 @@ input:focus-visible {
 /* ─────────────────────────────────────────────────────────
    Alerts
    ───────────────────────────────────────────────────────── */
-.alerts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 0.7rem;
-}
-
 .alert-card {
   padding: 0.95rem;
   border-radius: var(--radius-lg);
@@ -2783,7 +2721,6 @@ input:focus-visible {
 
   .readiness-chip-grid { grid-template-columns: repeat(2, 1fr); }
   .environment-options { grid-template-columns: 1fr; }
-  .detail-switcher     { width: 100%; }
 }
 
 @media (max-width: 720px) {
@@ -2824,23 +2761,14 @@ input:focus-visible {
   .ghost-button,
   .saved-remove-button,
   .compact-button,
-  .segment,
-  .detail-tab {
+  .segment {
     min-height: 44px;
   }
 
   .readiness-chip-grid { grid-template-columns: 1fr; }
 
-  .detail-switcher {
-    grid-auto-flow: row;
-    grid-template-columns: 1fr;
-    border-radius: var(--radius-lg);
-  }
-
   .primary-panel,
   .stat-panel,
-  .timeline-panel,
-  .hourly-panel,
   .loading-card,
   .location-bar,
   .location-bar-panel {

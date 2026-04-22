@@ -25,7 +25,6 @@ type WeatherOverviewProps = {
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
   hourlyForDay: WeatherSnapshot[];
-  hourlyTemperature: Array<{ value: number }>;
   hourlyTimelineSeries: HourlyChartSeries;
   nextDayHourly: WeatherSnapshot[];
   onDateChange: (date: string) => void;
@@ -37,11 +36,8 @@ type WeatherOverviewProps = {
   selectedDate: string;
   selectableDateMax: string;
   selectableDateMin: string;
-  temperatureUnitLabel: string;
-  visibilityUnitLabel: string;
   weather: WeatherPayload;
   weatherIcon: ReactNode;
-  windUnitLabel: string;
 };
 
 export function WeatherOverview({
@@ -51,7 +47,6 @@ export function WeatherOverview({
   currentDay,
   currentSnapshot,
   hourlyForDay,
-  hourlyTemperature,
   hourlyTimelineSeries,
   nextDayHourly,
   onDateChange,
@@ -63,12 +58,12 @@ export function WeatherOverview({
   selectedDate,
   selectableDateMax,
   selectableDateMin,
-  temperatureUnitLabel,
-  visibilityUnitLabel,
   weather,
   weatherIcon,
-  windUnitLabel,
 }: WeatherOverviewProps) {
+  const temperatureUnitLabel = preferences.temperatureUnit === "f" ? "F" : "C";
+  const windUnitLabel = preferences.windUnit === "mph" ? "mph" : "km/h";
+  const visibilityUnitLabel = preferences.visibilityUnit === "mi" ? "mi" : "km";
   const solarBoundary = getHourScrubberBoundary({
     hourlyForDay,
     nextDayHourly,
@@ -310,80 +305,6 @@ export function WeatherOverview({
 
       {showSupportPanel && (
       <article className="stat-panel support-panel">
-        <div className="support-panel-grid">
-          <section className="support-panel-section">
-            <div className="support-panel-header">
-              <p className="section-label">Today summary</p>
-              <h3>{formatDayLabel(currentDay.date)}</h3>
-            </div>
-            <div className="compact-info-grid">
-              <div className="range-summary compact-summary">
-                <div className="range-header">
-                  <span>Hourly swing</span>
-                  <strong>
-                    {Math.round(Math.min(...hourlyTemperature.map((point) => point.value), 0))}° -{" "}
-                    {Math.round(Math.max(...hourlyTemperature.map((point) => point.value), 0))}°
-                  </strong>
-                </div>
-                <p className="muted">
-                  {Math.round(currentDay.precipitationSum)} mm across {Math.round(currentDay.precipitationHours)} hours.
-                </p>
-              </div>
-              <div className="range-summary compact-summary">
-                <div className="range-header">
-                  <span>Wind ceiling</span>
-                  <strong>
-                    {windSpeedDisplay(currentDay.windSpeedMax, preferences.windUnit)} {windUnitLabel}
-                  </strong>
-                </div>
-                <p className="muted">
-                  Gusts up to {windSpeedDisplay(currentDay.windGustsMax, preferences.windUnit)} {windUnitLabel}.
-                </p>
-              </div>
-              <div className="range-summary compact-summary">
-                <div className="range-header">
-                  <span>Visibility / cover</span>
-                  <strong>
-                    {visibilityDisplay(currentSnapshot.visibility / 1000, preferences.visibilityUnit)} {visibilityUnitLabel}
-                  </strong>
-                </div>
-                <div className="progress-meter" aria-hidden="true">
-                  <span style={{ width: `${Math.min(100, Math.max(8, currentSnapshot.cloudCover))}%` }} />
-                </div>
-                <p className="muted">{Math.round(currentSnapshot.cloudCover)}% cloud cover.</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="support-panel-section">
-            <div className="support-panel-header">
-              <p className="section-label">Status</p>
-              <h3>At a glance</h3>
-            </div>
-            <div className="compact-info-grid">
-              <div className="status-card compact-summary">
-                <span>Alerts</span>
-                <strong>{weather.alerts.length}</strong>
-                <p>
-                  {weather.alerts.length > 0 ? "Warnings listed below." : "No severe alerts right now."}
-                </p>
-              </div>
-              <div className="status-card compact-summary">
-                <span>Local time</span>
-                <strong>{formatTime(currentSnapshot.time, preferences.hourCycle)}</strong>
-                <p>Synced with {weather.timezone}.</p>
-              </div>
-              <div className="range-summary compact-summary">
-                <div className="range-header">
-                  <span>Pressure</span>
-                  <strong>{Math.round(currentSnapshot.pressure)} hPa</strong>
-                </div>
-                <p className="muted">Surface pressure from the live reading.</p>
-              </div>
-            </div>
-          </section>
-        </div>
-
         <div className="support-panel-section">
           <BatteryThermalPanel temperatureCelsius={currentSnapshot.temperature} />
         </div>

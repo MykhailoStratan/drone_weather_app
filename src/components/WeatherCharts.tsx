@@ -163,6 +163,19 @@ export function TemperatureCurveChart({
   units: string;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  if (!points.length) {
+    return (
+      <ChartShell
+        eyebrow="Hourly arc"
+        title={compact ? "Temperature" : "Temperature curve"}
+        subtitle="Waiting for hourly data"
+        compact={compact}
+      >
+        <ChartEmptyState />
+      </ChartShell>
+    );
+  }
+
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = compact ? compactDimensions : baseDimensions;
   const innerHeight = height - marginTop - marginBottom;
   const x = scalePoint({
@@ -294,6 +307,19 @@ export function PrecipitationOverlayChart({
   points: PrecipDatum[];
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  if (!points.length) {
+    return (
+      <ChartShell
+        eyebrow="Hourly rain"
+        title={compact ? "Rain" : "Precipitation + probability"}
+        subtitle="Waiting for hourly data"
+        compact={compact}
+      >
+        <ChartEmptyState />
+      </ChartShell>
+    );
+  }
+
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = compact ? compactDimensions : baseDimensions;
   const x = scaleBand({
     domain: points.map((point) => point.key),
@@ -764,6 +790,19 @@ export function CloudVisibilityChart({
   visibilityUnits: string;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  if (!points.length) {
+    return (
+      <ChartShell
+        eyebrow="Sky clarity"
+        title="Cloud cover + visibility"
+        subtitle="Waiting for hourly data"
+        compact={compact}
+      >
+        <ChartEmptyState />
+      </ChartShell>
+    );
+  }
+
   const { width, height, marginTop, marginRight, marginBottom, marginLeft } = compact ? compactDimensions : baseDimensions;
   const x = scalePoint({
     domain: points.map((point) => point.key),
@@ -957,6 +996,10 @@ function ChartShell({ eyebrow, title, subtitle, footer, tooltip, compact = false
       {footer}
     </article>
   );
+}
+
+function ChartEmptyState() {
+  return <div className="chart-empty-state compact">Hourly data is loading.</div>;
 }
 
 function ChartTooltip({
