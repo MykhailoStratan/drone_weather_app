@@ -178,6 +178,40 @@ describe("App preferences", () => {
     view.unmount();
   });
 
+  it("preserves the selected hour when switching between tabs", async () => {
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+
+    const slider = await view.findByRole("slider", { name: "Select forecast hour" });
+    fireEvent.change(slider, { target: { value: "1" } });
+    expect(document.querySelector(".temperature-value")?.textContent).toBe("4");
+
+    fireEvent.click(view.getByRole("tab", { name: "Drone" }));
+    expect(view.getByText("Battery thermal performance")).toBeTruthy();
+
+    fireEvent.click(view.getByRole("tab", { name: "Now" }));
+    expect(await view.findByRole("slider", { name: "Select forecast hour" })).toBeTruthy();
+    expect(document.querySelector(".temperature-value")?.textContent).toBe("4");
+    view.unmount();
+  });
+
+  it("does not render infinite chart ranges while hourly data is unavailable", async () => {
+    installFetchMock({
+      timeline: createResponse({
+        ...timelinePayload,
+        hourly: [],
+      }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    expect(await view.findAllByText("Hourly data is loading.")).toHaveLength(3);
+    expect(view.queryByText(/Infinity/)).toBeNull();
+    view.unmount();
+  });
+
   it("selects forecast days from the hero date calendar", async () => {
     installFetchMock({
       timeline: createResponse({

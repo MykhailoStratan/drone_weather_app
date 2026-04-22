@@ -19,9 +19,6 @@ export function buildHourlySeries(
     temperature: number;
     precipitationAmount: number;
     precipitationProbability: number;
-    windSpeed: number;
-    windDirection: number;
-    pressure: number;
     cloudCover: number;
     visibility: number;
   }>,
@@ -44,21 +41,6 @@ export function buildHourlySeries(
       shortLabel: formatHourTick(entry.time, hourCycle),
       value: entry.precipitationAmount,
       probability: entry.precipitationProbability,
-    })),
-    wind: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      time: entry.time,
-      label: formatHourLabel(entry.time, hourCycle),
-      shortLabel: formatHourTick(entry.time, hourCycle),
-      value: entry.windSpeed,
-      direction: entry.windDirection,
-    })),
-    pressure: entries.map((entry, index) => ({
-      key: `${entry.time}-${index}`,
-      time: entry.time,
-      label: formatHourLabel(entry.time, hourCycle),
-      shortLabel: formatHourTick(entry.time, hourCycle),
-      value: entry.pressure,
     })),
     cloudVisibility: entries.map((entry, index) => ({
       key: `${entry.time}-${index}`,
