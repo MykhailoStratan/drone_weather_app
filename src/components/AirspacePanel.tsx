@@ -514,11 +514,13 @@ export function AirspacePanel({
   latitude,
   longitude,
   airspace,
+  error,
   loading,
 }: {
   latitude?: number;
   longitude?: number;
   airspace: AirspaceResponse | null;
+  error?: string | null;
   loading: boolean;
 }) {
   const features = airspace?.features ?? [];
@@ -565,6 +567,9 @@ export function AirspacePanel({
   if (loading) {
     statusClass = "loading";
     statusText = "Checking airspace...";
+  } else if (error) {
+    statusClass = "caution";
+    statusText = "Airspace unavailable";
   } else if (activeTFRs.length > 0) {
     statusClass = "risk";
     statusText = `${activeTFRs.length} active TFR${activeTFRs.length > 1 ? "s" : ""} nearby`;
@@ -599,7 +604,11 @@ export function AirspacePanel({
       </div>
 
       {mapLat !== undefined && mapLng !== undefined ? (
-        <AirspaceMap latitude={mapLat} longitude={mapLng} features={visibleFeatures} tfrs={visibleTfrs} />
+        loading && !airspace ? (
+          <AirspaceMapSkeleton />
+        ) : (
+          <AirspaceMap latitude={mapLat} longitude={mapLng} features={visibleFeatures} tfrs={visibleTfrs} />
+        )
       ) : (
         <div className="airspace-loading">
           <div className="spinner spinner-sm" />
@@ -607,7 +616,13 @@ export function AirspacePanel({
         </div>
       )}
 
-      {mapLat !== undefined && (
+      {error && (
+        <p className="airspace-source-status airspace-source-status-warning">
+          {error}
+        </p>
+      )}
+
+      {mapLat !== undefined && !error && (
         <div className="airspace-filter-bar" aria-label="Airspace class filters">
           {AIRSPACE_FILTER_ORDER.filter((filterKey) => presentFilters.has(filterKey)).map((filterKey) => (
             <label key={filterKey} className={`airspace-class-toggle ${FILTER_TONE_BY_KEY[filterKey]}`}>
@@ -651,7 +666,7 @@ export function AirspacePanel({
         </div>
       )}
 
-      {mapLat !== undefined && (
+      {mapLat !== undefined && !error && (
         <div className="airspace-legend">
           {visibleClassifications.has("controlled") && (
             <span className="airspace-legend-item controlled">Controlled</span>
@@ -759,6 +774,18 @@ export function AirspacePanel({
           Sources: {airspace.dataSources.join(" · ")}. Always verify with official AIP/NOTAMs before flight.
         </p>
       )}
+    </div>
+  );
+}
+
+function AirspaceMapSkeleton() {
+  return (
+    <div className="airspace-map-container airspace-map-skeleton" role="status" aria-label="Loading airspace map">
+      <div className="airspace-map-skeleton-grid" aria-hidden="true" />
+      <div className="airspace-map-skeleton-pulse">
+        <div className="spinner spinner-sm" />
+        <span>Loading airspace map...</span>
+      </div>
     </div>
   );
 }

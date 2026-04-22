@@ -76,6 +76,16 @@ const alertsPayload = {
   alerts: [],
 };
 
+const airspacePayload = {
+  latitude: 49.2497,
+  longitude: -123.1193,
+  fetchedAt: "2026-04-15T19:00:00.000Z",
+  country: "CA",
+  dataSources: [],
+  features: [],
+  tfrs: [],
+};
+
 function createResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
 }
@@ -84,6 +94,7 @@ function installFetchMock(options?: {
   overview?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
   timeline?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
   alerts?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
+  airspace?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
   locations?: Response | ((url: string, init?: RequestInit) => Response | Promise<Response>);
 }) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -108,6 +119,13 @@ function installFetchMock(options?: {
         return options.alerts(url, init);
       }
       return options?.alerts ?? createResponse(alertsPayload);
+    }
+
+    if (url.includes("/airspace")) {
+      if (typeof options?.airspace === "function") {
+        return options.airspace(url, init);
+      }
+      return options?.airspace ?? createResponse(airspacePayload);
     }
 
     if (url.includes("/locations")) {
@@ -421,6 +439,49 @@ describe("App preferences", () => {
 
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
     expect((await view.findAllByText("Weather timeline is unavailable right now.")).length).toBeGreaterThan(0);
+    view.unmount();
+  });
+
+  it("surfaces weather alerts failures without hiding the forecast", async () => {
+    installFetchMock({
+      alerts: createResponse({ error: "alerts unavailable" }, 503),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    expect(await view.findByText("Weather alerts are unavailable right now.")).toBeTruthy();
+    expect(document.querySelector(".temperature-value")?.textContent).toBe("9");
+    view.unmount();
+  });
+
+  it("shows a map skeleton while airspace data is loading", async () => {
+    installFetchMock({
+      airspace: () => new Promise<Response>(() => {}),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    fireEvent.click(view.getByRole("tab", { name: "Map" }));
+
+    expect(await view.findByRole("status", { name: "Loading airspace map" })).toBeTruthy();
+    expect(view.getByText("Loading airspace map...")).toBeTruthy();
+    view.unmount();
+  });
+
+  it("shows an airspace error state when map data fails", async () => {
+    installFetchMock({
+      airspace: createResponse({ error: "airspace offline" }, 503),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    fireEvent.click(view.getByRole("tab", { name: "Map" }));
+
+    expect(await view.findByText("Airspace data is unavailable right now.")).toBeTruthy();
+    expect(view.getByText("Airspace unavailable")).toBeTruthy();
     view.unmount();
   });
 
