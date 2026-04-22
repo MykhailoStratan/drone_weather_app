@@ -166,18 +166,19 @@ test.beforeEach(async ({ page }) => {
   await mockWeatherApis(page);
 });
 
-test("loads the main weather dashboard with mocked data", async ({ page }) => {
+test("loads the Now tab weather dashboard with mocked data", async ({ page }) => {
   await page.goto(locationQuery);
 
   await expect(page.getByRole("heading", { name: "Clear sky", level: 2 })).toBeVisible();
   await expect(page.getByText("Wind direction")).toBeVisible();
   await expect(page.getByText("Flight readiness")).toBeVisible();
   await expect(page.getByRole("slider", { name: "Select forecast hour" })).toBeVisible();
-  await expect(page.getByText("Airspace · restrictions")).toBeVisible();
-  await expect(page.locator(".airspace-status-badge")).toContainText("Controlled airspace nearby");
+  await expect(page.getByRole("tab", { name: "Now" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Map" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Drone" })).toBeVisible();
 });
 
-test("supports preferences, detail tabs, and hourly cards", async ({ page }) => {
+test("supports preferences and the Map and Drone tabs", async ({ page }) => {
   await page.goto(locationQuery);
 
   await page.getByRole("button", { name: /12h/i }).click();
@@ -188,15 +189,15 @@ test("supports preferences, detail tabs, and hourly cards", async ({ page }) => 
   await expect(page.locator(".temperature-unit")).toContainText("F");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
-  await page.getByRole("button", { name: "Show hourly cards" }).click();
-  await expect(page.getByRole("heading", { name: "Detailed readout", level: 3 })).toBeVisible();
+  await page.getByRole("tab", { name: "Drone" }).click();
+  await expect(page.getByText("Battery thermal performance")).toBeVisible();
+  await expect(page.getByText("Dew point", { exact: true })).toBeVisible();
+  await expect(page.getByText("Density altitude")).toBeVisible();
 
-  await page.getByRole("button", { name: "7 days" }).click();
-  await expect(page.getByRole("heading", { name: "Next 7 days", level: 3 })).toBeVisible();
-
-  await page.getByRole("button", { name: /Alerts/ }).click();
-  await expect(page.getByRole("heading", { name: "Weather warnings for this area", level: 3 })).toBeVisible();
-  await expect(page.getByText("Wind Advisory")).toBeVisible();
+  await page.getByRole("tab", { name: "Map" }).click();
+  await expect(page.locator(".airspace-panel-header")).toContainText("Airspace");
+  await expect(page.locator(".airspace-status-badge")).toContainText("Controlled airspace nearby");
+  await expect(page.getByText("Vancouver International")).toBeVisible();
 });
 
 test("updates the hero and readiness panel when the selected hour changes", async ({ page }) => {
@@ -284,4 +285,34 @@ test("choosing today from the date picker restores the current-hour centered tim
   await expect(page.locator(".summary-badge")).toContainText("Apr 15");
   await expect(page.locator(".hour-scrubber-tick-now")).toContainText("12:00 PM");
   await expect(page.locator(".hour-scrubber-seg.next-day").first()).toBeVisible();
+});
+
+test("mobile tabs do not create horizontal overflow and clear the fixed tab bar", async ({ page }) => {
+  await page.setViewportSize({ width: 462, height: 900 });
+  await page.goto(locationQuery);
+  await expect(page.getByRole("heading", { name: "Clear sky", level: 2 })).toBeVisible();
+
+  for (const tabName of ["Now", "Map", "Drone"]) {
+    await page.getByRole("tab", { name: tabName }).click();
+    await page.waitForTimeout(150);
+
+    const widthMetrics = await page.evaluate(() => ({
+      docClientWidth: document.documentElement.clientWidth,
+      docScrollWidth: document.documentElement.scrollWidth,
+      bodyClientWidth: document.body.clientWidth,
+      bodyScrollWidth: document.body.scrollWidth,
+    }));
+    expect(widthMetrics.docScrollWidth).toBe(widthMetrics.docClientWidth);
+    expect(widthMetrics.bodyScrollWidth).toBe(widthMetrics.bodyClientWidth);
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const clearance = await page.evaluate(() => {
+      const tabBar = document.querySelector(".app-tab-bar")?.getBoundingClientRect();
+      const children = Array.from(document.querySelectorAll(".tab-content > *"));
+      const lastContent = children[children.length - 1]?.getBoundingClientRect();
+      if (!tabBar || !lastContent) return 0;
+      return Math.round(tabBar.top - lastContent.bottom);
+    });
+    expect(clearance).toBeGreaterThanOrEqual(0);
+  }
 });
