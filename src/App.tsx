@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ForecastPanels } from "./components/ForecastPanels";
+import { AirspacePanel } from "./components/AirspacePanel";
 import { getHourScrubberVisibleSnapshots } from "./components/FlightWindowBar";
 import { LocationBar } from "./components/LocationBar";
+import { TabBar, type AppTab } from "./components/TabBar";
 import { WeatherOverview } from "./components/WeatherOverview";
-import { buildHourlySeries, buildWeeklyRangeSeries } from "./lib/chartUtils";
+import { buildHourlySeries } from "./lib/chartUtils";
 import { formatSavedAtLabel, resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph } from "./lib/app-utils";
 import { formatDayLabel, temperatureDisplay, weatherLabel, windSpeedDisplay } from "./lib/format";
 import { readStoredLocation, readStoredOverview } from "./lib/storage";
@@ -56,14 +57,12 @@ const starterLocation: LocationOption = {
 
 const LAST_LOCATION_KEY = "skycanvas.lastLocation";
 
-type DetailView = "hourly" | "weekly" | "alerts";
 type TimelineDisplayMode = "current-window" | "full-day";
 
 function App() {
   const [selectedHourIndex, setSelectedHourIndex] = useState(-1);
-  const [detailView, setDetailView] = useState<DetailView>("hourly");
-  const [hourlyCardsOpen, setHourlyCardsOpen] = useState(false);
   const [timelineDisplayMode, setTimelineDisplayMode] = useState<TimelineDisplayMode>("current-window");
+  const [activeTab, setActiveTab] = useState<AppTab>("now");
   const { preferences, preferencesOpen, setPreferencesOpen, updatePreferences } = usePreferences();
   const {
     activeLocation,
@@ -140,7 +139,6 @@ function App() {
       writeLocationToUrl(activeLocation);
       setQuery(activeLocation.name);
       setSelectedHourIndex(-1);
-      setDetailView("hourly");
       setTimelineDisplayMode("current-window");
     }
   }, [activeLocation]);
@@ -167,8 +165,6 @@ function App() {
     const prevDate = d.toISOString().slice(0, 10);
     return weather.hourly.filter((entry) => entry.time.startsWith(prevDate));
   }, [weather?.hourly, selectedDate]);
-  const hasTimeline = (weather?.daily.length ?? 0) > 1 && (weather?.hourly.length ?? 0) > 0;
-  const hasAlerts = (weather?.alerts.length ?? 0) > 0;
   const showSearchFeedback = query.trim().length >= 2;
   const selectedSnapshot = useMemo(
     () => resolveSelectedSnapshot(hourlyForDay, selectedHourIndex, weather?.current),
@@ -209,13 +205,6 @@ function App() {
     })),
     preferences.hourCycle,
     visibilityFactor,
-  );
-  const weeklyRange = buildWeeklyRangeSeries(
-    (weather?.daily ?? []).slice(7, 14).map((day) => ({
-      ...day,
-      temperatureMin: temperatureDisplay(day.temperatureMin, preferences.temperatureUnit),
-      temperatureMax: temperatureDisplay(day.temperatureMax, preferences.temperatureUnit),
-    })),
   );
   const showWeatherLayout = Boolean(weather && currentDay && currentSnapshot);
   const locationBarName =
@@ -320,9 +309,10 @@ function App() {
       )}
 
       {showWeatherLayout ? (
-        <>
+        <div className="tab-content" id={`tab-panel-${activeTab}`} role="tabpanel">
           <WeatherOverview
             activeHourIndex={activeHourIndex}
+            activeTab={activeTab}
             currentDay={resolvedCurrentDay}
             currentSnapshot={resolvedCurrentSnapshot}
             hourlyForDay={hourlyForDay}
@@ -358,25 +348,17 @@ function App() {
             windUnitLabel={windUnitLabel}
           />
 
-          <ForecastPanels
-            activeLocation={activeLocation}
-            airspace={airspace}
-            airspaceLoading={airspaceLoading}
-            detailView={detailView}
-            detailsLoading={detailsLoading}
-            hasAlerts={hasAlerts}
-            hasTimeline={hasTimeline}
-            hourlyCardsOpen={hourlyCardsOpen}
-            hourlyForDay={hourlyForDay}
-            hourlySeries={hourlySeries}
-            onDetailViewChange={setDetailView}
-            preferences={preferences}
-            selectedDate={selectedDate}
-            setHourlyCardsOpen={setHourlyCardsOpen}
-            weeklyRange={weeklyRange}
-            weather={resolvedWeather}
-          />
-        </>
+          {activeTab === "map" && (
+            <section className="airspace-panel-section airspace-panel-section-standalone">
+              <AirspacePanel
+                latitude={activeLocation?.latitude}
+                longitude={activeLocation?.longitude}
+                airspace={airspace}
+                loading={airspaceLoading}
+              />
+            </section>
+          )}
+        </div>
       ) : loadError ? (
         <section className="loading-card error-card">
           <div className="error-card-copy">
@@ -398,6 +380,10 @@ function App() {
           <div className="spinner" />
           <p>Pulling the latest forecast and recent history...</p>
         </section>
+      )}
+
+      {showWeatherLayout && (
+        <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       )}
     </main>
   );

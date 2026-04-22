@@ -5,6 +5,7 @@ import { DensityAltitudePanel } from "./DensityAltitudePanel";
 import { FlightReadinessPanel } from "./FlightReadinessPanel";
 import { getHourScrubberBoundary, HourScrubber } from "./FlightWindowBar";
 import { IconCloud, IconEye, IconGauge, IconRain, IconSunrise, IconSunset } from "./Icons";
+import type { AppTab } from "./TabBar";
 import type { Preferences } from "../hooks/usePreferences";
 import { formatDayLabel, formatTime, temperatureDisplay, visibilityDisplay, weatherLabel, windDirectionLabel, windSpeedDisplay } from "../lib/format";
 import type { HourlyChartSeries } from "../lib/chartUtils";
@@ -19,6 +20,7 @@ const TemperatureCurveChart = React.lazy(() =>
 
 type WeatherOverviewProps = {
   activeHourIndex: number;
+  activeTab?: AppTab;
   centerTimelineOnCurrentTime: boolean;
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
@@ -44,6 +46,7 @@ type WeatherOverviewProps = {
 
 export function WeatherOverview({
   activeHourIndex,
+  activeTab = "now",
   centerTimelineOnCurrentTime,
   currentDay,
   currentSnapshot,
@@ -83,9 +86,16 @@ export function WeatherOverview({
     [selectableDateMax, selectableDateMin, weather.daily],
   );
   const todayDate = weather.current.time.slice(0, 10);
+  const showPrimaryPanel = activeTab === "now";
+  const showSupportPanel = activeTab === "drone";
+
+  if (!showPrimaryPanel && !showSupportPanel) {
+    return null;
+  }
 
   return (
-    <section className="overview-grid premium-grid primary-priority">
+    <section className={`overview-grid premium-grid primary-priority tab-${activeTab}`}>
+      {showPrimaryPanel && (
       <article className="primary-panel hero-conditions">
         <div className="hero-topline">
           <div className="hero-heading">
@@ -288,7 +298,9 @@ export function WeatherOverview({
           </div>
         </div>
       </article>
+      )}
 
+      {showSupportPanel && (
       <article className="stat-panel support-panel">
         <div className="support-panel-grid">
           <section className="support-panel-section">
@@ -385,6 +397,7 @@ export function WeatherOverview({
           />
         </div>
       </article>
+      )}
     </section>
   );
 }
