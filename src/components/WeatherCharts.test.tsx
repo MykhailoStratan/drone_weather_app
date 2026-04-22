@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { CloudVisibilityChart, TemperatureCurveChart } from "./WeatherCharts";
+import { CloudVisibilityChart, PrecipitationOverlayChart, TemperatureCurveChart } from "./WeatherCharts";
 
 describe("TemperatureCurveChart", () => {
   it("shows hover tooltip content when a hover target is entered", () => {
@@ -40,6 +40,14 @@ describe("TemperatureCurveChart", () => {
     expect(screen.getByText("10 AM")).toBeTruthy();
     expect(screen.getByText("10 C")).toBeTruthy();
     expect(view.container.querySelector(".chart-tooltip")?.getAttribute("style")).toContain("top:");
+    view.unmount();
+  });
+
+  it("shows a stable empty state without invalid ranges", () => {
+    const view = render(<TemperatureCurveChart units="C" points={[]} />);
+
+    expect(screen.getByText("Waiting for hourly data")).toBeTruthy();
+    expect(view.container.textContent).not.toContain("Infinity");
     view.unmount();
   });
 
@@ -84,6 +92,14 @@ describe("TemperatureCurveChart", () => {
     expect(screen.getByText("10 AM")).toBeTruthy();
     expect(screen.getByText("68% cloud cover")).toBeTruthy();
     expect(screen.getByText("4.5 km visibility")).toBeTruthy();
+    view.unmount();
+  });
+
+  it("shows the precipitation empty state without invalid ranges", () => {
+    const view = render(<PrecipitationOverlayChart points={[]} />);
+
+    expect(screen.getByText("Waiting for hourly data")).toBeTruthy();
+    expect(view.container.textContent).not.toContain("Infinity");
     view.unmount();
   });
 
