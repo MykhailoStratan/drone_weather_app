@@ -2,12 +2,20 @@ import { useRef, useState } from "react";
 import type { WeatherSnapshot } from "../types";
 import { formatHourLabel } from "../lib/format";
 
-type WindowTone = "good" | "caution" | "risk";
+export type WindowTone = "good" | "caution" | "risk";
+
+export type HourRiskReason = {
+  metric: string;
+  value: string;
+  threshold: string;
+  tone: Exclude<WindowTone, "good">;
+};
 
 type HourWindow = {
   time: string;
   tone: WindowTone;
   reasons: string[];
+  riskReasons: HourRiskReason[];
 };
 
 type TimelineSnapshotEntry = {
@@ -43,25 +51,83 @@ function escalate(current: WindowTone, next: WindowTone): WindowTone {
   return TONE_RANK[next] > TONE_RANK[current] ? next : current;
 }
 
-function classifyHour(snap: WeatherSnapshot): HourWindow {
-  const reasons: string[] = [];
+export function getHourRiskDetails(snap: WeatherSnapshot): HourWindow {
+  const riskReasons: HourRiskReason[] = [];
   let worst: WindowTone = "good";
 
   const gustsKmh = snap.windGusts;
-  if (gustsKmh >= 28) { worst = escalate(worst, "risk"); reasons.push(`gusts ${Math.round(gustsKmh)} km/h`); }
-  else if (gustsKmh >= 18) { worst = escalate(worst, "caution"); reasons.push(`gusts ${Math.round(gustsKmh)} km/h`); }
+  if (gustsKmh >= 28) {
+    worst = escalate(worst, "risk");
+    riskReasons.push({
+      metric: "Wind gusts",
+      value: `${Math.round(gustsKmh)} km/h`,
+      threshold: "Caution at 28 km/h or higher",
+      tone: "risk",
+    });
+  } else if (gustsKmh >= 18) {
+    worst = escalate(worst, "caution");
+    riskReasons.push({
+      metric: "Wind gusts",
+      value: `${Math.round(gustsKmh)} km/h`,
+      threshold: "Moderate at 18 km/h or higher",
+      tone: "caution",
+    });
+  }
 
   const rainPct = snap.precipitationProbability;
-  if (rainPct >= 60) { worst = escalate(worst, "risk"); reasons.push(`rain ${Math.round(rainPct)}%`); }
-  else if (rainPct >= 30) { worst = escalate(worst, "caution"); reasons.push(`rain ${Math.round(rainPct)}%`); }
+  if (rainPct >= 60) {
+    worst = escalate(worst, "risk");
+    riskReasons.push({
+      metric: "Rain probability",
+      value: `${Math.round(rainPct)}%`,
+      threshold: "Caution at 60% or higher",
+      tone: "risk",
+    });
+  } else if (rainPct >= 30) {
+    worst = escalate(worst, "caution");
+    riskReasons.push({
+      metric: "Rain probability",
+      value: `${Math.round(rainPct)}%`,
+      threshold: "Moderate at 30% or higher",
+      tone: "caution",
+    });
+  }
 
   const visKm = snap.visibility / 1000;
-  if (visKm < 3) { worst = escalate(worst, "risk"); reasons.push(`vis ${visKm.toFixed(1)} km`); }
-  else if (visKm < 6) { worst = escalate(worst, "caution"); reasons.push(`vis ${visKm.toFixed(1)} km`); }
+  if (visKm < 3) {
+    worst = escalate(worst, "risk");
+    riskReasons.push({
+      metric: "Visibility",
+      value: `${visKm.toFixed(1)} km`,
+      threshold: "Caution below 3.0 km",
+      tone: "risk",
+    });
+  } else if (visKm < 6) {
+    worst = escalate(worst, "caution");
+    riskReasons.push({
+      metric: "Visibility",
+      value: `${visKm.toFixed(1)} km`,
+      threshold: "Moderate below 6.0 km",
+      tone: "caution",
+    });
+  }
 
-  if (snap.cloudCover >= 90) { worst = escalate(worst, "caution"); }
+  if (snap.cloudCover >= 90) {
+    worst = escalate(worst, "caution");
+    riskReasons.push({
+      metric: "Cloud cover",
+      value: `${Math.round(snap.cloudCover)}%`,
+      threshold: "Moderate at 90% or higher",
+      tone: "caution",
+    });
+  }
 
-  return { time: snap.time, tone: worst, reasons };
+  return {
+    time: snap.time,
+    tone: worst,
+    reasons: riskReasons.map((reason) => `${reason.metric.toLowerCase()} ${reason.value}`),
+    riskReasons,
+  };
 }
 
 function buildTimelineSnapshotEntries({
@@ -185,9 +251,9 @@ export function HourScrubber({
 }) {
   if (hourlyForDay.length === 0) return null;
 
-  const windows: HourWindow[] = hourlyForDay.map(classifyHour);
-  const nextDayWindows = nextDayHourly.map(classifyHour);
-  const prevDayWindows = prevDayHourly.map(classifyHour);
+  const windows: HourWindow[] = hourlyForDay.map(getHourRiskDetails);
+  const nextDayWindows = nextDayHourly.map(getHourRiskDetails);
+  const prevDayWindows = prevDayHourly.map(getHourRiskDetails);
 
   type TimelineEntry = {
     absIndex: number;

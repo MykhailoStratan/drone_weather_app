@@ -3,7 +3,7 @@ import { BatteryThermalPanel } from "./BatteryThermalPanel";
 import { DewPointPanel } from "./DewPointPanel";
 import { DensityAltitudePanel } from "./DensityAltitudePanel";
 import { FlightReadinessPanel } from "./FlightReadinessPanel";
-import { getHourScrubberBoundary, HourScrubber } from "./FlightWindowBar";
+import { getHourRiskDetails, getHourScrubberBoundary, HourScrubber, type HourRiskReason } from "./FlightWindowBar";
 import { IconCloud, IconEye, IconGauge, IconRain, IconSunrise, IconSunset } from "./Icons";
 import type { AppTab } from "./TabBar";
 import type { Preferences } from "../hooks/usePreferences";
@@ -75,6 +75,7 @@ export function WeatherOverview({
     prevDayHourly,
     centerOnCurrentTime: centerTimelineOnCurrentTime,
   });
+  const selectedHourRisk = getHourRiskDetails(currentSnapshot);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarDays = useMemo(
     () =>
@@ -163,13 +164,15 @@ export function WeatherOverview({
 
         <div className="hero-stats">
           <div className="temperature-block">
-            <div className="temperature-main">
+            <div className={`temperature-summary-row${selectedHourRisk.tone !== "good" ? " has-risk" : ""}`}>
+              <div className="temperature-readout">
+                <div className="temperature-main">
               <span className="temperature-value">
                 {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
               </span>
               <span className="temperature-unit">°{temperatureUnitLabel}</span>
-            </div>
-            <div className="hero-pill-row">
+                </div>
+                <div className="hero-pill-row">
               <span className="hero-pill">
                 H {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)}° - L{" "}
                 {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)}°
@@ -177,6 +180,15 @@ export function WeatherOverview({
               <span className="hero-pill">
                 Rain {Math.round(currentSnapshot.precipitationProbability)}%
               </span>
+                </div>
+              </div>
+              {selectedHourRisk.tone !== "good" && (
+                <HourRiskInfoWindow
+                  hourLabel={formatTime(currentSnapshot.time, preferences.hourCycle)}
+                  reasons={selectedHourRisk.riskReasons}
+                  tone={selectedHourRisk.tone}
+                />
+              )}
             </div>
             <HourScrubber
               hourlyForDay={hourlyForDay}
@@ -337,6 +349,40 @@ export function WeatherOverview({
       </article>
       )}
     </section>
+  );
+}
+
+function HourRiskInfoWindow({
+  hourLabel,
+  reasons,
+  tone,
+}: {
+  hourLabel: string;
+  reasons: HourRiskReason[];
+  tone: "caution" | "risk";
+}) {
+  const toneLabel = tone === "risk" ? "Caution" : "Moderate";
+
+  return (
+    <aside className={`hour-risk-window ${tone}`} aria-live="polite" aria-label={`${toneLabel} hourly condition reasons`}>
+      <div className="hour-risk-window-header">
+        <div>
+          <span>{hourLabel}</span>
+          <strong>{toneLabel}</strong>
+        </div>
+      </div>
+      <ul className="hour-risk-list">
+        {reasons.map((reason) => (
+          <li key={`${reason.metric}-${reason.threshold}`}>
+            <span className={`hour-risk-dot ${reason.tone}`} aria-hidden="true" />
+            <div>
+              <strong>{reason.metric}</strong>
+              <span>{reason.value} - {reason.threshold}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }
 
