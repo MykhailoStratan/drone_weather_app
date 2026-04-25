@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getHourScrubberVisibleSnapshots, HourScrubber } from "./FlightWindowBar";
+import { getHourRiskDetails, getHourScrubberVisibleSnapshots, HourScrubber } from "./FlightWindowBar";
 import type { WeatherSnapshot } from "../types";
 
 function makeSnapshot(time: string): WeatherSnapshot {
@@ -105,5 +105,43 @@ describe("HourScrubber", () => {
 
     expect(view.container.querySelector(".hour-scrubber-tick-now")?.textContent).toBe("11:00 AM");
     expect(view.container.querySelectorAll(".hour-scrubber-seg.now").length).toBe(0);
+  });
+
+  it("explains every condition that turns an hour orange or red", () => {
+    const details = getHourRiskDetails({
+      ...makeSnapshot("2026-04-15T12:00"),
+      windGusts: 32,
+      precipitationProbability: 35,
+      visibility: 2500,
+      cloudCover: 94,
+    });
+
+    expect(details.tone).toBe("risk");
+    expect(details.riskReasons).toEqual([
+      {
+        metric: "Wind gusts",
+        value: "32 km/h",
+        threshold: "Caution at 28 km/h or higher",
+        tone: "risk",
+      },
+      {
+        metric: "Rain probability",
+        value: "35%",
+        threshold: "Moderate at 30% or higher",
+        tone: "caution",
+      },
+      {
+        metric: "Visibility",
+        value: "2.5 km",
+        threshold: "Caution below 3.0 km",
+        tone: "risk",
+      },
+      {
+        metric: "Cloud cover",
+        value: "94%",
+        threshold: "Moderate at 90% or higher",
+        tone: "caution",
+      },
+    ]);
   });
 });
