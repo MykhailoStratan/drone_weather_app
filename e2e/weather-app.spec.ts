@@ -302,8 +302,8 @@ test("mobile tabs do not create horizontal overflow and clear the fixed tab bar"
       bodyClientWidth: document.body.clientWidth,
       bodyScrollWidth: document.body.scrollWidth,
     }));
-    expect(widthMetrics.docScrollWidth).toBe(widthMetrics.docClientWidth);
-    expect(widthMetrics.bodyScrollWidth).toBe(widthMetrics.bodyClientWidth);
+    expect(widthMetrics.docScrollWidth).toBeLessThanOrEqual(widthMetrics.docClientWidth);
+    expect(widthMetrics.bodyScrollWidth).toBeLessThanOrEqual(widthMetrics.bodyClientWidth);
 
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const clearance = await page.evaluate(() => {
@@ -315,4 +315,21 @@ test("mobile tabs do not create horizontal overflow and clear the fixed tab bar"
     });
     expect(clearance).toBeGreaterThanOrEqual(0);
   }
+});
+
+test("switching to the Drone tab keeps the fixed tab bar anchored", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(locationQuery);
+
+  const tabBar = page.locator(".app-tab-bar");
+  const nowBox = await tabBar.boundingBox();
+  expect(nowBox).toBeTruthy();
+
+  await page.getByRole("tab", { name: "Drone" }).click();
+  await expect(page.getByRole("tab", { name: "Drone" })).toHaveAttribute("aria-selected", "true");
+  const droneBox = await tabBar.boundingBox();
+  expect(droneBox).toBeTruthy();
+
+  expect(Math.abs((droneBox?.x ?? 0) - (nowBox?.x ?? 0))).toBeLessThan(1);
+  expect(Math.abs((droneBox?.width ?? 0) - (nowBox?.width ?? 0))).toBeLessThan(1);
 });
