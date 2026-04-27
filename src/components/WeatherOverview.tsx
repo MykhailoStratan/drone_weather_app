@@ -76,6 +76,8 @@ export function WeatherOverview({
     centerOnCurrentTime: centerTimelineOnCurrentTime,
   });
   const selectedHourRisk = getHourRiskDetails(currentSnapshot);
+  const selectedHourRiskTone = selectedHourRisk.tone !== "good" ? selectedHourRisk.tone : null;
+  const showHourRiskWindow = selectedHourRiskTone !== null && hourlyForDay.length > 0;
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarDays = useMemo(
     () =>
@@ -182,25 +184,27 @@ export function WeatherOverview({
               </span>
                 </div>
               </div>
-              {selectedHourRisk.tone !== "good" && (
+            </div>
+            <div className="hour-scrubber-risk-anchor">
+              <HourScrubber
+                hourlyForDay={hourlyForDay}
+                nextDayHourly={nextDayHourly}
+                prevDayHourly={prevDayHourly}
+                hourCycle={preferences.hourCycle}
+                activeHourIndex={activeHourIndex}
+                centerOnCurrentTime={centerTimelineOnCurrentTime}
+                onHourChange={onHourChange}
+                onNextDayHourChange={onNextDayHourChange}
+                onPrevDayHourChange={onPrevDayHourChange}
+              />
+              {showHourRiskWindow && (
                 <HourRiskInfoWindow
                   hourLabel={formatTime(currentSnapshot.time, preferences.hourCycle)}
                   reasons={selectedHourRisk.riskReasons}
-                  tone={selectedHourRisk.tone}
+                  tone={selectedHourRiskTone}
                 />
               )}
             </div>
-            <HourScrubber
-              hourlyForDay={hourlyForDay}
-              nextDayHourly={nextDayHourly}
-              prevDayHourly={prevDayHourly}
-              hourCycle={preferences.hourCycle}
-              activeHourIndex={activeHourIndex}
-              centerOnCurrentTime={centerTimelineOnCurrentTime}
-              onHourChange={onHourChange}
-              onNextDayHourChange={onNextDayHourChange}
-              onPrevDayHourChange={onPrevDayHourChange}
-            />
             <CompactSolarWindow
               sunrise={currentDay.sunrise}
               sunset={currentDay.sunset}

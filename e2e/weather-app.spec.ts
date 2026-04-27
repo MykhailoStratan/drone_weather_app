@@ -213,6 +213,54 @@ test("updates the hero and readiness panel when the selected hour changes", asyn
   await expect(page.locator(".readiness-summary")).toContainText("visibility is down to 2.5 km");
 });
 
+test("hourly risk panel overlays above the timeline without shifting layout", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  await expect(page.locator(".hour-risk-window")).toHaveCount(0);
+  const solarTopBefore = await page.locator(".compact-solar-window").boundingBox();
+  expect(solarTopBefore).toBeTruthy();
+
+  await page.getByRole("slider", { name: "Select forecast hour" }).fill("0");
+  await expect(page.locator(".hour-risk-window")).toBeVisible();
+
+  const solarTopAfter = await page.locator(".compact-solar-window").boundingBox();
+  expect(solarTopAfter).toBeTruthy();
+  expect(Math.abs((solarTopAfter?.y ?? 0) - (solarTopBefore?.y ?? 0))).toBeLessThan(1);
+});
+
+test("hourly risk panel waits for the hourly timeline before rendering", async ({ page }) => {
+  await page.route("**/api/v1/weather/overview**", async (route) => {
+    await route.fulfill({
+      json: {
+        ...overviewPayload,
+        current: {
+          ...overviewPayload.current,
+          windGusts: 34,
+          visibility: 2500,
+        },
+      },
+    });
+  });
+
+  let releaseTimeline: () => void = () => {};
+  const timelineReady = new Promise<void>((resolve) => {
+    releaseTimeline = resolve;
+  });
+  await page.route("**/api/v1/weather/timeline**", async (route) => {
+    await timelineReady;
+    await route.fulfill({ json: timelinePayload });
+  });
+
+  await page.goto(locationQuery);
+
+  await expect(page.locator(".temperature-value")).toContainText("4");
+  await expect(page.getByRole("slider", { name: "Select forecast hour" })).toHaveCount(0);
+  await expect(page.locator(".hour-risk-window")).toHaveCount(0);
+
+  releaseTimeline();
+  await expect(page.getByRole("slider", { name: "Select forecast hour" })).toBeVisible();
+});
+
 test("clicking the visible tomorrow hour updates the page using tomorrow snapshot logic", async ({ page }) => {
   await page.goto(locationQuery);
 
@@ -315,6 +363,20 @@ test("mobile tabs do not create horizontal overflow and clear the fixed tab bar"
     });
     expect(clearance).toBeGreaterThanOrEqual(0);
   }
+});
+
+test("mobile hourly risk panel appears above the hourly timeline", async ({ page }) => {
+  await page.setViewportSize({ width: 462, height: 900 });
+  await page.goto(locationQuery);
+
+  await page.getByRole("slider", { name: "Select forecast hour" }).fill("0");
+  await expect(page.locator(".hour-risk-window")).toBeVisible();
+
+  const scrubberBox = await page.locator(".hour-scrubber").boundingBox();
+  const riskBox = await page.locator(".hour-risk-window").boundingBox();
+  expect(scrubberBox).toBeTruthy();
+  expect(riskBox).toBeTruthy();
+  expect((riskBox?.y ?? 0) + (riskBox?.height ?? 0)).toBeLessThanOrEqual(scrubberBox?.y ?? 0);
 });
 
 test("switching to the Drone tab keeps the fixed tab bar anchored", async ({ page }) => {
