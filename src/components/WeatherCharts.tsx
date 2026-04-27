@@ -141,14 +141,14 @@ function HoverRect({ rectKey, x, y, width, height, onHover, onLeave }: HoverRect
 }
 
 function tooltipAnchorProps(anchorX: number, chartWidth: number) {
-  const safeLeft = Math.max(36, Math.min(chartWidth - 36, anchorX));
-  if (safeLeft < 88) {
-    return { left: `${safeLeft}px`, top: "0.55rem" } as const;
+  const safePercent = Math.max(6, Math.min(94, (anchorX / chartWidth) * 100));
+  if (safePercent < 22) {
+    return { left: `${safePercent}%`, top: "0.35rem" } as const;
   }
-  if (safeLeft > chartWidth - 88) {
-    return { right: `${Math.max(8, chartWidth - safeLeft)}px`, top: "0.55rem" } as const;
+  if (safePercent > 78) {
+    return { left: `${safePercent}%`, top: "0.35rem", transform: "translateX(-100%)" } as const;
   }
-  return { left: `${safeLeft}px`, top: "0.55rem", transform: "translateX(-50%)" } as const;
+  return { left: `${safePercent}%`, top: "0.35rem", transform: "translateX(-50%)" } as const;
 }
 
 export function TemperatureCurveChart({

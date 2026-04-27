@@ -246,6 +246,29 @@ test("solar window labels sunrise and sunset at their chart points", async ({ pa
   await expect(page.locator(".compact-solar-label.sunset")).toContainText("Sunset");
 });
 
+test("compact chart tooltips stay near the hovered chart point", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  const chart = page.locator(".compact-timeline-chart").first();
+  await chart.scrollIntoViewIfNeeded();
+  const svg = chart.locator("svg");
+  const svgBox = await svg.boundingBox();
+  expect(svgBox).toBeTruthy();
+
+  const hoverLocalX = (svgBox?.width ?? 0) * 0.74;
+  const hoverLocalY = (svgBox?.height ?? 0) * 0.5;
+  await svg.hover({ position: { x: hoverLocalX, y: hoverLocalY } });
+
+  const tooltip = chart.locator(".chart-tooltip");
+  await expect(tooltip).toBeVisible();
+  const tooltipBox = await tooltip.boundingBox();
+  expect(tooltipBox).toBeTruthy();
+
+  const hoverX = (svgBox?.x ?? 0) + hoverLocalX;
+  const tooltipCenterX = (tooltipBox?.x ?? 0) + (tooltipBox?.width ?? 0) / 2;
+  expect(Math.abs(tooltipCenterX - hoverX)).toBeLessThan(80);
+});
+
 test("hourly risk panel waits for the hourly timeline before rendering", async ({ page }) => {
   await page.route("**/api/v1/weather/overview**", async (route) => {
     await route.fulfill({
