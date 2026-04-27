@@ -1168,6 +1168,29 @@ input:focus-visible {
   color: var(--danger);
 }
 
+.hour-risk-close-button {
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: rgba(8, 15, 28, 0.45);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.hour-risk-close-button:hover,
+.hour-risk-close-button:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--sky);
+  outline: none;
+}
+
 .hour-risk-list {
   display: grid;
   gap: 0.32rem;
@@ -1325,7 +1348,7 @@ input:focus-visible {
 .hour-scrubber-bar {
   position: relative;
   display: flex;
-  height: 20px;
+  height: 40px;
   border-radius: 6px;
   overflow: visible;
   gap: 1px;
@@ -1361,8 +1384,8 @@ input:focus-visible {
 /* Draggable red border cursor — overlays the selected slot */
 .hour-scrubber-cursor {
   position: absolute;
-  top: -3px;
-  bottom: -3px;
+  top: -4px;
+  bottom: -4px;
   border: 2px solid var(--danger);
   border-radius: 4px;
   pointer-events: none;
@@ -1397,15 +1420,6 @@ input:focus-visible {
 .compact-solar-header {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.compact-solar-header strong {
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  color: var(--text-secondary);
-  font-weight: 600;
 }
 
 .compact-solar-track {
@@ -1443,14 +1457,35 @@ input:focus-visible {
 }
 
 .compact-solar-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.4rem;
+  position: relative;
+  min-height: 2rem;
   font-family: var(--font-mono);
   font-size: 0.62rem;
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.compact-solar-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.08rem;
+  min-width: 4.8rem;
+  text-align: center;
+}
+
+.compact-solar-label strong {
+  font-size: 0.68rem;
+  line-height: 1;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.compact-solar-label span {
+  line-height: 1.1;
 }
 
 .compact-timeline-charts {
@@ -2905,10 +2940,18 @@ input:focus-visible {
    Responsive
    ───────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
+  .app-shell {
+    padding-top: 0;
+  }
+
   .overview-grid,
   .hero-stats,
   .hourly-chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .primary-priority {
+    margin-bottom: 0;
   }
 
   .hero-mini-grid      { grid-template-columns: repeat(2, 1fr); }
@@ -2931,12 +2974,27 @@ input:focus-visible {
 
   .readiness-chip-grid { grid-template-columns: repeat(2, 1fr); }
   .environment-options { grid-template-columns: 1fr; }
+
+  .primary-panel,
+  .stat-panel,
+  .location-bar {
+    border: 0;
+    border-radius: 0;
+    margin-left: -1.25rem;
+    margin-right: -1.25rem;
+    width: calc(100% + 2.5rem);
+  }
+
+  .tab-content > .overview-grid.tab-now > .primary-panel {
+    padding-bottom: calc(1.4rem + 6.5rem + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(-6.5rem - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (max-width: 720px) {
   .app-shell {
     width: calc(100% - 1.25rem);
-    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+    padding-top: 0;
   }
 
   .hero-mini-grid { grid-template-columns: 1fr; }
@@ -2984,6 +3042,16 @@ input:focus-visible {
   .location-bar-panel {
     border-radius: var(--radius-lg);
   }
+
+  .primary-panel,
+  .stat-panel,
+  .location-bar {
+    border-radius: 0;
+    margin-left: -0.625rem;
+    margin-right: -0.625rem;
+    width: calc(100% + 1.25rem);
+  }
+
 }
 
 @media (max-width: 560px) {

@@ -77,7 +77,9 @@ export function WeatherOverview({
   });
   const selectedHourRisk = getHourRiskDetails(currentSnapshot);
   const selectedHourRiskTone = selectedHourRisk.tone !== "good" ? selectedHourRisk.tone : null;
-  const showHourRiskWindow = selectedHourRiskTone !== null && hourlyForDay.length > 0;
+  const [dismissedRiskTime, setDismissedRiskTime] = useState<string | null>(null);
+  const showHourRiskWindow =
+    selectedHourRiskTone !== null && hourlyForDay.length > 0 && dismissedRiskTime !== currentSnapshot.time;
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarDays = useMemo(
     () =>
@@ -91,6 +93,21 @@ export function WeatherOverview({
   const todayDate = weather.current.time.slice(0, 10);
   const showPrimaryPanel = activeTab === "now";
   const showSupportPanel = activeTab === "drone";
+
+  function handleHourChange(index: number) {
+    setDismissedRiskTime(null);
+    onHourChange(index);
+  }
+
+  function handleNextDayHourChange(index: number) {
+    setDismissedRiskTime(null);
+    onNextDayHourChange(index);
+  }
+
+  function handlePrevDayHourChange(index: number) {
+    setDismissedRiskTime(null);
+    onPrevDayHourChange(index);
+  }
 
   if (!showPrimaryPanel && !showSupportPanel) {
     return null;
@@ -193,13 +210,14 @@ export function WeatherOverview({
                 hourCycle={preferences.hourCycle}
                 activeHourIndex={activeHourIndex}
                 centerOnCurrentTime={centerTimelineOnCurrentTime}
-                onHourChange={onHourChange}
-                onNextDayHourChange={onNextDayHourChange}
-                onPrevDayHourChange={onPrevDayHourChange}
+                onHourChange={handleHourChange}
+                onNextDayHourChange={handleNextDayHourChange}
+                onPrevDayHourChange={handlePrevDayHourChange}
               />
               {showHourRiskWindow && (
                 <HourRiskInfoWindow
                   hourLabel={formatTime(currentSnapshot.time, preferences.hourCycle)}
+                  onDismiss={() => setDismissedRiskTime(currentSnapshot.time)}
                   reasons={selectedHourRisk.riskReasons}
                   tone={selectedHourRiskTone}
                 />
@@ -358,10 +376,12 @@ export function WeatherOverview({
 
 function HourRiskInfoWindow({
   hourLabel,
+  onDismiss,
   reasons,
   tone,
 }: {
   hourLabel: string;
+  onDismiss: () => void;
   reasons: HourRiskReason[];
   tone: "caution" | "risk";
 }) {
@@ -374,6 +394,14 @@ function HourRiskInfoWindow({
           <span>{hourLabel}</span>
           <strong>{toneLabel}</strong>
         </div>
+        <button
+          type="button"
+          className="hour-risk-close-button"
+          aria-label="Dismiss hourly condition reasons"
+          onClick={onDismiss}
+        >
+          X
+        </button>
       </div>
       <ul className="hour-risk-list">
         {reasons.map((reason) => (
@@ -489,14 +517,13 @@ function CompactSolarWindow({
   const sunsetPct = percentInRange(new Date(sunset).getTime(), rangeStartMs, rangeMs);
   const daylightLeftPct = Math.max(0, Math.min(sunrisePct, sunsetPct));
   const daylightRightPct = Math.min(100, Math.max(sunrisePct, sunsetPct));
+  const sunriseLabelPct = clampSolarLabelPct(sunrisePct);
+  const sunsetLabelPct = clampSolarLabelPct(sunsetPct);
 
   return (
     <div className="compact-solar-window" aria-label="Solar window">
       <div className="compact-solar-header">
         <span className="section-label">Solar Window</span>
-        <strong>
-          {formatTime(sunrise, hourCycle)} - {formatTime(sunset, hourCycle)}
-        </strong>
       </div>
       <div className="compact-solar-track" aria-hidden="true">
         <span
@@ -510,10 +537,14 @@ function CompactSolarWindow({
         <span className="compact-solar-marker sunset" style={{ left: `${sunsetPct}%` }} />
       </div>
       <div className="compact-solar-labels">
-        <span>{leftTime ? formatTime(leftTime, hourCycle) : "Start"}</span>
-        <span>Sunrise</span>
-        <span>Sunset</span>
-        <span>{rightTime ? formatTime(rightTime, hourCycle) : "End"}</span>
+        <span className="compact-solar-label sunrise" style={{ left: `${sunriseLabelPct}%` }}>
+          <strong>{formatTime(sunrise, hourCycle)}</strong>
+          <span>Sunrise</span>
+        </span>
+        <span className="compact-solar-label sunset" style={{ left: `${sunsetLabelPct}%` }}>
+          <strong>{formatTime(sunset, hourCycle)}</strong>
+          <span>Sunset</span>
+        </span>
       </div>
     </div>
   );
@@ -525,4 +556,8 @@ function currentDate(value: string) {
 
 function percentInRange(valueMs: number, rangeStartMs: number, rangeMs: number) {
   return Math.max(0, Math.min(100, ((valueMs - rangeStartMs) / rangeMs) * 100));
+}
+
+function clampSolarLabelPct(value: number) {
+  return Math.max(8, Math.min(92, value));
 }

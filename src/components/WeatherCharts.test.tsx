@@ -39,7 +39,9 @@ describe("TemperatureCurveChart", () => {
 
     expect(screen.getByText("10 AM")).toBeTruthy();
     expect(screen.getByText("10 C")).toBeTruthy();
-    expect(view.container.querySelector(".chart-tooltip")?.getAttribute("style")).toContain("top:");
+    const tooltipStyle = view.container.querySelector(".chart-tooltip")?.getAttribute("style");
+    expect(tooltipStyle).toContain("top:");
+    expect(tooltipStyle).toContain("%");
     view.unmount();
   });
 

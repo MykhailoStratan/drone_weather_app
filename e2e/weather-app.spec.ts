@@ -217,15 +217,56 @@ test("hourly risk panel overlays above the timeline without shifting layout", as
   await page.goto(locationQuery);
 
   await expect(page.locator(".hour-risk-window")).toHaveCount(0);
+  await expect(page.locator(".hour-scrubber-bar")).toHaveCSS("height", "40px");
   const solarTopBefore = await page.locator(".compact-solar-window").boundingBox();
   expect(solarTopBefore).toBeTruthy();
 
-  await page.getByRole("slider", { name: "Select forecast hour" }).fill("0");
+  await page.locator(".hour-scrubber-seg.caution").first().click();
   await expect(page.locator(".hour-risk-window")).toBeVisible();
 
   const solarTopAfter = await page.locator(".compact-solar-window").boundingBox();
   expect(solarTopAfter).toBeTruthy();
   expect(Math.abs((solarTopAfter?.y ?? 0) - (solarTopBefore?.y ?? 0))).toBeLessThan(1);
+
+  await page.getByRole("button", { name: "Dismiss hourly condition reasons" }).click();
+  await expect(page.locator(".hour-risk-window")).toHaveCount(0);
+
+  await page.locator(".hour-scrubber-seg.selected").click();
+  await expect(page.locator(".hour-risk-window")).toBeVisible();
+});
+
+test("solar window labels sunrise and sunset at their chart points", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  await expect(page.locator(".compact-solar-header strong")).toHaveCount(0);
+  await expect(page.locator(".compact-solar-labels > span")).toHaveCount(2);
+  await expect(page.locator(".compact-solar-label.sunrise")).toContainText("6:15 AM");
+  await expect(page.locator(".compact-solar-label.sunrise")).toContainText("Sunrise");
+  await expect(page.locator(".compact-solar-label.sunset")).toContainText("7:55 PM");
+  await expect(page.locator(".compact-solar-label.sunset")).toContainText("Sunset");
+});
+
+test("compact chart tooltips stay near the hovered chart point", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  const chart = page.locator(".compact-timeline-chart").first();
+  await chart.scrollIntoViewIfNeeded();
+  const svg = chart.locator("svg");
+  const svgBox = await svg.boundingBox();
+  expect(svgBox).toBeTruthy();
+
+  const hoverLocalX = (svgBox?.width ?? 0) * 0.74;
+  const hoverLocalY = (svgBox?.height ?? 0) * 0.5;
+  await svg.hover({ position: { x: hoverLocalX, y: hoverLocalY } });
+
+  const tooltip = chart.locator(".chart-tooltip");
+  await expect(tooltip).toBeVisible();
+  const tooltipBox = await tooltip.boundingBox();
+  expect(tooltipBox).toBeTruthy();
+
+  const hoverX = (svgBox?.x ?? 0) + hoverLocalX;
+  const tooltipCenterX = (tooltipBox?.x ?? 0) + (tooltipBox?.width ?? 0) / 2;
+  expect(Math.abs(tooltipCenterX - hoverX)).toBeLessThan(80);
 });
 
 test("hourly risk panel waits for the hourly timeline before rendering", async ({ page }) => {
@@ -363,6 +404,39 @@ test("mobile tabs do not create horizontal overflow and clear the fixed tab bar"
     });
     expect(clearance).toBeGreaterThanOrEqual(0);
   }
+});
+
+test("small-screen layout makes outer frames full bleed", async ({ page }) => {
+  await page.goto(locationQuery);
+  await expect(page.locator(".primary-panel")).not.toHaveCSS("border-top-width", "0px");
+
+  await page.setViewportSize({ width: 1058, height: 702 });
+  const contentWidth = await page.evaluate(() => document.body.clientWidth);
+  await expect(page.locator(".location-bar")).toHaveCSS("border-top-width", "0px");
+  const locationBarBox = await page.locator(".location-bar").boundingBox();
+  expect(locationBarBox).toBeTruthy();
+  expect(locationBarBox?.x ?? 1).toBeLessThanOrEqual(1);
+  expect(locationBarBox?.y ?? 1).toBeLessThanOrEqual(1);
+  expect((locationBarBox?.x ?? 0) + (locationBarBox?.width ?? 0)).toBeGreaterThanOrEqual(contentWidth - 1);
+
+  await expect(page.locator(".primary-panel")).toHaveCSS("border-top-width", "0px");
+  const primaryPanelBox = await page.locator(".primary-panel").boundingBox();
+  expect(primaryPanelBox).toBeTruthy();
+  expect(primaryPanelBox?.x ?? 1).toBeLessThanOrEqual(1);
+  expect((primaryPanelBox?.x ?? 0) + (primaryPanelBox?.width ?? 0)).toBeGreaterThanOrEqual(contentWidth - 1);
+  const primaryPanelBottom = await page.evaluate(() => {
+    const panel = document.querySelector(".primary-panel")?.getBoundingClientRect();
+    return panel ? Math.round(panel.bottom + window.scrollY) : 0;
+  });
+  const documentBottom = await page.evaluate(() => document.documentElement.scrollHeight);
+  expect(primaryPanelBottom).toBeGreaterThanOrEqual(documentBottom - 1);
+
+  await page.getByRole("tab", { name: "Drone" }).click();
+  await expect(page.locator(".support-panel")).toHaveCSS("border-top-width", "0px");
+  const supportPanelBox = await page.locator(".support-panel").boundingBox();
+  expect(supportPanelBox).toBeTruthy();
+  expect(supportPanelBox?.x ?? 1).toBeLessThanOrEqual(1);
+  expect((supportPanelBox?.x ?? 0) + (supportPanelBox?.width ?? 0)).toBeGreaterThanOrEqual(contentWidth - 1);
 });
 
 test("mobile hourly risk panel appears above the hourly timeline", async ({ page }) => {
