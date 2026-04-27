@@ -187,12 +187,12 @@ describe("App preferences", () => {
 
     const slider = await view.findByRole("slider", { name: "Select forecast hour" });
     expect(document.querySelector(".temperature-value")?.textContent).toBe("9");
-    expect(await view.findByText("12:00 PM: 9 C")).toBeTruthy();
+    expect(slider.getAttribute("aria-valuetext")).toBe("12:00 PM");
 
     fireEvent.change(slider, { target: { value: "1" } });
 
     expect(document.querySelector(".temperature-value")?.textContent).toBe("4");
-    expect(await view.findByText("1:00 AM: 4 C")).toBeTruthy();
+    expect(slider.getAttribute("aria-valuetext")).toBe("1:00 AM");
     view.unmount();
   });
 
