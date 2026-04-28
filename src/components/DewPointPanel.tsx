@@ -1,17 +1,8 @@
-type CondensationRisk = "low" | "moderate" | "high";
-
-function dewPointCelsius(tempC: number, relativeHumidity: number): number {
-  const a = 17.625;
-  const b = 243.04;
-  const gamma = Math.log(relativeHumidity / 100) + (a * tempC) / (b + tempC);
-  return (b * gamma) / (a - gamma);
-}
-
-function condensationRisk(spread: number): CondensationRisk {
-  if (spread < 2) return "high";
-  if (spread < 5) return "moderate";
-  return "low";
-}
+import {
+  condensationRisk,
+  dewPointCelsius,
+  type CondensationRisk,
+} from "../lib/drone-calculations";
 
 const RISK_LABEL: Record<CondensationRisk, string> = {
   low: "Low risk",
