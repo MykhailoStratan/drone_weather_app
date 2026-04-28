@@ -7,6 +7,7 @@ import { WeatherOverview } from "./components/WeatherOverview";
 import { buildHourlySeries } from "./lib/chartUtils";
 import { formatSavedAtLabel, resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph } from "./lib/app-utils";
 import { temperatureDisplay } from "./lib/format";
+import { resolveStarterLocation } from "./lib/starter-location";
 import { readStoredLocation, readStoredOverview } from "./lib/storage";
 import { useAirspace } from "./hooks/useAirspace";
 import { useDailyWeatherSlice } from "./hooks/useDailyWeatherSlice";
@@ -17,15 +18,7 @@ import { useUrlLocation } from "./hooks/useUrlLocation";
 import { useWeatherData } from "./hooks/useWeatherData";
 import type { LocationOption } from "./types";
 
-const starterLocation: LocationOption = {
-  id: 1,
-  name: "Vancouver",
-  admin1: "British Columbia",
-  country: "Canada",
-  latitude: 49.2497,
-  longitude: -123.1193,
-  timezone: "America/Vancouver",
-};
+const starterLocation: LocationOption = resolveStarterLocation(import.meta.env);
 
 const LAST_LOCATION_KEY = "skycanvas.lastLocation";
 
