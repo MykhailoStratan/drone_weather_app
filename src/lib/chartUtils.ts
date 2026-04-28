@@ -2,10 +2,12 @@ import { formatHourLabel, formatTime } from "./format";
 import type { DailyWeather } from "../types";
 
 function formatHourTick(value: string, hourCycle: "12h" | "24h") {
+  const naive = !value.endsWith("Z") && !/[+-]\d{2}:\d{2}$/.test(value);
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     hour12: hourCycle === "12h",
-  }).format(new Date(value));
+    timeZone: naive ? "UTC" : undefined,
+  }).format(naive ? new Date(`${value}Z`) : new Date(value));
 }
 
 function roundToOne(n: number) {
@@ -59,7 +61,7 @@ export function buildWeeklyRangeSeries(daily: DailyWeather[]) {
   return daily.map((day) => ({
     key: day.date,
     label: formatTime(`${day.date}T12:00`, "12h"),
-    shortLabel: new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(new Date(`${day.date}T00:00:00`)),
+    shortLabel: new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" }).format(new Date(`${day.date}T12:00:00Z`)),
     min: day.temperatureMin,
     max: day.temperatureMax,
   }));

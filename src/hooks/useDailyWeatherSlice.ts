@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import type { WeatherPayload } from "../types";
 
 function shiftDate(date: string, dayOffset: number) {
-  const shifted = new Date(`${date}T00:00:00`);
-  shifted.setDate(shifted.getDate() + dayOffset);
-  return shifted.toISOString().slice(0, 10);
+  // Use UTC arithmetic so the result never shifts by a calendar day due to browser timezone offset.
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + dayOffset)).toISOString().slice(0, 10);
 }
 
 export function useDailyWeatherSlice(weather: WeatherPayload | null, selectedDate: string) {

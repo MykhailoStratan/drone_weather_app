@@ -1091,15 +1091,19 @@ function selectTickLabels(labels: string[]) {
 }
 
 function formatHourTick(value: string, hourCycle: "12h" | "24h") {
+  const naive = !value.endsWith("Z") && !/[+-]\d{2}:\d{2}$/.test(value);
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     hour12: hourCycle === "12h",
-  }).format(new Date(value));
+    timeZone: naive ? "UTC" : undefined,
+  }).format(naive ? new Date(`${value}Z`) : new Date(value));
 }
 
 function extractHourValue(value: string) {
-  const date = new Date(value);
-  return date.getHours() + date.getMinutes() / 60;
+  // Parse directly from the ISO string — the time part already reflects the location's local time.
+  const timePart = value.split("T")[1] ?? "00:00:00";
+  const [hours, minutes] = timePart.split(":").map(Number);
+  return hours + (minutes ?? 0) / 60;
 }
 
 function directionVector(direction: number, length: number) {
