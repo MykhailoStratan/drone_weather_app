@@ -56,35 +56,39 @@ export default withCors(async (req: Request) => {
   const featuresKey = cacheKey(lat, lng, (countryHint ?? "auto").toLowerCase());
   const tfrKey = `tfr:v2:${lat.toFixed(1)}:${lng.toFixed(1)}`;
 
-  const featuresCached = getCacheState<{ bundle: AirspaceBundle }>(featuresKey);
+  type CachedFeatures = { bundle: AirspaceBundle; fetchedAt: string };
+  const featuresCached = getCacheState<CachedFeatures>(featuresKey);
   const tfrCached = getCacheState<AirspaceBundle["tfrs"]>(tfrKey);
 
   if (featuresCached.state === "fresh" && tfrCached.state === "fresh") {
-    const bundle = featuresCached.value.bundle;
+    const { bundle, fetchedAt } = featuresCached.value;
     const response: AirspaceResponse = {
       latitude: lat,
       longitude: lng,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt,
       country: bundle.country,
       dataSources: bundle.dataSources,
       features: bundle.features,
       tfrs: tfrCached.value,
+      stale: false,
     };
     return Response.json(response);
   }
 
   try {
     const bundle = await fetchAirspaceBundle(lat, lng, countryHint);
-    setCached(featuresKey, { bundle }, CACHE_TTL_MS);
+    const fetchedAt = new Date().toISOString();
+    setCached<CachedFeatures>(featuresKey, { bundle, fetchedAt }, CACHE_TTL_MS);
     setCached(tfrKey, bundle.tfrs, TFR_CACHE_TTL_MS);
     const response: AirspaceResponse = {
       latitude: lat,
       longitude: lng,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt,
       country: bundle.country,
       dataSources: bundle.dataSources,
       features: bundle.features,
       tfrs: bundle.tfrs,
+      stale: false,
     };
     console.info(
       `[airspace] ${bundle.country} ${bundle.features.length} features, ${bundle.tfrs.length} TFRs`,
@@ -92,15 +96,16 @@ export default withCors(async (req: Request) => {
     return Response.json(response);
   } catch (error) {
     if (featuresCached.state === "stale") {
-      const bundle = featuresCached.value.bundle;
+      const { bundle, fetchedAt } = featuresCached.value;
       const response: AirspaceResponse = {
         latitude: lat,
         longitude: lng,
-        fetchedAt: new Date().toISOString(),
+        fetchedAt,
         country: bundle.country,
         dataSources: bundle.dataSources,
         features: bundle.features,
         tfrs: tfrCached.state === "stale" ? tfrCached.value : [],
+        stale: true,
       };
       return Response.json(response, { headers: { "x-skycanvas-cache": "stale" } });
     }

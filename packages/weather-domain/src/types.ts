@@ -118,6 +118,7 @@ export type AirspaceResponse = {
   dataSources: string[];
   features: AirspaceFeature[];
   tfrs: TFRFeature[];
+  stale?: boolean;
 };
 
 export type WeatherAlert = {
