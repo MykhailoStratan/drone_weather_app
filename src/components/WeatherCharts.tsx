@@ -148,7 +148,10 @@ function tooltipAnchorProps(anchorX: number, chartWidth: number) {
   if (safePercent > 78) {
     return { left: `${safePercent}%`, top: "0.35rem", transform: "translateX(-100%)" } as const;
   }
-  return { left: `${safePercent}%`, top: "0.35rem", transform: "translateX(-50%)" } as const;
+  if (safePercent <= 50) {
+    return { left: `${safePercent}%`, top: "0.35rem", transform: "translateX(8px)" } as const;
+  }
+  return { left: `${safePercent}%`, top: "0.35rem", transform: "translateX(calc(-100% - 8px))" } as const;
 }
 
 export function TemperatureCurveChart({
@@ -166,7 +169,7 @@ export function TemperatureCurveChart({
   if (!points.length) {
     return (
       <ChartShell
-        eyebrow="Hourly Arc"
+        eyebrow="Temperature Distribution"
         title={compact ? "Temperature" : "Temperature curve"}
         subtitle="Waiting for hourly data"
         compact={compact}
@@ -194,22 +197,21 @@ export function TemperatureCurveChart({
   const [min, max] = summarizeRange(points.map((point) => point.value));
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
   const activePoint = activeTime ? points.find((point) => point.time === activeTime) : null;
-  const subtitle = compact && activePoint
-    ? `${activePoint.label}: ${roundLabel(activePoint.value)} ${units}`
-    : `${min} to ${max} ${units}`;
+  const displayPoint = hoveredPoint ?? activePoint;
+  const subtitle = `${min} to ${max} ${units}`;
 
   return (
     <ChartShell
-      eyebrow="Hourly Arc"
+      eyebrow="Temperature Distribution"
       title={compact ? "Temperature" : "Temperature curve"}
       subtitle={subtitle}
       compact={compact}
       tooltip={
-        hoveredPoint ? (
+        displayPoint ? (
           <ChartTooltip
-            title={hoveredPoint.label}
-            lines={[`${roundLabel(hoveredPoint.value)} ${units}`, hoveredPoint.isDay ? "Daylight conditions" : "Night conditions"]}
-            style={tooltipAnchorProps((x(hoveredPoint.key) ?? 0), width)}
+            title={displayPoint.label}
+            lines={[`${roundLabel(displayPoint.value)} ${units}`, displayPoint.isDay ? "Daylight conditions" : "Night conditions"]}
+            style={tooltipAnchorProps((x(displayPoint.key) ?? 0), width)}
           />
         ) : null
       }
@@ -310,7 +312,7 @@ export function PrecipitationOverlayChart({
   if (!points.length) {
     return (
       <ChartShell
-        eyebrow="Hourly Rain"
+        eyebrow="Precipitation"
         title={compact ? "Rain" : "Precipitation + probability"}
         subtitle="Waiting for hourly data"
         compact={compact}
@@ -338,25 +340,24 @@ export function PrecipitationOverlayChart({
   const maxProbability = Math.max(...points.map((point) => point.probability), 0);
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
   const activePoint = activeTime ? points.find((point) => point.time === activeTime) : null;
+  const displayPoint = hoveredPoint ?? activePoint;
   const subtitle =
-    compact && activePoint
-      ? `${activePoint.label}: ${activePoint.value.toFixed(1)} mm, ${Math.round(activePoint.probability)}%`
-      : maxAmount < 0.1
+    maxAmount < 0.1
       ? `Dry conditions, ${Math.round(maxProbability)}% chance`
       : `${maxAmount.toFixed(1)} mm peak, ${Math.round(maxProbability)}% chance`;
 
   return (
     <ChartShell
-      eyebrow="Hourly Rain"
+      eyebrow="Precipitation"
       title={compact ? "Rain" : "Precipitation + probability"}
       subtitle={subtitle}
       compact={compact}
       tooltip={
-        hoveredPoint ? (
+        displayPoint ? (
           <ChartTooltip
-            title={hoveredPoint.label}
-            lines={[`${hoveredPoint.value.toFixed(1)} mm precipitation`, `${Math.round(hoveredPoint.probability)}% probability`]}
-            style={tooltipAnchorProps((x(hoveredPoint.key) ?? 0) + x.bandwidth() / 2, width)}
+            title={displayPoint.label}
+            lines={[`${displayPoint.value.toFixed(1)} mm precipitation`, `${Math.round(displayPoint.probability)}% probability`]}
+            style={tooltipAnchorProps((x(displayPoint.key) ?? 0) + x.bandwidth() / 2, width)}
           />
         ) : null
       }
@@ -819,23 +820,20 @@ export function CloudVisibilityChart({
   const visibilityMax = Math.max(...points.map((point) => point.secondaryValue), 0);
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
   const activePoint = activeTime ? points.find((point) => point.time === activeTime) : null;
+  const displayPoint = hoveredPoint ?? activePoint;
 
   return (
     <ChartShell
       eyebrow="Sky Clarity"
       title="Cloud cover + visibility"
-      subtitle={
-        compact && activePoint
-          ? `${activePoint.label}: ${Math.round(activePoint.value)}%, ${activePoint.secondaryValue.toFixed(1)} ${visibilityUnits}`
-          : `${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`
-      }
+      subtitle={`${Math.round(Math.max(...points.map((point) => point.value), 0))}% clouds, ${visibilityMax.toFixed(1)} ${visibilityUnits} visibility`}
       compact={compact}
       tooltip={
-        hoveredPoint ? (
+        displayPoint ? (
           <ChartTooltip
-            title={hoveredPoint.label}
-            lines={[`${Math.round(hoveredPoint.value)}% cloud cover`, `${hoveredPoint.secondaryValue.toFixed(1)} ${visibilityUnits} visibility`]}
-            style={tooltipAnchorProps(x(hoveredPoint.key) ?? 0, width)}
+            title={displayPoint.label}
+            lines={[`${Math.round(displayPoint.value)}% cloud cover`, `${displayPoint.secondaryValue.toFixed(1)} ${visibilityUnits} visibility`]}
+            style={tooltipAnchorProps(x(displayPoint.key) ?? 0, width)}
           />
         ) : null
       }
@@ -985,8 +983,8 @@ function ChartShell({ eyebrow, title, subtitle, footer, tooltip, compact = false
       <div className="chart-card-header">
         <div>
           <p className="section-label">{eyebrow}</p>
-          <h4>{title}</h4>
-          <strong>{subtitle}</strong>
+          {!compact && <h4>{title}</h4>}
+          {!compact && <strong>{subtitle}</strong>}
         </div>
       </div>
       <div className="chart-shell visx-shell">

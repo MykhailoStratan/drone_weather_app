@@ -1420,6 +1420,8 @@ input:focus-visible {
 .compact-solar-header {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .compact-solar-track {
@@ -1486,6 +1488,23 @@ input:focus-visible {
 
 .compact-solar-label span {
   line-height: 1.1;
+}
+
+.compact-solar-out-of-range {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.compact-solar-out-of-range-note {
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 .compact-timeline-charts {
@@ -2442,8 +2461,9 @@ input:focus-visible {
   font-size: 0.78rem;
 }
 
-.compact-timeline-chart .section-label {
-  font-size: 0.56rem;
+.compact-timeline-chart .section-label,
+.hour-scrubber-header .section-label {
+  font-size: 0.72rem;
 }
 
 .compact-timeline-chart .chart-shell {
@@ -3312,7 +3332,7 @@ input:focus-visible {
 
 .airspace-map-container {
   width: 100%;
-  height: 260px;
+  height: 520px;
 }
 
 .airspace-map-skeleton {
@@ -3484,6 +3504,8 @@ input:focus-visible {
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.15s;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3509,6 +3531,9 @@ input:focus-visible {
 .airspace-legend-item.icao-a     { color: #ff3b30; }
 .airspace-legend-item.icao-c     { color: #ff9500; }
 .airspace-legend-item.icao-d     { color: #f59e3f; }
+
+.airspace-legend-item:hover { opacity: 0.8; }
+.airspace-legend-item.selected::before { background: currentColor; }
 
 .airspace-source-status {
   margin: 0;
@@ -3560,9 +3585,14 @@ input:focus-visible {
   gap: 0.75rem;
   padding: 0.6rem 1.25rem;
   border-top: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
 .airspace-feature-row:first-child { border-top: none; }
+
+.airspace-feature-row:hover { background: var(--surface-2, rgba(255,255,255,0.04)); }
+.airspace-feature-row.selected { background: var(--surface-2, rgba(255,255,255,0.07)); }
 
 .airspace-dot {
   width: 10px;

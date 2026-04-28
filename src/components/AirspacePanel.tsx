@@ -46,7 +46,7 @@ const FEATURE_TYPE_ICONS: Record<AirspaceFeature["featureType"], string> = {
 };
 
 const TFR_COLOR = { fill: "rgba(168, 85, 247, 0.12)", stroke: "#a855f7" };
-const DEFAULT_ALTITUDE_LIMIT_FT = 250_000;
+const DEFAULT_ALTITUDE_LIMIT_FT = 10_000;
 const ALTITUDE_LIMIT_STEP_FT = 10_000;
 const AIRSPACE_FILTER_ORDER = [
   "class_a",
@@ -244,6 +244,7 @@ type MapRefs = {
   map: import("leaflet").Map | null;
   layers: Record<string, import("leaflet").LayerGroup>;
   layerControl: import("leaflet").Control.Layers | null;
+  featureLayers: Map<string, { path: import("leaflet").Path; feature: AirspaceFeature }>;
 };
 
 function layerKeyFor(classification: AirspaceFeature["classification"]): string {
@@ -332,14 +333,19 @@ function AirspaceMap({
   longitude,
   features,
   tfrs,
+  selectedFeatureId,
+  selectedClassification,
 }: {
   latitude: number;
   longitude: number;
   features: AirspaceFeature[];
   tfrs: TFRFeature[];
+  selectedFeatureId?: string | null;
+  selectedClassification?: AirspaceFeature["classification"] | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const refs = useRef<MapRefs>({ map: null, layers: {}, layerControl: null });
+  const refs = useRef<MapRefs>({ map: null, layers: {}, layerControl: null, featureLayers: new Map() });
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -384,13 +390,15 @@ function AirspaceMap({
       const layerControl = L.control.layers(undefined, undefined, { collapsed: false }).addTo(map);
       refs.current.layerControl = layerControl;
       refs.current.layers = {};
+      setMapReady(true);
     };
 
     void init();
 
     return () => {
       refs.current.map?.remove();
-      refs.current = { map: null, layers: {}, layerControl: null };
+      refs.current = { map: null, layers: {}, layerControl: null, featureLayers: new Map() };
+      setMapReady(false);
     };
   }, [latitude, longitude]);
 
@@ -401,6 +409,7 @@ function AirspaceMap({
     void import("leaflet").then((mod) => {
       const L = mod.default ?? (mod as unknown as typeof import("leaflet"));
 
+      refs.current.featureLayers.clear();
       for (const [key, layer] of Object.entries(refs.current.layers)) {
         layerControl?.removeLayer(layer);
         map.removeLayer(layer);
@@ -445,8 +454,9 @@ function AirspaceMap({
           const polyBounds = poly.getBounds();
           bounds.push([polyBounds.getNorth(), polyBounds.getEast()]);
           bounds.push([polyBounds.getSouth(), polyBounds.getWest()]);
+          refs.current.featureLayers.set(feature.id, { path: poly, feature });
         } else {
-          L.circle([feature.latitude, feature.longitude], {
+          const circle = L.circle([feature.latitude, feature.longitude], {
             radius: feature.zoneRadiusKm * 1000,
             color: colors.stroke,
             fillColor: colors.fill,
@@ -456,6 +466,7 @@ function AirspaceMap({
           })
             .addTo(layer)
             .bindPopup(buildFeaturePopupContent(feature));
+          refs.current.featureLayers.set(feature.id, { path: circle, feature });
         }
 
         const icon = L.divIcon({
@@ -499,7 +510,59 @@ function AirspaceMap({
         });
       }
     });
-  }, [features, tfrs, latitude, longitude]);
+  }, [features, tfrs, latitude, longitude, mapReady]);
+
+  useEffect(() => {
+    const { map, featureLayers } = refs.current;
+    if (!map || featureLayers.size === 0) return;
+
+    const hasSelection = selectedFeatureId != null || selectedClassification != null;
+
+    const matchingPaths: import("leaflet").Path[] = [];
+
+    for (const [id, { path, feature }] of featureLayers.entries()) {
+      const colors = ZONE_COLORS[feature.classification];
+      const baseStyle = {
+        color: colors.stroke,
+        fillColor: colors.fill,
+        weight: colors.weight ?? 1.5,
+        dashArray: colors.dashArray,
+        fillOpacity: 1,
+        opacity: 1,
+      };
+
+      if (!hasSelection) {
+        path.setStyle(baseStyle);
+        continue;
+      }
+
+      const isMatch = selectedFeatureId != null
+        ? id === selectedFeatureId
+        : feature.classification === selectedClassification;
+
+      if (isMatch) {
+        path.setStyle({ ...baseStyle, weight: (colors.weight ?? 1.5) * 2.5, dashArray: undefined });
+        path.bringToFront();
+        matchingPaths.push(path);
+      } else {
+        path.setStyle({ ...baseStyle, fillOpacity: 0.15, opacity: 0.25 });
+      }
+    }
+
+    if (matchingPaths.length > 0) {
+      void import("leaflet").then((mod) => {
+        const L = mod.default ?? (mod as unknown as typeof import("leaflet"));
+        const bounds = L.latLngBounds([]);
+        for (const path of matchingPaths) {
+          const b = (path as import("leaflet").Polygon).getBounds?.();
+          if (b?.isValid()) bounds.extend(b);
+        }
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+        }
+      });
+    }
+  }, [selectedFeatureId, selectedClassification, mapReady]);
 
   return <div ref={containerRef} className="airspace-map-container" />;
 }
@@ -528,6 +591,18 @@ export function AirspacePanel({
   const [visibleFilters, setVisibleFilters] = useState(defaultFilterVisibility);
   const [showTfrs, setShowTfrs] = useState(true);
   const [altitudeLimitFt, setAltitudeLimitFt] = useState(DEFAULT_ALTITUDE_LIMIT_FT);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
+  const [selectedClassification, setSelectedClassification] = useState<AirspaceFeature["classification"] | null>(null);
+
+  const handleLegendClick = (classification: AirspaceFeature["classification"]) => {
+    setSelectedFeatureId(null);
+    setSelectedClassification((prev) => (prev === classification ? null : classification));
+  };
+
+  const handleFeatureClick = (featureId: string) => {
+    setSelectedClassification(null);
+    setSelectedFeatureId((prev) => (prev === featureId ? null : featureId));
+  };
   const hasHighAltitudeFeatures = features.some(isHighAltitudeFeature);
   const maxAltitudeLimitFt = useMemo(() => {
     const maxLowerAltitude = features.reduce(
@@ -607,7 +682,14 @@ export function AirspacePanel({
         loading && !airspace ? (
           <AirspaceMapSkeleton />
         ) : (
-          <AirspaceMap latitude={mapLat} longitude={mapLng} features={visibleFeatures} tfrs={visibleTfrs} />
+          <AirspaceMap
+            latitude={mapLat}
+            longitude={mapLng}
+            features={visibleFeatures}
+            tfrs={visibleTfrs}
+            selectedFeatureId={selectedFeatureId}
+            selectedClassification={selectedClassification}
+          />
         )
       ) : (
         <div className="airspace-loading">
@@ -668,20 +750,16 @@ export function AirspacePanel({
 
       {mapLat !== undefined && !error && (
         <div className="airspace-legend">
-          {visibleClassifications.has("controlled") && (
-            <span className="airspace-legend-item controlled">Controlled</span>
-          )}
-          {visibleClassifications.has("advisory") && (
-            <span className="airspace-legend-item advisory">Advisory</span>
-          )}
-          {visibleClassifications.has("restricted") && (
-            <span className="airspace-legend-item restricted">Restricted</span>
-          )}
-          {visibleClassifications.has("danger") && (
-            <span className="airspace-legend-item danger">Danger</span>
-          )}
-          {visibleClassifications.has("military") && (
-            <span className="airspace-legend-item military">Military</span>
+          {(["controlled", "advisory", "restricted", "danger", "military"] as const).map((cls) =>
+            visibleClassifications.has(cls) ? (
+              <span
+                key={cls}
+                className={`airspace-legend-item ${cls}${selectedClassification === cls ? " selected" : ""}`}
+                onClick={() => handleLegendClick(cls)}
+              >
+                {cls.charAt(0).toUpperCase() + cls.slice(1)}
+              </span>
+            ) : null
           )}
           {visibleTfrs.length > 0 && <span className="airspace-legend-item tfr">TFR</span>}
           {openAipFeatures.length > 0 && (
@@ -706,7 +784,11 @@ export function AirspacePanel({
       {visibleFeatures.length > 0 && (
         <ul className="airspace-feature-list">
           {visibleFeatures.slice(0, 6).map((feature) => (
-            <li key={feature.id} className="airspace-feature-row">
+            <li
+              key={feature.id}
+              className={`airspace-feature-row${selectedFeatureId === feature.id ? " selected" : ""}`}
+              onClick={() => handleFeatureClick(feature.id)}
+            >
               <div className={`airspace-dot ${feature.classification}`} />
               <div className="airspace-feature-info">
                 <strong>{feature.name}</strong>
