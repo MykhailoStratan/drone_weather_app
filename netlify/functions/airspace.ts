@@ -1,5 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { getCacheState, setCached } from "./_shared/cache";
+import { withCors } from "./_shared/cors";
 import { fetchAirspaceBundle } from "./_shared/airspace";
 import type { AirspaceBundle } from "./_shared/airspace";
 import type { AirspaceResponse } from "../../packages/weather-domain/src/types";
@@ -37,7 +38,7 @@ function cacheKey(lat: number, lng: number, country: string) {
   return `airspace:v4:${country}:${lat.toFixed(CACHE_COORD_PRECISION)}:${lng.toFixed(CACHE_COORD_PRECISION)}`;
 }
 
-export default async (req: Request) => {
+export default withCors(async (req: Request) => {
   if (req.method !== "GET") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -106,7 +107,7 @@ export default async (req: Request) => {
     const message = error instanceof Error ? error.message : "Airspace data is unavailable right now.";
     return Response.json({ error: message }, { status: 500 });
   }
-};
+});
 
 export const config: Config = {
   path: ["/api/v1/airspace"],

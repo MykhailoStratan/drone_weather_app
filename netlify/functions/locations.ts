@@ -1,11 +1,12 @@
 import type { Config } from "@netlify/functions";
 import { validateLocationSearchQuery } from "../../packages/weather-domain/src/location-search";
 import { CACHE_TTLS, createSearchCacheKey, getCacheState, setCached } from "./_shared/cache";
+import { withCors } from "./_shared/cors";
 import { withCacheFallback } from "./_shared/handler";
 import { checkRateLimit } from "./_shared/rateLimit";
 import { searchLocationsFromProvider } from "./_shared/weather";
 
-export default async (req: Request) => {
+export default withCors(async (req: Request) => {
   const ip =
     req.headers.get("x-nf-client-connection-ip") ??
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -56,7 +57,7 @@ export default async (req: Request) => {
     const message = error instanceof Error ? error.message : "Unable to search locations.";
     return Response.json({ error: message }, { status: 500 });
   }
-};
+});
 
 export const config: Config = {
   path: ["/api/locations", "/api/v1/locations"],

@@ -1,11 +1,12 @@
 import type { Config } from "@netlify/functions";
 import { CACHE_TTLS, createWeatherCacheKey, getCacheState, setCached } from "./_shared/cache";
 import { createAlertsResponse, parseWeatherQuery, toWeatherQuery } from "./_shared/contracts";
+import { withCors } from "./_shared/cors";
 import { withCacheFallback } from "./_shared/handler";
 import { fetchUnitedStatesAlerts } from "./_shared/provider";
 import type { WeatherAlertsResponse } from "../../packages/weather-domain/src";
 
-export default async (req: Request) => {
+export default withCors(async (req: Request) => {
   if (req.method !== "GET") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -46,7 +47,7 @@ export default async (req: Request) => {
       { headers: { "x-skycanvas-alerts": "degraded" } },
     );
   }
-};
+});
 
 export const config: Config = {
   path: ["/api/weather/alerts", "/api/v1/weather/alerts"],

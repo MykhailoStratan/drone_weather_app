@@ -1,6 +1,7 @@
 import type { Config } from "@netlify/functions";
 import type { GnssEstimateRequest, GnssEstimateResponse } from "../../packages/weather-domain/src";
 import { CACHE_TTLS, getCacheState, setCached } from "./_shared/cache";
+import { withCors } from "./_shared/cors";
 import { fetchGnssEstimate } from "./_shared/gnss";
 
 function createGnssCacheKey(request: GnssEstimateRequest) {
@@ -17,7 +18,7 @@ function createGnssCacheKey(request: GnssEstimateRequest) {
   ].join(":");
 }
 
-export default async (req: Request) => {
+export default withCors(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -49,7 +50,7 @@ export default async (req: Request) => {
     const message = error instanceof Error ? error.message : "GNSS estimate is unavailable right now.";
     return Response.json({ error: message }, { status: 500 });
   }
-};
+});
 
 export const config: Config = {
   path: ["/api/gnss/estimate", "/api/v1/gnss/estimate"],

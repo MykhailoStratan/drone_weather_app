@@ -1,10 +1,11 @@
 import type { Config } from "@netlify/functions";
 import type { LocationOption } from "../../packages/weather-domain/src/types";
 import { CACHE_TTLS, createWeatherCacheKey, getCacheState, setCached } from "./_shared/cache";
+import { withCors } from "./_shared/cors";
 import { fetchWeatherFromProvider } from "./_shared/weather";
 import type { WeatherPayload } from "../../packages/weather-domain/src";
 
-export default async (req: Request) => {
+export default withCors(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -40,7 +41,7 @@ export default async (req: Request) => {
     const message = error instanceof Error ? error.message : "Weather data is unavailable right now.";
     return Response.json({ error: message }, { status: 500 });
   }
-};
+});
 
 export const config: Config = {
   path: ["/api/weather", "/api/v1/weather"],
