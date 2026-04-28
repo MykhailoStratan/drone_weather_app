@@ -75,6 +75,13 @@ export const IconGauge = () => (
   </Icon>
 );
 
+export const IconThermometer = () => (
+  <Icon>
+    <path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0z" />
+    <line x1="12" y1="9" x2="12" y2="17" />
+  </Icon>
+);
+
 export const IconSun = () => (
   <Icon>
     <circle cx="12" cy="12" r="4" />

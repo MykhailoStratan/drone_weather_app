@@ -4,7 +4,7 @@ import { DewPointPanel } from "./DewPointPanel";
 import { DensityAltitudePanel } from "./DensityAltitudePanel";
 import { FlightReadinessPanel } from "./FlightReadinessPanel";
 import { getHourRiskDetails, getHourScrubberBoundary, HourScrubber, type HourRiskReason } from "./FlightWindowBar";
-import { IconCloud, IconEye, IconGauge, IconRain, IconSunrise, IconSunset } from "./Icons";
+import { IconCloud, IconEye, IconGauge, IconRain, IconSunrise, IconSunset, IconThermometer } from "./Icons";
 import type { AppTab } from "./TabBar";
 import type { Preferences } from "../hooks/usePreferences";
 import type { WeatherDetailStatus } from "../hooks/useWeatherData";
@@ -42,6 +42,34 @@ type WeatherOverviewProps = {
   weather: WeatherPayload;
   weatherIcon: ReactNode;
 };
+
+type CompactTimelineChartKey = "temperature" | "precipitation" | "skyClarity";
+
+const compactTimelineChartOptions: Array<{
+  key: CompactTimelineChartKey;
+  label: string;
+  ariaLabel: string;
+  icon: ReactNode;
+}> = [
+  {
+    key: "temperature",
+    label: "Temp",
+    ariaLabel: "Toggle temperature distribution chart",
+    icon: <IconThermometer />,
+  },
+  {
+    key: "precipitation",
+    label: "Precip",
+    ariaLabel: "Toggle precipitation chart",
+    icon: <IconRain />,
+  },
+  {
+    key: "skyClarity",
+    label: "Sky",
+    ariaLabel: "Toggle sky clarity chart",
+    icon: <IconCloud />,
+  },
+];
 
 export function WeatherOverview({
   activeHourIndex,
@@ -81,6 +109,11 @@ export function WeatherOverview({
   const showHourRiskWindow =
     selectedHourRiskTone !== null && hourlyForDay.length > 0 && dismissedRiskTime !== currentSnapshot.time;
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [visibleCompactCharts, setVisibleCompactCharts] = useState<Record<CompactTimelineChartKey, boolean>>({
+    temperature: true,
+    precipitation: true,
+    skyClarity: true,
+  });
   const calendarDays = useMemo(
     () =>
       weather.daily.filter(
@@ -107,6 +140,13 @@ export function WeatherOverview({
   function handlePrevDayHourChange(index: number) {
     setDismissedRiskTime(null);
     onPrevDayHourChange(index);
+  }
+
+  function toggleCompactChart(chart: CompactTimelineChartKey) {
+    setVisibleCompactCharts((current) => ({
+      ...current,
+      [chart]: !current[chart],
+    }));
   }
 
   if (!showPrimaryPanel && !showSupportPanel) {
@@ -186,22 +226,26 @@ export function WeatherOverview({
             <div className={`temperature-summary-row${selectedHourRisk.tone !== "good" ? " has-risk" : ""}`}>
               <div className="temperature-readout">
                 <div className="temperature-main">
-              <span className="temperature-value">
-                {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
-              </span>
-              <span className="temperature-unit">°{temperatureUnitLabel}</span>
-                </div>
-                <div className="hero-pill-row">
-              <span className="hero-pill">
-                H {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)}° - L{" "}
-                {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)}°
-              </span>
-              <span className="hero-pill">
-                Rain {Math.round(currentSnapshot.precipitationProbability)}%
-              </span>
+                  <span className="temperature-value">
+                    {temperatureDisplay(currentSnapshot.temperature, preferences.temperatureUnit)}
+                  </span>
+                  <span className="temperature-unit">°{temperatureUnitLabel}</span>
                 </div>
               </div>
+              <div className="hero-pill-row">
+                <span className="hero-pill">
+                  H {temperatureDisplay(currentDay.temperatureMax, preferences.temperatureUnit)}° - L{" "}
+                  {temperatureDisplay(currentDay.temperatureMin, preferences.temperatureUnit)}°
+                </span>
+                <span className="hero-pill">
+                  Rain {Math.round(currentSnapshot.precipitationProbability)}%
+                </span>
+              </div>
             </div>
+            <CompactTimelineChartControls
+              visibleCharts={visibleCompactCharts}
+              onToggle={toggleCompactChart}
+            />
             <div className="hour-scrubber-risk-anchor">
               <HourScrubber
                 hourlyForDay={hourlyForDay}
@@ -234,27 +278,35 @@ export function WeatherOverview({
               detailsLoading={detailsLoading}
               detailsStatus={detailsStatus}
             />
-            <Suspense fallback={<div className="compact-timeline-charts-loading" />}>
-              <div className="compact-timeline-charts">
-                <TemperatureCurveChart
-                  activeTime={currentSnapshot.time}
-                  compact
-                  points={hourlyTimelineSeries.temperature}
-                  units={temperatureUnitLabel}
-                />
-                <PrecipitationOverlayChart
-                  activeTime={currentSnapshot.time}
-                  compact
-                  points={hourlyTimelineSeries.precipitation}
-                />
-                <CloudVisibilityChart
-                  activeTime={currentSnapshot.time}
-                  compact
-                  points={hourlyTimelineSeries.cloudVisibility}
-                  visibilityUnits={visibilityUnitLabel}
-                />
-              </div>
-            </Suspense>
+            {(visibleCompactCharts.temperature || visibleCompactCharts.precipitation || visibleCompactCharts.skyClarity) && (
+              <Suspense fallback={<div className="compact-timeline-charts-loading" />}>
+                <div className="compact-timeline-charts">
+                  {visibleCompactCharts.temperature && (
+                    <TemperatureCurveChart
+                      activeTime={currentSnapshot.time}
+                      compact
+                      points={hourlyTimelineSeries.temperature}
+                      units={temperatureUnitLabel}
+                    />
+                  )}
+                  {visibleCompactCharts.precipitation && (
+                    <PrecipitationOverlayChart
+                      activeTime={currentSnapshot.time}
+                      compact
+                      points={hourlyTimelineSeries.precipitation}
+                    />
+                  )}
+                  {visibleCompactCharts.skyClarity && (
+                    <CloudVisibilityChart
+                      activeTime={currentSnapshot.time}
+                      compact
+                      points={hourlyTimelineSeries.cloudVisibility}
+                      visibilityUnits={visibilityUnitLabel}
+                    />
+                  )}
+                </div>
+              </Suspense>
+            )}
           </div>
 
           <div className="hero-side-stack">
@@ -371,6 +423,34 @@ export function WeatherOverview({
       </article>
       )}
     </section>
+  );
+}
+
+function CompactTimelineChartControls({
+  visibleCharts,
+  onToggle,
+}: {
+  visibleCharts: Record<CompactTimelineChartKey, boolean>;
+  onToggle: (chart: CompactTimelineChartKey) => void;
+}) {
+  return (
+    <div className="timeline-chart-controls" aria-label="Timeline chart toggles">
+      {compactTimelineChartOptions.map((option) => (
+        <button
+          key={option.key}
+          type="button"
+          className={visibleCharts[option.key] ? "timeline-chart-toggle-button active" : "timeline-chart-toggle-button"}
+          aria-label={option.ariaLabel}
+          aria-pressed={visibleCharts[option.key]}
+          onClick={() => onToggle(option.key)}
+        >
+          <span className="timeline-chart-toggle-icon" aria-hidden="true">
+            {option.icon}
+          </span>
+          <span>{option.label}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
