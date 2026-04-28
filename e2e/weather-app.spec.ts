@@ -130,7 +130,29 @@ const airspacePayload = {
 
 async function mockWeatherApis(page: Page) {
   await page.route("**/api/v1/weather/overview**", async (route) => {
-    await route.fulfill({ json: overviewPayload });
+    const url = new URL(route.request().url());
+    const isSeattle = url.searchParams.get("name") === "Seattle";
+    await route.fulfill({
+      json: isSeattle
+        ? {
+            ...overviewPayload,
+            locationLabel: "Seattle, Washington, United States",
+            timezone: "America/Los_Angeles",
+            latitude: 47.6062,
+            longitude: -122.3321,
+            current: {
+              ...overviewPayload.current,
+              temperature: 7,
+              precipitationProbability: 24,
+            },
+            today: {
+              ...overviewPayload.today,
+              temperatureMax: 11,
+              temperatureMin: 5,
+            },
+          }
+        : overviewPayload,
+    });
   });
   await page.route("**/api/v1/weather/timeline**", async (route) => {
     await route.fulfill({ json: timelinePayload });
@@ -200,6 +222,25 @@ test("supports preferences and the Map and Drone tabs", async ({ page }) => {
   await expect(page.getByText("Vancouver International")).toBeVisible();
 });
 
+test("search result selection updates and saves the active location", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  await page.getByRole("button", { name: /Search .* Places/i }).click();
+  await page.getByLabel("Search location").fill("Seattle");
+  await page.getByRole("button", { name: "Seattle, Washington, United States" }).click();
+
+  await expect(page.locator(".location-bar-name")).toContainText("Seattle, Washington, United States");
+  await expect(page.locator(".temperature-value")).toContainText("7");
+  await expect(page).toHaveURL(/name=Seattle/);
+  await expect(page).toHaveURL(/country=United\+States/);
+
+  await page.getByRole("button", { name: /Search .* Places/i }).click();
+  await page.getByRole("button", { name: "Save" }).click();
+
+  await expect(page.getByRole("status").getByText("Seattle saved.")).toBeVisible();
+  await expect(page.locator(".saved-select")).toContainText("Seattle, Washington, United States");
+});
+
 test("updates the hero and readiness panel when the selected hour changes", async ({ page }) => {
   await page.goto(locationQuery);
 
@@ -267,6 +308,48 @@ test("compact chart tooltips stay near the hovered chart point", async ({ page }
   const hoverX = (svgBox?.x ?? 0) + hoverLocalX;
   const tooltipCenterX = (tooltipBox?.x ?? 0) + (tooltipBox?.width ?? 0) / 2;
   expect(Math.abs(tooltipCenterX - hoverX)).toBeLessThan(80);
+});
+
+test("desktop layout hides compact chart toggles while keeping charts visible", async ({ page }) => {
+  await page.setViewportSize({ width: 1204, height: 702 });
+  await page.goto(locationQuery);
+
+  await expect(page.getByRole("button", { name: "Toggle temperature distribution chart" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Toggle precipitation chart" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Toggle sky clarity chart" })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Temperature curve" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Precipitation and probability chart" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Cloud cover and visibility chart" })).toBeVisible();
+});
+
+test("small-screen chart toggles hide and restore compact timeline charts", async ({ page }) => {
+  await page.setViewportSize({ width: 462, height: 900 });
+  await page.goto(locationQuery);
+
+  const temperatureToggle = page.getByRole("button", { name: "Toggle temperature distribution chart" });
+  const precipitationToggle = page.getByRole("button", { name: "Toggle precipitation chart" });
+  const skyToggle = page.getByRole("button", { name: "Toggle sky clarity chart" });
+
+  await expect(temperatureToggle).toBeVisible();
+  await expect(precipitationToggle).toBeVisible();
+  await expect(skyToggle).toBeVisible();
+  await expect(page.getByRole("img", { name: "Temperature curve" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Precipitation and probability chart" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Cloud cover and visibility chart" })).toBeVisible();
+
+  await temperatureToggle.click();
+  await skyToggle.click();
+
+  await expect(temperatureToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(skyToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(precipitationToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("img", { name: "Temperature curve" })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Cloud cover and visibility chart" })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Precipitation and probability chart" })).toBeVisible();
+
+  await temperatureToggle.click();
+  await expect(temperatureToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("img", { name: "Temperature curve" })).toBeVisible();
 });
 
 test("hourly risk panel waits for the hourly timeline before rendering", async ({ page }) => {
@@ -344,7 +427,9 @@ test("choosing a future date from the date picker switches to full-day timeline 
   await expect(page.locator(".hour-scrubber-tick-now")).toContainText("11:00 AM");
   await expect(page.locator(".hour-scrubber-ticks span").last()).toContainText("11:00 PM");
   await expect(page.locator(".temperature-value")).toContainText("15");
-  await expect(page.getByText("11:00 AM: 15 C")).toBeVisible();
+  const temperatureChart = page.locator(".compact-timeline-chart").filter({ hasText: "Temperature Distribution" });
+  await expect(temperatureChart.locator(".chart-tooltip")).toContainText("11:00 AM");
+  await expect(temperatureChart.locator(".chart-tooltip")).toContainText("15 C");
   await expect(page.locator(".hour-scrubber-seg.prev-day")).toHaveCount(0);
 });
 
