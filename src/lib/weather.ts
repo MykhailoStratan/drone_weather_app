@@ -28,7 +28,7 @@ export async function searchLocations(query: string): Promise<LocationOption[]> 
 }
 
 export async function fetchWeather(location: LocationOption): Promise<WeatherPayload> {
-  const response = await fetch("/api/weather", {
+  const response = await fetch(`${API_BASE}/weather`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
