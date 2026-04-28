@@ -116,18 +116,24 @@ export function useLocationSearch({
     }
 
     setLoading(true);
-    setMessage("");
+    setMessage("Locating you...");
 
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         await loadWeather(createCurrentLocation(coords.latitude, coords.longitude));
       },
-      () => {
+      (error) => {
         setLoading(false);
         setSearchOpen(true);
-        setMessage("Location permission was denied. Search for a place instead.");
+        if (error.code === error.TIMEOUT) {
+          setMessage("Couldn't lock your location quickly. Search for a place instead.");
+        } else if (error.code === error.PERMISSION_DENIED) {
+          setMessage("Location permission was denied. Search for a place instead.");
+        } else {
+          setMessage("Location is unavailable. Search for a place instead.");
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 60_000 },
     );
   }
 
