@@ -1245,11 +1245,13 @@ input:focus-visible {
 
 .hero-pill-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.4rem;
   max-width: min(15rem, 56%);
   padding-top: 0.1rem;
+  min-width: 0;
 }
 
 .hero-pill {
@@ -1264,6 +1266,19 @@ input:focus-visible {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* H/L pill can compress; Rain pill holds its width */
+.hero-pill:first-child {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-pill:last-child {
+  flex-shrink: 0;
 }
 
 .timeline-chart-controls {
