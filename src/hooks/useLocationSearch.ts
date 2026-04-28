@@ -38,6 +38,7 @@ export function useLocationSearch({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const debounce = useRef<number | null>(null);
+  const searchAbort = useRef<AbortController | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -46,12 +47,18 @@ export function useLocationSearch({
     }
 
     if (query.trim().length < 2) {
+      searchAbort.current?.abort();
+      searchAbort.current = null;
       setResults([]);
+      setSearching(false);
       return;
     }
 
     if (!validateLocationSearchQuery(query).valid) {
+      searchAbort.current?.abort();
+      searchAbort.current = null;
       setResults([]);
+      setSearching(false);
       return;
     }
 
@@ -66,6 +73,12 @@ export function useLocationSearch({
     };
   }, [query]);
 
+  useEffect(() => {
+    return () => {
+      searchAbort.current?.abort();
+    };
+  }, []);
+
   async function loadSearchResults(value: string) {
     const validation = validateLocationSearchQuery(value);
     if (!validation.valid) {
@@ -74,14 +87,25 @@ export function useLocationSearch({
       return;
     }
 
+    searchAbort.current?.abort();
+    const controller = new AbortController();
+    searchAbort.current = controller;
+
     setSearching(true);
     try {
-      const matches = await searchLocations(validation.normalized);
+      const matches = await searchLocations(validation.normalized, { signal: controller.signal });
+      if (controller.signal.aborted) return;
       setResults(matches);
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
+        return;
+      }
       setMessage(error instanceof Error ? error.message : "Unable to search locations.");
     } finally {
-      setSearching(false);
+      if (searchAbort.current === controller) {
+        searchAbort.current = null;
+        setSearching(false);
+      }
     }
   }
 

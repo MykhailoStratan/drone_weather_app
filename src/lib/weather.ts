@@ -13,13 +13,19 @@ import { validateLocationSearchQuery } from "../../packages/weather-domain/src/l
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api/v1";
 
-export async function searchLocations(query: string): Promise<LocationOption[]> {
+export async function searchLocations(
+  query: string,
+  options?: { signal?: AbortSignal },
+): Promise<LocationOption[]> {
   const validation = validateLocationSearchQuery(query);
   if (!validation.valid) {
     return [];
   }
 
-  const response = await fetch(`${API_BASE}/locations?query=${encodeURIComponent(validation.normalized)}`);
+  const response = await fetch(
+    `${API_BASE}/locations?query=${encodeURIComponent(validation.normalized)}`,
+    { signal: options?.signal },
+  );
   if (!response.ok) {
     throw new Error("Unable to search locations right now.");
   }
