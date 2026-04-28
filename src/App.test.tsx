@@ -230,6 +230,36 @@ describe("App preferences", () => {
     view.unmount();
   });
 
+  it("toggles compact timeline charts from the timeline controls", async () => {
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+
+    const temperatureToggle = await view.findByRole("button", { name: "Toggle temperature distribution chart" });
+    const precipitationToggle = await view.findByRole("button", { name: "Toggle precipitation chart" });
+    const skyToggle = await view.findByRole("button", { name: "Toggle sky clarity chart" });
+
+    expect(temperatureToggle.getAttribute("aria-pressed")).toBe("true");
+    expect(precipitationToggle.getAttribute("aria-pressed")).toBe("true");
+    expect(skyToggle.getAttribute("aria-pressed")).toBe("true");
+    expect(await view.findByRole("img", { name: "Temperature curve" })).toBeTruthy();
+    expect(await view.findByRole("img", { name: "Precipitation and probability chart" })).toBeTruthy();
+    expect(await view.findByRole("img", { name: "Cloud cover and visibility chart" })).toBeTruthy();
+
+    fireEvent.click(temperatureToggle);
+    fireEvent.click(skyToggle);
+
+    await waitFor(() => {
+      expect(temperatureToggle.getAttribute("aria-pressed")).toBe("false");
+      expect(skyToggle.getAttribute("aria-pressed")).toBe("false");
+      expect(view.queryByRole("img", { name: "Temperature curve" })).toBeNull();
+      expect(view.queryByRole("img", { name: "Cloud cover and visibility chart" })).toBeNull();
+    });
+    expect(view.getByRole("img", { name: "Precipitation and probability chart" })).toBeTruthy();
+    expect(precipitationToggle.getAttribute("aria-pressed")).toBe("true");
+    view.unmount();
+  });
+
   it("selects forecast days from the hero date calendar", async () => {
     installFetchMock({
       timeline: createResponse({
