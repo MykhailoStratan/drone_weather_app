@@ -7,6 +7,17 @@ export type BatteryEstimate = {
   advice: string;
 };
 
+// Approximate Li-Po usable-capacity vs ambient temperature curve, anchored
+// to consumer drone (DJI) operating-temperature guidance and standard
+// Li-Po discharge characterization papers:
+//   - DJI Mavic 3 Intelligent Flight Battery operating range 5-40°C
+//     (https://www.dji.com/mavic-3/specs); flight-time degrades sharply
+//     below 0°C and above 40°C.
+//   - Generic Li-Po discharge tests show ~20% usable capacity at -20°C
+//     and a peak in the 20-25°C range, used as the curve shape.
+// These are nominal values for piloting advice only; not a battery-management
+// system. If you update the breakpoints, update the unit tests in
+// drone-calculations.test.ts to match.
 const BATTERY_BREAKPOINTS: ReadonlyArray<readonly [number, number]> = [
   [-20, 20],
   [-10, 38],
