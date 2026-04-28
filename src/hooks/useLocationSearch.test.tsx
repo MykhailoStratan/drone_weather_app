@@ -97,6 +97,40 @@ describe("useLocationSearch abort handling", () => {
     expect(setMessage).not.toHaveBeenCalledWith(expect.stringMatching(/unable to search/i));
   });
 
+  it("surfaces a friendly retry-after message when the server returns 429", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("Too Many Requests", {
+          status: 429,
+          headers: { "Retry-After": "12" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const setMessage = vi.fn();
+    const { result } = renderHook(() =>
+      useLocationSearch({
+        activeLocation: null,
+        loadWeather: vi.fn(async () => {}),
+        setLoading: vi.fn(),
+        setMessage,
+      }),
+    );
+
+    act(() => {
+      result.current.setQuery("Tokyo");
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 260));
+    });
+
+    await waitFor(() => {
+      expect(setMessage).toHaveBeenCalledWith(
+        expect.stringMatching(/too many searches.*12s/i),
+      );
+    });
+  });
+
   it("ignores AbortError without surfacing an error message", async () => {
     const fetchMock = vi.fn(async (_: RequestInfo | URL, init?: RequestInit) => {
       const signal = init?.signal;
