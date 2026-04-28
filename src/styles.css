@@ -3067,7 +3067,7 @@ input:focus-visible {
 @media (max-width: 720px) {
   .app-shell {
     width: calc(100% - 1.25rem);
-    padding-top: 0;
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   .hero-mini-grid { grid-template-columns: 1fr; }
