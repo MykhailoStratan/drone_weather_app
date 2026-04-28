@@ -6,7 +6,7 @@ import { TabBar, type AppTab } from "./components/TabBar";
 import { WeatherOverview } from "./components/WeatherOverview";
 import { buildHourlySeries } from "./lib/chartUtils";
 import { formatSavedAtLabel, resolveSelectedSnapshot, findNearestSnapshotIndex, weatherGlyph } from "./lib/app-utils";
-import { temperatureDisplay, weatherLabel } from "./lib/format";
+import { temperatureDisplay } from "./lib/format";
 import { readStoredLocation, readStoredOverview } from "./lib/storage";
 import { useAirspace } from "./hooks/useAirspace";
 import { useDailyWeatherSlice } from "./hooks/useDailyWeatherSlice";
@@ -151,12 +151,6 @@ function App() {
   const locationBarName =
     weather?.locationLabel ??
     ([requestedLocation?.name, requestedLocation?.admin1, requestedLocation?.country].filter(Boolean).join(", ") || "Current weather");
-  const locationBarCondition =
-    showWeatherLayout && currentSnapshot
-      ? weatherLabel(currentSnapshot.weatherCode)
-      : loadError
-        ? "Forecast unavailable"
-        : "Loading forecast";
   const availableForecastDates = weather?.daily.map((day) => day.date) ?? [];
   const forecastDateMin = availableForecastDates[0] ?? selectedDate;
   const forecastDateMax = availableForecastDates[availableForecastDates.length - 1] ?? selectedDate;
@@ -205,7 +199,6 @@ function App() {
         activeLocation={activeLocation}
         dataStatus={dataStatus}
         loadError={loadError}
-        locationBarCondition={locationBarCondition}
         locationBarName={locationBarName}
         message={message}
         preferences={preferences}

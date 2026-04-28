@@ -160,7 +160,7 @@ describe("App preferences", () => {
 
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
 
-    fireEvent.click(view.getByRole("button", { name: /12h/i }));
+    fireEvent.click(view.getByRole("button", { name: "Preferences" }));
     fireEvent.click(await view.findByRole("button", { name: "F" }));
 
     expect(document.querySelector(".temperature-unit")?.textContent).toContain("F");
@@ -173,7 +173,7 @@ describe("App preferences", () => {
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
     expect(document.documentElement.dataset.theme).toBe("dark");
 
-    fireEvent.click(view.getByRole("button", { name: /12h/i }));
+    fireEvent.click(view.getByRole("button", { name: "Preferences" }));
     fireEvent.click(await view.findByRole("button", { name: "Light" }));
 
     expect(document.documentElement.dataset.theme).toBe("light");
@@ -533,7 +533,7 @@ describe("App preferences", () => {
     const view = render(<App />);
 
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
-    fireEvent.click(view.getByRole("button", { name: /Search .* Places/i }));
+    fireEvent.click(view.getByRole("button", { name: "Search places" }));
     fireEvent.click(view.getByRole("button", { name: "Locate" }));
 
     const geolocationCall = fetchMock.mock.calls

@@ -43,7 +43,7 @@ type WeatherOverviewProps = {
   weatherIcon: ReactNode;
 };
 
-type CompactTimelineChartKey = "temperature" | "precipitation" | "skyClarity";
+type CompactTimelineChartKey = "solarWindow" | "temperature" | "precipitation" | "skyClarity";
 
 const compactTimelineChartOptions: Array<{
   key: CompactTimelineChartKey;
@@ -51,6 +51,12 @@ const compactTimelineChartOptions: Array<{
   ariaLabel: string;
   icon: ReactNode;
 }> = [
+  {
+    key: "solarWindow",
+    label: "Solar",
+    ariaLabel: "Toggle solar window chart",
+    icon: <IconSunrise />,
+  },
   {
     key: "temperature",
     label: "Temp",
@@ -110,6 +116,7 @@ export function WeatherOverview({
     selectedHourRiskTone !== null && hourlyForDay.length > 0 && dismissedRiskTime !== currentSnapshot.time;
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [visibleCompactCharts, setVisibleCompactCharts] = useState<Record<CompactTimelineChartKey, boolean>>({
+    solarWindow: true,
     temperature: true,
     precipitation: true,
     skyClarity: true,
@@ -267,13 +274,15 @@ export function WeatherOverview({
                 />
               )}
             </div>
-            <CompactSolarWindow
-              sunrise={currentDay.sunrise}
-              sunset={currentDay.sunset}
-              hourCycle={preferences.hourCycle}
-              leftTime={solarBoundary.leftTime}
-              rightTime={solarBoundary.rightTime}
-            />
+            {visibleCompactCharts.solarWindow && (
+              <CompactSolarWindow
+                sunrise={currentDay.sunrise}
+                sunset={currentDay.sunset}
+                hourCycle={preferences.hourCycle}
+                leftTime={solarBoundary.leftTime}
+                rightTime={solarBoundary.rightTime}
+              />
+            )}
             <PartialForecastStatus
               detailsLoading={detailsLoading}
               detailsStatus={detailsStatus}
@@ -605,6 +614,9 @@ function CompactSolarWindow({
   const daylightRightPct = Math.min(100, Math.max(sunrisePct, sunsetPct));
   const sunriseLabelPct = clampSolarLabelPct(sunrisePct);
   const sunsetLabelPct = clampSolarLabelPct(sunsetPct);
+  const leftBoundaryLabel = leftTime ? formatTime(leftTime, hourCycle) : null;
+  const rightBoundaryLabel = rightTime ? formatTime(rightTime, hourCycle) : null;
+  const hasBoundaryLabels = Boolean(leftBoundaryLabel || rightBoundaryLabel);
 
   const hasInRangeLabels = sunriseInRange || sunsetInRange;
   const outOfRangeItems: { key: string; label: string; time: string }[] = [];
@@ -635,19 +647,29 @@ function CompactSolarWindow({
         {sunriseInRange && <span className="compact-solar-marker sunrise" style={{ left: `${sunrisePct}%` }} />}
         {sunsetInRange && <span className="compact-solar-marker sunset" style={{ left: `${sunsetPct}%` }} />}
       </div>
-      {hasInRangeLabels && (
-        <div className="compact-solar-labels">
-          {sunriseInRange && (
-            <span className="compact-solar-label sunrise" style={{ left: `${sunriseLabelPct}%` }}>
-              <strong>{formatTime(sunrise, hourCycle)}</strong>
-              <span>Sunrise</span>
-            </span>
+      {(hasBoundaryLabels || hasInRangeLabels) && (
+        <div className="compact-solar-axis">
+          {hasBoundaryLabels && (
+            <div className="compact-solar-boundaries" aria-hidden="true">
+              <span className="compact-solar-boundary left">{leftBoundaryLabel}</span>
+              <span className="compact-solar-boundary right">{rightBoundaryLabel}</span>
+            </div>
           )}
-          {sunsetInRange && (
-            <span className="compact-solar-label sunset" style={{ left: `${sunsetLabelPct}%` }}>
-              <strong>{formatTime(sunset, hourCycle)}</strong>
-              <span>Sunset</span>
-            </span>
+          {hasInRangeLabels && (
+            <div className="compact-solar-labels">
+              {sunriseInRange && (
+                <span className="compact-solar-label sunrise" style={{ left: `${sunriseLabelPct}%` }}>
+                  <strong>{formatTime(sunrise, hourCycle)}</strong>
+                  <span>Sunrise</span>
+                </span>
+              )}
+              {sunsetInRange && (
+                <span className="compact-solar-label sunset" style={{ left: `${sunsetLabelPct}%` }}>
+                  <strong>{formatTime(sunset, hourCycle)}</strong>
+                  <span>Sunset</span>
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}

@@ -1,12 +1,12 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { LocationOption } from "../types";
 import type { Preferences } from "../hooks/usePreferences";
+import { IconSearch, IconSettings } from "./Icons";
 
 type LocationBarProps = {
   activeLocation: LocationOption | null;
   dataStatus: { savedAt: string; source: "cached" | "live" } | null;
   loadError: { message: string; location: LocationOption } | null;
-  locationBarCondition: string;
   locationBarName: string;
   message: string;
   preferences: Preferences;
@@ -29,11 +29,14 @@ type LocationBarProps = {
   onRemoveSavedLocation: (locationId: number) => void;
 };
 
+function getCompactLocationName(locationName: string) {
+  return locationName.split(",")[0]?.trim() || locationName;
+}
+
 export function LocationBar({
   activeLocation,
   dataStatus,
   loadError,
-  locationBarCondition,
   locationBarName,
   message,
   onLoadWeather,
@@ -55,17 +58,16 @@ export function LocationBar({
   showSearchFeedback,
   updatePreferences,
 }: LocationBarProps) {
+  const compactLocationName = getCompactLocationName(locationBarName);
+  const preferenceSummary = `${preferences.temperatureUnit === "f" ? "Fahrenheit" : "Celsius"}, ${
+    preferences.windUnit === "mph" ? "mph" : "km/h"
+  }, ${preferences.hourCycle}`;
+
   return (
     <>
       <div className="location-bar">
-        <div className="location-bar-identity">
-          <span className="location-bar-dot" />
-          <span className="location-bar-brand">SkyCanvas · Weather</span>
-        </div>
         <div className="location-bar-info">
-          <span className="location-bar-name">{locationBarName}</span>
-          <span className="location-bar-sep" aria-hidden="true">·</span>
-          <span className="location-bar-condition">{locationBarCondition}</span>
+          <span className="location-bar-name">{compactLocationName}</span>
           {dataStatus && (
             <span className={`location-status-badge ${dataStatus.source}`}>
               {dataStatus.source === "cached" ? "CACHED" : "LIVE"}
@@ -78,16 +80,20 @@ export function LocationBar({
             className={searchOpen ? "bar-toggle-button active" : "bar-toggle-button"}
             onClick={() => setSearchOpen((open) => !open)}
             aria-expanded={searchOpen}
+            aria-label="Search places"
+            title="Search places"
           >
-            Search · Places
+            <IconSearch />
           </button>
           <button
             type="button"
             className={preferencesOpen ? "bar-toggle-button active" : "bar-toggle-button"}
             onClick={() => setPreferencesOpen((open) => !open)}
             aria-expanded={preferencesOpen}
+            aria-label="Preferences"
+            title={`Preferences: ${preferenceSummary}`}
           >
-            {preferences.temperatureUnit === "f" ? "°F" : "°C"} · {preferences.windUnit === "mph" ? "mph" : "km/h"} · {preferences.hourCycle}
+            <IconSettings />
           </button>
         </div>
       </div>
