@@ -1,25 +1,38 @@
+// Open-Meteo returns naive local-time strings with no UTC offset (e.g. "2026-04-27T14:30:00").
+// Appending "Z" and formatting as UTC displays the exact hours/minutes the API sent,
+// regardless of the browser's timezone.
+function isNaive(value: string): boolean {
+  return !value.endsWith("Z") && !/[+-]\d{2}:\d{2}$/.test(value);
+}
+
 export function formatDayLabel(date: string) {
+  // Use noon UTC so the date never shifts across a day boundary for any timezone.
   return new Intl.DateTimeFormat(undefined, {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(new Date(`${date}T00:00:00`));
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
 }
 
 export function formatHourLabel(value: string, hourCycle: "12h" | "24h" = "12h") {
+  const naive = isNaive(value);
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
     hour12: hourCycle === "12h",
-  }).format(new Date(value));
+    timeZone: naive ? "UTC" : undefined,
+  }).format(naive ? new Date(`${value}Z`) : new Date(value));
 }
 
 export function formatTime(value: string, hourCycle: "12h" | "24h" = "12h") {
+  const naive = isNaive(value);
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
     hour12: hourCycle === "12h",
-  }).format(new Date(value));
+    timeZone: naive ? "UTC" : undefined,
+  }).format(naive ? new Date(`${value}Z`) : new Date(value));
 }
 
 export function temperatureDisplay(valueCelsius: number, unit: "c" | "f") {

@@ -225,7 +225,7 @@ function altitudeLimitLabel(value: number): string {
   return `${value.toLocaleString()} ft`;
 }
 
-function formatTFRTime(iso?: string): string {
+function formatTFRTime(iso?: string, timeZone?: string): string {
   if (!iso) return "Unknown";
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -233,6 +233,7 @@ function formatTFRTime(iso?: string): string {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone,
       timeZoneName: "short",
     });
   } catch {
@@ -303,7 +304,7 @@ function buildFeaturePopupContent(feature: AirspaceFeature) {
   return wrapper;
 }
 
-function buildTfrPopupContent(tfr: TFRFeature) {
+function buildTfrPopupContent(tfr: TFRFeature, timeZone?: string) {
   const wrapper = document.createElement("div");
   const title = document.createElement("strong");
   title.textContent = `TFR ${tfr.notamNumber}`;
@@ -317,11 +318,11 @@ function buildTfrPopupContent(tfr: TFRFeature) {
   }
   if (tfr.effectiveStart) {
     wrapper.appendChild(document.createElement("br"));
-    wrapper.append(`From: ${formatTFRTime(tfr.effectiveStart)}`);
+    wrapper.append(`From: ${formatTFRTime(tfr.effectiveStart, timeZone)}`);
   }
   if (tfr.effectiveEnd) {
     wrapper.appendChild(document.createElement("br"));
-    wrapper.append(`Until: ${formatTFRTime(tfr.effectiveEnd)}`);
+    wrapper.append(`Until: ${formatTFRTime(tfr.effectiveEnd, timeZone)}`);
   }
   wrapper.appendChild(document.createElement("br"));
   wrapper.append(`${tfr.distanceKm.toFixed(1)} km away`);
@@ -333,6 +334,7 @@ function AirspaceMap({
   longitude,
   features,
   tfrs,
+  timezone,
   selectedFeatureId,
   selectedClassification,
 }: {
@@ -340,6 +342,7 @@ function AirspaceMap({
   longitude: number;
   features: AirspaceFeature[];
   tfrs: TFRFeature[];
+  timezone?: string;
   selectedFeatureId?: string | null;
   selectedClassification?: AirspaceFeature["classification"] | null;
 }) {
@@ -491,7 +494,7 @@ function AirspaceMap({
             dashArray: "6 4",
           })
             .addTo(tfrLayer)
-            .bindPopup(buildTfrPopupContent(tfr));
+            .bindPopup(buildTfrPopupContent(tfr, timezone));
 
           const tfrIcon = L.divIcon({
             className: "",
@@ -579,12 +582,14 @@ export function AirspacePanel({
   airspace,
   error,
   loading,
+  timezone,
 }: {
   latitude?: number;
   longitude?: number;
   airspace: AirspaceResponse | null;
   error?: string | null;
   loading: boolean;
+  timezone?: string;
 }) {
   const features = airspace?.features ?? [];
   const tfrs = airspace?.tfrs ?? [];
@@ -687,6 +692,7 @@ export function AirspacePanel({
             longitude={mapLng}
             features={visibleFeatures}
             tfrs={visibleTfrs}
+            timezone={timezone}
             selectedFeatureId={selectedFeatureId}
             selectedClassification={selectedClassification}
           />
@@ -827,7 +833,7 @@ export function AirspacePanel({
                     {tfr.altitudeUpperFt ? ` · SFC-${tfr.altitudeUpperFt.toLocaleString()} ft` : ""}
                   </span>
                   {tfr.effectiveEnd && (
-                    <span className="airspace-altitude">Until {formatTFRTime(tfr.effectiveEnd)}</span>
+                    <span className="airspace-altitude">Until {formatTFRTime(tfr.effectiveEnd, timezone)}</span>
                   )}
                 </div>
                 <div className="airspace-feature-distance">

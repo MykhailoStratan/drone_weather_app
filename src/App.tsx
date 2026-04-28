@@ -285,6 +285,7 @@ function App() {
                 airspace={airspace}
                 error={airspaceError}
                 loading={airspaceLoading}
+                timezone={weather?.timezone}
               />
             </section>
           )}
