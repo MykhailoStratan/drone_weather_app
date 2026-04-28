@@ -26,6 +26,13 @@ export async function searchLocations(
     `${API_BASE}/locations?query=${encodeURIComponent(validation.normalized)}`,
     { signal: options?.signal },
   );
+  if (response.status === 429) {
+    const retryAfterSec = Number(response.headers.get("Retry-After"));
+    const wait = Number.isFinite(retryAfterSec) && retryAfterSec > 0
+      ? `${Math.ceil(retryAfterSec)}s`
+      : "a moment";
+    throw new Error(`Too many searches — try again in ${wait}.`);
+  }
   if (!response.ok) {
     throw new Error("Unable to search locations right now.");
   }
