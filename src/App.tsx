@@ -11,6 +11,7 @@ import { readStoredLocation, readStoredOverview } from "./lib/storage";
 import { useAirspace } from "./hooks/useAirspace";
 import { useDailyWeatherSlice } from "./hooks/useDailyWeatherSlice";
 import { useLocationSearch } from "./hooks/useLocationSearch";
+import { useNetworkStatus } from "./hooks/useNetworkStatus";
 import { usePreferences } from "./hooks/usePreferences";
 import { useUrlLocation } from "./hooks/useUrlLocation";
 import { useWeatherData } from "./hooks/useWeatherData";
@@ -36,6 +37,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<AppTab>("now");
   const { preferences, preferencesOpen, setPreferencesOpen, updatePreferences } = usePreferences();
   const { readLocationFromUrl, writeLocationToUrl } = useUrlLocation();
+  const { online } = useNetworkStatus();
   const {
     activeLocation,
     dataStatus,
@@ -224,7 +226,22 @@ function App() {
         onRemoveSavedLocation={removeSavedLocation}
       />
 
-      {dataStatus?.source === "cached" && (
+      {!online && (
+        <div className="offline-banner" role="status" data-testid="offline-banner">
+          <span className="offline-banner-text">
+            Offline - showing last known data
+          </span>
+          <button
+            type="button"
+            className="offline-banner-retry"
+            onClick={retryRequestedLocation}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {online && dataStatus?.source === "cached" && (
         <div className="offline-banner" role="status">
           <span className="offline-banner-text">
             Showing cached data - {formatSavedAtLabel(dataStatus.savedAt)}
