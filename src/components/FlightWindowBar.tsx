@@ -422,7 +422,7 @@ export function HourScrubber({
     <div className="hour-scrubber">
       <div className="hour-scrubber-header">
         <div>
-          <span className="section-label">Hourly Timeline</span>
+          <span className="section-label">Timeline</span>
           <strong>{activeLabel}</strong>
         </div>
         <span className="hour-scrubber-summary">{summary}</span>

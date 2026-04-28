@@ -513,17 +513,36 @@ function CompactSolarWindow({
   const rangeStartMs = leftTime ? new Date(leftTime).getTime() : new Date(`${currentDate(sunrise)}T00:00:00`).getTime();
   const rangeEndMs = rightTime ? new Date(rightTime).getTime() : rangeStartMs + 24 * 60 * 60 * 1000;
   const rangeMs = Math.max(1, rangeEndMs - rangeStartMs);
-  const sunrisePct = percentInRange(new Date(sunrise).getTime(), rangeStartMs, rangeMs);
-  const sunsetPct = percentInRange(new Date(sunset).getTime(), rangeStartMs, rangeMs);
+
+  const sunriseMs = new Date(sunrise).getTime();
+  const sunsetMs = new Date(sunset).getTime();
+  const sunriseInRange = sunriseMs >= rangeStartMs && sunriseMs <= rangeEndMs;
+  const sunsetInRange = sunsetMs >= rangeStartMs && sunsetMs <= rangeEndMs;
+
+  const sunrisePct = percentInRange(sunriseMs, rangeStartMs, rangeMs);
+  const sunsetPct = percentInRange(sunsetMs, rangeStartMs, rangeMs);
   const daylightLeftPct = Math.max(0, Math.min(sunrisePct, sunsetPct));
   const daylightRightPct = Math.min(100, Math.max(sunrisePct, sunsetPct));
   const sunriseLabelPct = clampSolarLabelPct(sunrisePct);
   const sunsetLabelPct = clampSolarLabelPct(sunsetPct);
 
+  const hasInRangeLabels = sunriseInRange || sunsetInRange;
+  const outOfRangeItems: { key: string; label: string; time: string }[] = [];
+  if (!sunriseInRange) outOfRangeItems.push({ key: "sunrise", label: "Sunrise", time: formatTime(sunrise, hourCycle) });
+  if (!sunsetInRange) outOfRangeItems.push({ key: "sunset", label: "Sunset", time: formatTime(sunset, hourCycle) });
+
   return (
     <div className="compact-solar-window" aria-label="Solar window">
       <div className="compact-solar-header">
         <span className="section-label">Solar Window</span>
+        {outOfRangeItems.length > 0 && (
+          <div className="compact-solar-out-of-range">
+            {outOfRangeItems.map(({ key, label, time }) => (
+              <span key={key}>{label} {time}</span>
+            ))}
+            <span className="compact-solar-out-of-range-note">outside this window</span>
+          </div>
+        )}
       </div>
       <div className="compact-solar-track" aria-hidden="true">
         <span
@@ -533,19 +552,25 @@ function CompactSolarWindow({
             width: `${Math.max(2, daylightRightPct - daylightLeftPct)}%`,
           }}
         />
-        <span className="compact-solar-marker sunrise" style={{ left: `${sunrisePct}%` }} />
-        <span className="compact-solar-marker sunset" style={{ left: `${sunsetPct}%` }} />
+        {sunriseInRange && <span className="compact-solar-marker sunrise" style={{ left: `${sunrisePct}%` }} />}
+        {sunsetInRange && <span className="compact-solar-marker sunset" style={{ left: `${sunsetPct}%` }} />}
       </div>
-      <div className="compact-solar-labels">
-        <span className="compact-solar-label sunrise" style={{ left: `${sunriseLabelPct}%` }}>
-          <strong>{formatTime(sunrise, hourCycle)}</strong>
-          <span>Sunrise</span>
-        </span>
-        <span className="compact-solar-label sunset" style={{ left: `${sunsetLabelPct}%` }}>
-          <strong>{formatTime(sunset, hourCycle)}</strong>
-          <span>Sunset</span>
-        </span>
-      </div>
+      {hasInRangeLabels && (
+        <div className="compact-solar-labels">
+          {sunriseInRange && (
+            <span className="compact-solar-label sunrise" style={{ left: `${sunriseLabelPct}%` }}>
+              <strong>{formatTime(sunrise, hourCycle)}</strong>
+              <span>Sunrise</span>
+            </span>
+          )}
+          {sunsetInRange && (
+            <span className="compact-solar-label sunset" style={{ left: `${sunsetLabelPct}%` }}>
+              <strong>{formatTime(sunset, hourCycle)}</strong>
+              <span>Sunset</span>
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
