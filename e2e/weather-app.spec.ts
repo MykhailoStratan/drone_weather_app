@@ -200,10 +200,24 @@ test("loads the Now tab weather dashboard with mocked data", async ({ page }) =>
   await expect(page.getByRole("tab", { name: "Drone" })).toBeVisible();
 });
 
+test("keeps the top location bar compact", async ({ page }) => {
+  await page.goto(locationQuery);
+
+  const locationBar = page.locator(".location-bar");
+  await expect(locationBar.locator(".location-bar-name")).toHaveText("Vancouver");
+  await expect(locationBar).not.toContainText("SkyCanvas");
+  await expect(locationBar).not.toContainText("British Columbia");
+  await expect(locationBar).not.toContainText("Clear sky");
+  await expect(locationBar).not.toContainText("Search");
+  await expect(locationBar).not.toContainText("km/h");
+  await expect(locationBar.getByRole("button", { name: "Search places" })).toBeVisible();
+  await expect(locationBar.getByRole("button", { name: "Preferences" })).toBeVisible();
+});
+
 test("supports preferences and the Map and Drone tabs", async ({ page }) => {
   await page.goto(locationQuery);
 
-  await page.getByRole("button", { name: /12h/i }).click();
+  await page.getByRole("button", { name: "Preferences" }).click();
   const preferencesPanel = page.locator(".lbar-prefs-section");
   await preferencesPanel.getByRole("button", { name: "F", exact: true }).click();
   await preferencesPanel.getByRole("button", { name: "Light", exact: true }).click();
@@ -225,16 +239,16 @@ test("supports preferences and the Map and Drone tabs", async ({ page }) => {
 test("search result selection updates and saves the active location", async ({ page }) => {
   await page.goto(locationQuery);
 
-  await page.getByRole("button", { name: /Search .* Places/i }).click();
+  await page.getByRole("button", { name: "Search places" }).click();
   await page.getByLabel("Search location").fill("Seattle");
   await page.getByRole("button", { name: "Seattle, Washington, United States" }).click();
 
-  await expect(page.locator(".location-bar-name")).toContainText("Seattle, Washington, United States");
+  await expect(page.locator(".location-bar-name")).toHaveText("Seattle");
   await expect(page.locator(".temperature-value")).toContainText("7");
   await expect(page).toHaveURL(/name=Seattle/);
   await expect(page).toHaveURL(/country=United\+States/);
 
-  await page.getByRole("button", { name: /Search .* Places/i }).click();
+  await page.getByRole("button", { name: "Search places" }).click();
   await page.getByRole("button", { name: "Save" }).click();
 
   await expect(page.getByRole("status").getByText("Seattle saved.")).toBeVisible();
@@ -280,6 +294,8 @@ test("solar window labels sunrise and sunset at their chart points", async ({ pa
   await page.goto(locationQuery);
 
   await expect(page.locator(".compact-solar-header strong")).toHaveCount(0);
+  await expect(page.locator(".compact-solar-boundary.left")).toContainText("1:00 AM");
+  await expect(page.locator(".compact-solar-boundary.right")).toContainText("12:00 AM");
   await expect(page.locator(".compact-solar-labels > span")).toHaveCount(2);
   await expect(page.locator(".compact-solar-label.sunrise")).toContainText("6:15 AM");
   await expect(page.locator(".compact-solar-label.sunrise")).toContainText("Sunrise");
@@ -314,9 +330,11 @@ test("desktop layout hides compact chart toggles while keeping charts visible", 
   await page.setViewportSize({ width: 1204, height: 702 });
   await page.goto(locationQuery);
 
+  await expect(page.getByRole("button", { name: "Toggle solar window chart" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Toggle temperature distribution chart" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Toggle precipitation chart" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Toggle sky clarity chart" })).toHaveCount(0);
+  await expect(page.locator(".compact-solar-window")).toBeVisible();
   await expect(page.getByRole("img", { name: "Temperature curve" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Precipitation and probability chart" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Cloud cover and visibility chart" })).toBeVisible();
@@ -326,29 +344,38 @@ test("small-screen chart toggles hide and restore compact timeline charts", asyn
   await page.setViewportSize({ width: 462, height: 900 });
   await page.goto(locationQuery);
 
+  const solarToggle = page.getByRole("button", { name: "Toggle solar window chart" });
   const temperatureToggle = page.getByRole("button", { name: "Toggle temperature distribution chart" });
   const precipitationToggle = page.getByRole("button", { name: "Toggle precipitation chart" });
   const skyToggle = page.getByRole("button", { name: "Toggle sky clarity chart" });
 
+  await expect(solarToggle).toBeVisible();
   await expect(temperatureToggle).toBeVisible();
   await expect(precipitationToggle).toBeVisible();
   await expect(skyToggle).toBeVisible();
+  await expect(page.locator(".compact-solar-window")).toBeVisible();
   await expect(page.getByRole("img", { name: "Temperature curve" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Precipitation and probability chart" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Cloud cover and visibility chart" })).toBeVisible();
 
+  await solarToggle.click();
   await temperatureToggle.click();
   await skyToggle.click();
 
+  await expect(solarToggle).toHaveAttribute("aria-pressed", "false");
   await expect(temperatureToggle).toHaveAttribute("aria-pressed", "false");
   await expect(skyToggle).toHaveAttribute("aria-pressed", "false");
   await expect(precipitationToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".compact-solar-window")).toHaveCount(0);
   await expect(page.getByRole("img", { name: "Temperature curve" })).toHaveCount(0);
   await expect(page.getByRole("img", { name: "Cloud cover and visibility chart" })).toHaveCount(0);
   await expect(page.getByRole("img", { name: "Precipitation and probability chart" })).toBeVisible();
 
+  await solarToggle.click();
   await temperatureToggle.click();
+  await expect(solarToggle).toHaveAttribute("aria-pressed", "true");
   await expect(temperatureToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".compact-solar-window")).toBeVisible();
   await expect(page.getByRole("img", { name: "Temperature curve" })).toBeVisible();
 });
 
