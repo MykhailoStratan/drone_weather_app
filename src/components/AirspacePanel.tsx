@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatSavedAtLabel } from "../lib/app-utils";
 import type { AirspaceFeature, AirspaceResponse, TFRFeature } from "../types";
 
 function patchLeafletIcons(L: typeof import("leaflet")) {
@@ -676,12 +677,25 @@ export function AirspacePanel({
   const presentFilters = new Set(features.map(filterKeyForFeature));
   const visibleClassifications = new Set(visibleFeatures.map((f) => f.classification));
 
+  const isStale = airspace?.stale === true;
+
   return (
     <div className="airspace-panel">
       <div className="airspace-panel-header">
         <p className="section-label">Airspace · Restrictions</p>
         <span className={`airspace-status-badge ${statusClass}`}>{statusText}</span>
       </div>
+
+      {isStale && airspace && (
+        <p
+          className="airspace-source-status airspace-source-status-warning"
+          role="status"
+          data-testid="airspace-stale-banner"
+        >
+          Showing cached airspace · last refreshed {formatSavedAtLabel(airspace.fetchedAt)} ·
+          verify with official AIP/NOTAMs before flight.
+        </p>
+      )}
 
       {mapLat !== undefined && mapLng !== undefined ? (
         loading && !airspace ? (

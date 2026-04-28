@@ -515,6 +515,35 @@ describe("App preferences", () => {
     view.unmount();
   });
 
+  it("shows a stale-data banner when airspace response is served from stale cache", async () => {
+    installFetchMock({
+      airspace: createResponse({ ...airspacePayload, stale: true }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    fireEvent.click(view.getByRole("tab", { name: "Map" }));
+
+    const banner = await view.findByTestId("airspace-stale-banner");
+    expect(banner.textContent).toMatch(/Showing cached airspace/i);
+    view.unmount();
+  });
+
+  it("does not show a stale banner when airspace response is fresh", async () => {
+    installFetchMock({
+      airspace: createResponse({ ...airspacePayload, stale: false }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    fireEvent.click(view.getByRole("tab", { name: "Map" }));
+
+    expect(view.queryByTestId("airspace-stale-banner")).toBeNull();
+    view.unmount();
+  });
+
   it("preserves precise geolocation coordinates when requesting weather", async () => {
     const fetchMock = installFetchMock();
     Object.defineProperty(globalThis.navigator, "geolocation", {
