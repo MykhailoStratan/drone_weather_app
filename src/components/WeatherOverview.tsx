@@ -1,4 +1,5 @@
 import React, { Suspense, useMemo, useState, type ReactNode } from "react";
+import { AircraftProfilePanel } from "./AircraftProfilePanel";
 import { BatteryThermalPanel } from "./BatteryThermalPanel";
 import { DewPointPanel } from "./DewPointPanel";
 import { DensityAltitudePanel } from "./DensityAltitudePanel";
@@ -10,6 +11,7 @@ import type { Preferences } from "../hooks/usePreferences";
 import type { WeatherDetailStatus } from "../hooks/useWeatherData";
 import { formatDayLabel, formatTime, temperatureDisplay, visibilityDisplay, weatherLabel, windDirectionLabel, windSpeedDisplay } from "../lib/format";
 import type { HourlyChartSeries } from "../lib/chartUtils";
+import type { AircraftProfile } from "../lib/aircraftProfiles";
 import type { DailyWeather, WeatherPayload, WeatherSnapshot } from "../types";
 
 const CloudVisibilityChart = React.lazy(() =>
@@ -22,6 +24,8 @@ const TemperatureCurveChart = React.lazy(() =>
 type WeatherOverviewProps = {
   activeHourIndex: number;
   activeTab?: AppTab;
+  aircraftProfile: AircraftProfile;
+  aircraftProfilePresets: AircraftProfile[];
   centerTimelineOnCurrentTime: boolean;
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
@@ -34,6 +38,8 @@ type WeatherOverviewProps = {
   onHourChange: (index: number) => void;
   onNextDayHourChange: (index: number) => void;
   onPrevDayHourChange: (index: number) => void;
+  onSelectAircraftPreset: (presetId: string) => void;
+  onUpdateAircraftProfile: (profile: AircraftProfile) => void;
   preferences: Preferences;
   prevDayHourly: WeatherSnapshot[];
   selectedDate: string;
@@ -80,6 +86,8 @@ const compactTimelineChartOptions: Array<{
 export function WeatherOverview({
   activeHourIndex,
   activeTab = "now",
+  aircraftProfile,
+  aircraftProfilePresets,
   centerTimelineOnCurrentTime,
   currentDay,
   currentSnapshot,
@@ -92,6 +100,8 @@ export function WeatherOverview({
   onHourChange,
   onNextDayHourChange,
   onPrevDayHourChange,
+  onSelectAircraftPreset,
+  onUpdateAircraftProfile,
   preferences,
   prevDayHourly,
   selectedDate,
@@ -346,6 +356,7 @@ export function WeatherOverview({
               <div className="wind-readiness-divider" aria-hidden="true" />
 
               <FlightReadinessPanel
+                aircraftProfile={aircraftProfile}
                 currentDay={currentDay}
                 currentSnapshot={currentSnapshot}
                 temperatureUnit={preferences.temperatureUnit}
@@ -410,7 +421,19 @@ export function WeatherOverview({
       {showSupportPanel && (
       <article className="stat-panel support-panel">
         <div className="support-panel-section">
-          <BatteryThermalPanel temperatureCelsius={currentSnapshot.temperature} />
+          <AircraftProfilePanel
+            aircraftProfile={aircraftProfile}
+            aircraftProfilePresets={aircraftProfilePresets}
+            onSelectPreset={onSelectAircraftPreset}
+            onUpdateProfile={onUpdateAircraftProfile}
+          />
+        </div>
+
+        <div className="support-panel-section">
+          <BatteryThermalPanel
+            aircraftProfile={aircraftProfile}
+            temperatureCelsius={currentSnapshot.temperature}
+          />
         </div>
 
         {currentSnapshot.relativeHumidity !== undefined && (

@@ -16,6 +16,7 @@ import { useNetworkStatus } from "./hooks/useNetworkStatus";
 import { usePreferences } from "./hooks/usePreferences";
 import { useUrlLocation } from "./hooks/useUrlLocation";
 import { useWeatherData } from "./hooks/useWeatherData";
+import { useAircraftProfile } from "./hooks/useAircraftProfile";
 import type { LocationOption } from "./types";
 
 const starterLocation: LocationOption = resolveStarterLocation(import.meta.env);
@@ -28,6 +29,7 @@ function App() {
   const [selectedHourIndex, setSelectedHourIndex] = useState(-1);
   const [timelineDisplayMode, setTimelineDisplayMode] = useState<TimelineDisplayMode>("current-window");
   const [activeTab, setActiveTab] = useState<AppTab>("now");
+  const { aircraftProfile, aircraftProfilePresets, selectAircraftPreset, updateAircraftProfile } = useAircraftProfile();
   const { preferences, preferencesOpen, setPreferencesOpen, updatePreferences } = usePreferences();
   const { readLocationFromUrl, writeLocationToUrl } = useUrlLocation();
   const { online } = useNetworkStatus();
@@ -254,6 +256,8 @@ function App() {
           <WeatherOverview
             activeHourIndex={activeHourIndex}
             activeTab={activeTab}
+            aircraftProfile={aircraftProfile}
+            aircraftProfilePresets={aircraftProfilePresets}
             currentDay={weatherLayout.currentDay}
             currentSnapshot={weatherLayout.currentSnapshot}
             detailsLoading={detailsLoading}
@@ -278,6 +282,8 @@ function App() {
                 setSelectedHourIndex(prevIndex);
               }
             }}
+            onSelectAircraftPreset={selectAircraftPreset}
+            onUpdateAircraftProfile={updateAircraftProfile}
             preferences={preferences}
             prevDayHourly={prevDayHourly}
             selectedDate={selectedDate}
