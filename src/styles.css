@@ -2020,7 +2020,21 @@ input:focus-visible {
 
 .aircraft-profile-panel {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.65rem;
+}
+
+.aircraft-profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.aircraft-profile-header h3 {
+  max-width: 100%;
+  margin-top: 0.18rem;
+  font-size: 0.9rem;
+  line-height: 1.15;
 }
 
 .aircraft-profile-badge {
@@ -2035,43 +2049,42 @@ input:focus-visible {
   white-space: nowrap;
 }
 
-.aircraft-profile-select-row,
+.aircraft-profile-control-row,
 .aircraft-profile-field {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.28rem;
 }
 
-.aircraft-profile-select-row label,
 .aircraft-profile-field > span:first-child {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   color: var(--text-tertiary);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.aircraft-profile-select-row select,
+.aircraft-profile-control-row select,
 .aircraft-profile-field input,
 .aircraft-profile-field select {
   width: 100%;
-  min-height: 38px;
+  min-height: 34px;
   border: 1px solid var(--rule);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
 }
 
-.aircraft-profile-select-row select,
+.aircraft-profile-control-row select,
 .aircraft-profile-field select {
-  padding: 0 0.65rem;
+  padding: 0 0.55rem;
 }
 
 .aircraft-profile-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: 0.45rem;
 }
 
 .aircraft-profile-input-wrap {
@@ -2080,16 +2093,23 @@ input:focus-visible {
 }
 
 .aircraft-profile-field input {
-  padding: 0 2.1rem 0 0.65rem;
+  padding: 0 1.75rem 0 0.55rem;
+  appearance: textfield;
+}
+
+.aircraft-profile-field input::-webkit-outer-spin-button,
+.aircraft-profile-field input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
 }
 
 .aircraft-profile-input-wrap small {
   position: absolute;
-  right: 0.55rem;
+  right: 0.45rem;
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.6rem;
   color: var(--text-tertiary);
   pointer-events: none;
 }
@@ -3122,7 +3142,7 @@ input:focus-visible {
   }
 
   .readiness-chip-grid { grid-template-columns: repeat(2, 1fr); }
-  .aircraft-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aircraft-profile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .environment-options { grid-template-columns: 1fr; }
 
   .primary-panel,
@@ -3183,7 +3203,7 @@ input:focus-visible {
   }
 
   .readiness-chip-grid { grid-template-columns: 1fr; }
-  .aircraft-profile-grid { grid-template-columns: 1fr; }
+  .aircraft-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .primary-panel,
   .stat-panel,
