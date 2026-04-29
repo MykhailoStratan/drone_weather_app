@@ -33,7 +33,7 @@ export function AircraftProfilePanel({
           <h3>{aircraftProfile.name}</h3>
         </div>
         <span className="aircraft-profile-badge">
-          {aircraftProfile.reserveBatteryPct}% reserve
+          {aircraftProfile.reserveBatteryPct}% battery reserve
         </span>
       </div>
 
@@ -55,7 +55,7 @@ export function AircraftProfilePanel({
 
       <div className="aircraft-profile-grid">
         <NumberField
-          label="Wind"
+          label="Wind max"
           suffix="km/h"
           value={aircraftProfile.maxWindKmh}
           min={5}
@@ -63,7 +63,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("maxWindKmh", value)}
         />
         <NumberField
-          label="Gust"
+          label="Gust max"
           suffix="km/h"
           value={aircraftProfile.maxGustKmh}
           min={8}
@@ -71,7 +71,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("maxGustKmh", value)}
         />
         <NumberField
-          label="Rain"
+          label="Rain max"
           suffix="%"
           value={aircraftProfile.maxRainProbability}
           min={0}
@@ -79,7 +79,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("maxRainProbability", value)}
         />
         <NumberField
-          label="Min"
+          label="Temp min"
           suffix="C"
           value={aircraftProfile.minTempC}
           min={-30}
@@ -87,7 +87,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("minTempC", value)}
         />
         <NumberField
-          label="Max"
+          label="Temp max"
           suffix="C"
           value={aircraftProfile.maxTempC}
           min={20}
@@ -95,7 +95,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("maxTempC", value)}
         />
         <NumberField
-          label="Reserve"
+          label="Battery reserve"
           suffix="%"
           value={aircraftProfile.reserveBatteryPct}
           min={10}
