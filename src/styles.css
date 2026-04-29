@@ -2018,6 +2018,82 @@ input:focus-visible {
   color: var(--text-secondary);
 }
 
+.aircraft-profile-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.aircraft-profile-badge {
+  padding: 0.18em 0.6em;
+  border-radius: 999px;
+  border: 1px solid var(--teal-edge);
+  background: var(--teal-soft);
+  color: var(--teal);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aircraft-profile-select-row,
+.aircraft-profile-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.aircraft-profile-select-row label,
+.aircraft-profile-field > span:first-child {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.aircraft-profile-select-row select,
+.aircraft-profile-field input,
+.aircraft-profile-field select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.aircraft-profile-select-row select,
+.aircraft-profile-field select {
+  padding: 0 0.65rem;
+}
+
+.aircraft-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.aircraft-profile-input-wrap {
+  position: relative;
+  display: block;
+}
+
+.aircraft-profile-field input {
+  padding: 0 2.1rem 0 0.65rem;
+}
+
+.aircraft-profile-input-wrap small {
+  position: absolute;
+  right: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
 /* ─────────────────────────────────────────────────────────
    Flight readiness (the headline feature)
    ───────────────────────────────────────────────────────── */
@@ -3046,6 +3122,7 @@ input:focus-visible {
   }
 
   .readiness-chip-grid { grid-template-columns: repeat(2, 1fr); }
+  .aircraft-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .environment-options { grid-template-columns: 1fr; }
 
   .primary-panel,
@@ -3106,6 +3183,7 @@ input:focus-visible {
   }
 
   .readiness-chip-grid { grid-template-columns: 1fr; }
+  .aircraft-profile-grid { grid-template-columns: 1fr; }
 
   .primary-panel,
   .stat-panel,
@@ -3198,6 +3276,13 @@ input:focus-visible {
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-primary);
+  margin: 0;
+}
+
+.battery-thermal-profile {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
   margin: 0;
 }
 

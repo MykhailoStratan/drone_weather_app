@@ -1,7 +1,9 @@
+import type { AircraftProfile } from "../lib/aircraftProfiles";
 import { temperatureDisplay, visibilityDisplay, windSpeedDisplay } from "../lib/format";
 import type { DailyWeather, WeatherSnapshot } from "../types";
 
 type FlightReadinessPanelProps = {
+  aircraftProfile: AircraftProfile;
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
   temperatureUnit: "c" | "f";
@@ -11,7 +13,10 @@ type FlightReadinessPanelProps = {
   visibilityUnitLabel: string;
 };
 
+type ReadinessTone = "good" | "caution" | "risk";
+
 export function FlightReadinessPanel({
+  aircraftProfile,
   currentDay,
   currentSnapshot,
   temperatureUnit,
@@ -20,28 +25,27 @@ export function FlightReadinessPanel({
   visibilityUnit,
   visibilityUnitLabel,
 }: FlightReadinessPanelProps) {
-  const windGust = currentSnapshot.windGusts;
-  const windTone = windGust >= 28 ? "risk" : windGust >= 18 ? "caution" : "good";
+  const windTone = windConditionTone({
+    gustKmh: currentSnapshot.windGusts,
+    maxGustKmh: aircraftProfile.maxGustKmh,
+    maxWindKmh: aircraftProfile.maxWindKmh,
+    speedKmh: currentSnapshot.windSpeed,
+  });
   const visibilityKm = currentSnapshot.visibility / 1000;
   const visibilityTone = visibilityKm < 6 ? (visibilityKm < 3 ? "risk" : "caution") : "good";
-  const rainTone =
-    currentDay.precipitationProbabilityMax >= 40
-      ? currentDay.precipitationProbabilityMax >= 70
-        ? "risk"
-        : "caution"
-      : "good";
-  const temperatureTone =
-    currentSnapshot.temperature <= 0 || currentSnapshot.temperature >= 35
-      ? "risk"
-      : currentSnapshot.temperature <= 5 || currentSnapshot.temperature >= 30
-        ? "caution"
-        : "good";
+  const rainTone = rainConditionTone(currentDay.precipitationProbabilityMax, aircraftProfile.maxRainProbability);
+  const temperatureTone = temperatureConditionTone(
+    currentSnapshot.temperature,
+    aircraftProfile.minTempC,
+    aircraftProfile.maxTempC,
+  );
   const overallScore = Math.round(
     (toneScore(windTone) + toneScore(visibilityTone) + toneScore(rainTone) + toneScore(temperatureTone)) / 4,
   );
   const tone = scoreTone(overallScore);
   const overallLabel = scoreLabel(overallScore);
   const summary = buildSummary({
+    aircraftProfile,
     currentDay,
     currentSnapshot,
     visibilityKm,
@@ -63,8 +67,8 @@ export function FlightReadinessPanel({
       <div className="readiness-chip-grid">
         <ReadinessChip
           label="Wind"
-          value={windGust >= 40 ? "High" : windGust >= 28 ? "Caution" : windGust >= 18 ? "Moderate" : "Low"}
-          status={`${windSpeedDisplay(windGust, windUnit)} ${windUnitLabel} gusts`}
+          value={windTone === "risk" ? "Over limit" : windTone === "caution" ? "Near limit" : "Inside limit"}
+          status={`${windSpeedDisplay(currentSnapshot.windSpeed, windUnit)} ${windUnitLabel} sustained, ${windSpeedDisplay(currentSnapshot.windGusts, windUnit)} ${windUnitLabel} gusts / ${aircraftProfile.maxWindKmh}-${aircraftProfile.maxGustKmh} limits`}
           tone={windTone}
         />
         <ReadinessChip
@@ -75,20 +79,14 @@ export function FlightReadinessPanel({
         />
         <ReadinessChip
           label="Rain"
-          value={currentDay.precipitationProbabilityMax >= 70 ? "High" : currentDay.precipitationProbabilityMax >= 40 ? "Caution" : "Low"}
-          status={`${Math.round(currentDay.precipitationProbabilityMax)}% chance`}
+          value={rainTone === "risk" ? "Over limit" : rainTone === "caution" ? "Near limit" : "Inside limit"}
+          status={`${Math.round(currentDay.precipitationProbabilityMax)}% chance / ${aircraftProfile.maxRainProbability}% limit`}
           tone={rainTone}
         />
         <ReadinessChip
           label="Temperature"
-          value={
-            currentSnapshot.temperature <= 0 || currentSnapshot.temperature >= 35
-              ? "Extreme"
-              : currentSnapshot.temperature <= 5 || currentSnapshot.temperature >= 30
-                ? "Watch"
-                : "Stable"
-          }
-          status={`${temperatureDisplay(currentSnapshot.temperature, temperatureUnit)}°${temperatureUnit.toUpperCase()}`}
+          value={temperatureTone === "risk" ? "Outside range" : temperatureTone === "caution" ? "Near edge" : "In range"}
+          status={`${temperatureDisplay(currentSnapshot.temperature, temperatureUnit)} ${temperatureUnit.toUpperCase()} / ${aircraftProfile.minTempC}-${aircraftProfile.maxTempC} C`}
           tone={temperatureTone}
         />
       </div>
@@ -107,7 +105,7 @@ function ReadinessChip({
   label: string;
   value: string;
   status: string;
-  tone: "good" | "caution" | "risk";
+  tone: ReadinessTone;
 }) {
   return (
     <div className={`readiness-chip ${tone}`}>
@@ -141,7 +139,7 @@ function scoreTone(score: number) {
   return "risk" as const;
 }
 
-function toneScore(tone: "good" | "caution" | "risk") {
+function toneScore(tone: ReadinessTone) {
   if (tone === "good") {
     return 90;
   }
@@ -151,32 +149,67 @@ function toneScore(tone: "good" | "caution" | "risk") {
   return 32;
 }
 
+function windConditionTone({
+  gustKmh,
+  maxGustKmh,
+  maxWindKmh,
+  speedKmh,
+}: {
+  gustKmh: number;
+  maxGustKmh: number;
+  maxWindKmh: number;
+  speedKmh: number;
+}) {
+  if (gustKmh > maxGustKmh || speedKmh > maxWindKmh) return "risk" as const;
+  if (gustKmh >= maxGustKmh * 0.75 || speedKmh >= maxWindKmh * 0.75) return "caution" as const;
+  return "good" as const;
+}
+
+function rainConditionTone(probability: number, limit: number) {
+  if (probability > limit) return "risk" as const;
+  if (probability >= limit * 0.6) return "caution" as const;
+  return "good" as const;
+}
+
+function temperatureConditionTone(tempC: number, minTempC: number, maxTempC: number) {
+  if (tempC < minTempC || tempC > maxTempC) return "risk" as const;
+  if (tempC <= minTempC + 5 || tempC >= maxTempC - 5) return "caution" as const;
+  return "good" as const;
+}
+
 function buildSummary({
+  aircraftProfile,
   currentDay,
   currentSnapshot,
   visibilityKm,
 }: {
+  aircraftProfile: AircraftProfile;
   currentDay: DailyWeather;
   currentSnapshot: WeatherSnapshot;
   visibilityKm: number;
 }) {
   const concerns: string[] = [];
 
-  if (currentSnapshot.windGusts >= 28) {
-    concerns.push(`gusts are reaching ${Math.round(currentSnapshot.windGusts)}`);
+  if (currentSnapshot.windGusts > aircraftProfile.maxGustKmh || currentSnapshot.windSpeed > aircraftProfile.maxWindKmh) {
+    concerns.push(`wind is over the ${aircraftProfile.name} profile`);
+  } else if (
+    currentSnapshot.windGusts >= aircraftProfile.maxGustKmh * 0.75 ||
+    currentSnapshot.windSpeed >= aircraftProfile.maxWindKmh * 0.75
+  ) {
+    concerns.push(`wind is nearing the ${aircraftProfile.name} profile`);
   }
   if (visibilityKm < 6) {
     concerns.push(`visibility is down to ${visibilityKm.toFixed(1)} km`);
   }
-  if (currentDay.precipitationProbabilityMax >= 40) {
-    concerns.push(`${Math.round(currentDay.precipitationProbabilityMax)}% rain potential`);
+  if (currentDay.precipitationProbabilityMax > aircraftProfile.maxRainProbability) {
+    concerns.push(`${Math.round(currentDay.precipitationProbabilityMax)}% rain potential exceeds the profile`);
   }
-  if (currentSnapshot.temperature <= 5 || currentSnapshot.temperature >= 30) {
-    concerns.push(`temperature is ${Math.round(currentSnapshot.temperature)}°C`);
+  if (currentSnapshot.temperature < aircraftProfile.minTempC || currentSnapshot.temperature > aircraftProfile.maxTempC) {
+    concerns.push(`temperature is outside the ${aircraftProfile.minTempC}-${aircraftProfile.maxTempC} C range`);
   }
 
   if (concerns.length === 0) {
-    return "Visibility, wind, rain, and temperature are all within a comfortable range for a routine flight check.";
+    return `${aircraftProfile.name} limits are clear for wind, rain, visibility, and temperature.`;
   }
 
   return `Most limiting factors right now: ${concerns.join(", ")}.`;

@@ -369,13 +369,11 @@ describe("App preferences", () => {
     const view = render(<App />);
 
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
-    expect(view.getByRole("heading", { name: "Not recommended", level: 3 })).toBeTruthy();
+    expect(view.getByRole("heading", { name: "Use caution", level: 3 })).toBeTruthy();
     expect(view.getAllByText("Temperature").length).toBeGreaterThan(0);
-    expect(view.getByText("Extreme")).toBeTruthy();
-    expect(document.querySelector(".readiness-summary")?.textContent).toContain("gusts are reaching 34");
+    expect(view.getByText("Near edge")).toBeTruthy();
     expect(document.querySelector(".readiness-summary")?.textContent).toContain("visibility is down to 2.5 km");
-    expect(document.querySelector(".readiness-summary")?.textContent).toContain("76% rain potential");
-    expect(document.querySelector(".readiness-summary")?.textContent).toContain("temperature is -2");
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("76% rain potential exceeds the profile");
     expect(view.queryByText("GNSS")).toBeNull();
     expect(view.queryByText(/usable \/ visible/i)).toBeNull();
     view.unmount();
@@ -396,15 +394,47 @@ describe("App preferences", () => {
     const view = render(<App />);
 
     expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
-    expect(view.getByText("10 km/h gusts")).toBeTruthy();
-    expect(view.getByText("Visibility, wind, rain, and temperature are all within a comfortable range for a routine flight check.")).toBeTruthy();
+    expect(view.getByText(/6 km\/h sustained, 10 km\/h gusts \/ 36-48 limits/)).toBeTruthy();
+    expect(view.getByText("Standard quadcopter limits are clear for wind, rain, visibility, and temperature.")).toBeTruthy();
 
     const slider = await view.findByRole("slider", { name: "Select forecast hour" });
     fireEvent.change(slider, { target: { value: "0" } });
 
-    expect(view.getByText("42 km/h gusts")).toBeTruthy();
-    expect(view.getByText("High")).toBeTruthy();
-    expect(document.querySelector(".readiness-summary")?.textContent).toContain("gusts are reaching 42");
+    expect(view.getByText(/28 km\/h sustained, 42 km\/h gusts \/ 36-48 limits/)).toBeTruthy();
+    expect(view.getAllByText("Near limit").length).toBeGreaterThan(0);
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("wind is nearing the Standard quadcopter profile");
+    view.unmount();
+  });
+
+  it("customizes aircraft limits from the Drone tab", async () => {
+    installFetchMock({
+      timeline: createResponse({
+        ...timelinePayload,
+        hourly: timelinePayload.hourly.map((entry, index) => ({
+          ...entry,
+          windGusts: index === 0 ? 42 : 10,
+          windSpeed: index === 0 ? 28 : 6,
+        })),
+      }),
+    });
+
+    const view = render(<App />);
+
+    expect(await view.findByRole("heading", { name: "Clear sky", level: 2 })).toBeTruthy();
+    fireEvent.click(view.getByRole("tab", { name: "Drone" }));
+
+    expect(await view.findByText("Aircraft Profile")).toBeTruthy();
+    fireEvent.change(view.getByLabelText("Aircraft type"), { target: { value: "payload" } });
+    expect(view.getByRole("heading", { name: "Payload / heavy lift", level: 3 })).toBeTruthy();
+    expect(view.getByText("35% reserve")).toBeTruthy();
+
+    fireEvent.click(view.getByRole("tab", { name: "Now" }));
+    const slider = await view.findByRole("slider", { name: "Select forecast hour" });
+    fireEvent.change(slider, { target: { value: "0" } });
+
+    expect(view.getByText(/28 km\/h sustained, 42 km\/h gusts \/ 30-40 limits/)).toBeTruthy();
+    expect(view.getAllByText("Over limit").length).toBeGreaterThan(0);
+    expect(document.querySelector(".readiness-summary")?.textContent).toContain("wind is over the Payload / heavy lift profile");
     view.unmount();
   });
 
