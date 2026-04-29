@@ -1355,6 +1355,92 @@ input:focus-visible {
   flex-shrink: 0;
 }
 
+.best-flight-window-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--bg-raise);
+}
+
+.best-flight-window-card.good {
+  border-color: var(--teal-edge);
+  background: var(--teal-soft);
+}
+
+.best-flight-window-card.caution {
+  border-color: var(--amber-edge);
+  background: var(--amber-soft);
+}
+
+.best-flight-window-card.risk {
+  border-color: var(--danger-edge);
+  background: var(--danger-soft);
+}
+
+.best-flight-window-card.muted {
+  color: var(--text-secondary);
+}
+
+.best-flight-window-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.best-flight-window-main strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.best-flight-window-badge {
+  flex-shrink: 0;
+  padding: 0.16em 0.55em;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.best-flight-window-badge.good {
+  color: var(--teal);
+  border: 1px solid var(--teal-edge);
+  background: var(--bg-surface);
+}
+
+.best-flight-window-badge.caution {
+  color: var(--amber);
+  border: 1px solid var(--amber-edge);
+  background: var(--bg-surface);
+}
+
+.best-flight-window-badge.risk {
+  color: var(--danger);
+  border: 1px solid var(--danger-edge);
+  background: var(--bg-surface);
+}
+
+.best-flight-window-card p,
+.best-flight-window-card small {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.best-flight-window-card p {
+  font-size: 0.8rem;
+}
+
+.best-flight-window-card small {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
 .hour-scrubber-track-wrap {
   position: relative;
   outline: none;
