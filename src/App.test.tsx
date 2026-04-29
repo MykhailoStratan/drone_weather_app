@@ -426,7 +426,7 @@ describe("App preferences", () => {
     expect(await view.findByText("Aircraft Profile")).toBeTruthy();
     fireEvent.change(view.getByLabelText("Aircraft type"), { target: { value: "payload" } });
     expect(view.getByRole("heading", { name: "Payload / heavy lift", level: 3 })).toBeTruthy();
-    expect(view.getByText("35% reserve")).toBeTruthy();
+    expect(view.getByText("35% battery reserve")).toBeTruthy();
 
     fireEvent.click(view.getByRole("tab", { name: "Now" }));
     const slider = await view.findByRole("slider", { name: "Select forecast hour" });
