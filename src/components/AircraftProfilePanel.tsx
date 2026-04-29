@@ -27,7 +27,7 @@ export function AircraftProfilePanel({
 
   return (
     <div className="aircraft-profile-panel">
-      <div className="support-panel-header">
+      <div className="aircraft-profile-header">
         <div>
           <p className="section-label">Aircraft Profile</p>
           <h3>{aircraftProfile.name}</h3>
@@ -37,10 +37,10 @@ export function AircraftProfilePanel({
         </span>
       </div>
 
-      <div className="aircraft-profile-select-row">
-        <label htmlFor="aircraft-profile-select">Aircraft type</label>
+      <div className="aircraft-profile-control-row">
         <select
           id="aircraft-profile-select"
+          aria-label="Aircraft type"
           value={aircraftProfile.id === "custom" ? "custom" : aircraftProfile.id}
           onChange={(event) => onSelectPreset(event.target.value)}
         >
@@ -55,7 +55,7 @@ export function AircraftProfilePanel({
 
       <div className="aircraft-profile-grid">
         <NumberField
-          label="Max wind"
+          label="Wind"
           suffix="km/h"
           value={aircraftProfile.maxWindKmh}
           min={5}
@@ -63,7 +63,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("maxWindKmh", value)}
         />
         <NumberField
-          label="Max gust"
+          label="Gust"
           suffix="km/h"
           value={aircraftProfile.maxGustKmh}
           min={8}
@@ -71,7 +71,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("maxGustKmh", value)}
         />
         <NumberField
-          label="Rain tolerance"
+          label="Rain"
           suffix="%"
           value={aircraftProfile.maxRainProbability}
           min={0}
@@ -79,7 +79,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("maxRainProbability", value)}
         />
         <NumberField
-          label="Min temp"
+          label="Min"
           suffix="C"
           value={aircraftProfile.minTempC}
           min={-30}
@@ -87,7 +87,7 @@ export function AircraftProfilePanel({
           onChange={(value) => updateNumberField("minTempC", value)}
         />
         <NumberField
-          label="Max temp"
+          label="Max"
           suffix="C"
           value={aircraftProfile.maxTempC}
           min={20}
