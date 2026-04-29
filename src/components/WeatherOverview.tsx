@@ -1,6 +1,7 @@
 import React, { Suspense, useMemo, useState, type ReactNode } from "react";
 import { AircraftProfilePanel } from "./AircraftProfilePanel";
 import { BatteryThermalPanel } from "./BatteryThermalPanel";
+import { BestFlightWindowPanel } from "./BestFlightWindowPanel";
 import { DewPointPanel } from "./DewPointPanel";
 import { DensityAltitudePanel } from "./DensityAltitudePanel";
 import { FlightReadinessPanel } from "./FlightReadinessPanel";
@@ -262,6 +263,11 @@ export function WeatherOverview({
             <CompactTimelineChartControls
               visibleCharts={visibleCompactCharts}
               onToggle={toggleCompactChart}
+            />
+            <BestFlightWindowPanel
+              aircraftProfile={aircraftProfile}
+              hourCycle={preferences.hourCycle}
+              hourlyForDay={hourlyForDay}
             />
             <div className="hour-scrubber-risk-anchor">
               <HourScrubber
